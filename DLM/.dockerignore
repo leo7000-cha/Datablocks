@@ -1,0 +1,11 @@
+.gradle/
+build/
+out/
+logs/
+upload/
+.idea/
+*.iml
+*.ipr
+*.iws
+deploy/
+docs/

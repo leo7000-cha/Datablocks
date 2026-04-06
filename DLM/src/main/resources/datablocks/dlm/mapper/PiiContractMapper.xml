@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiContractMapper">
+
+ 	<sql id="criteria_piicontract">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search1 != null">
+				and custid = #{search1}
+			</if>
+			<if test="search2 != null">
+				and mgmt_dept_cd = #{search2}
+			</if>
+			<if test="search3 != null">
+				and status = #{search3}
+			</if>
+			<if test='search4 != null and search9 == "ARC"'>
+				<![CDATA[ and delete_date >= STR_TO_DATE(#{search4, jdbcType=VARCHAR}, '%Y/%m/%d')]]>
+			</if>
+			<if test='search5 != null and search9 == "ARC"'>
+				<![CDATA[ and delete_date <= STR_TO_DATE(#{search5, jdbcType=VARCHAR}, '%Y/%m/%d')]]>
+			</if>
+			<if test='search4 != null and search9 == "ARCDEL"'>
+				<![CDATA[ and arc_del_date >= STR_TO_DATE(#{search4, jdbcType=VARCHAR}, '%Y/%m/%d')]]>
+			</if>
+			<if test='search5 != null and search9 == "ARCDEL"'>
+				<![CDATA[ and arc_del_date <= STR_TO_DATE(#{search5, jdbcType=VARCHAR}, '%Y/%m/%d')]]>
+			</if>
+		</trim>
+	</sql>
+	<sql id="criteria_piicontractstat">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search2 != null">
+				and mgmt_dept_cd = #{search2}
+			</if>
+			<if test="search4 != null">
+				<![CDATA[
+					and arc_del_date >= STR_TO_DATE(#{search4, jdbcType=VARCHAR}, '%Y/%m/%d')
+				]]>
+			</if>
+			<if test="search5 != null">
+				<![CDATA[
+					and arc_del_date <= STR_TO_DATE(#{search5, jdbcType=VARCHAR}, '%Y/%m/%d')
+				]]>
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiContractVO">
+		<![CDATA[
+		select custid, contractno, dept_cd, dept_name, mgmt_dept_cd, mgmt_dept_name, DATE_FORMAT(contract_opn_dt,'%Y/%m/%d') as contract_opn_dt, DATE_FORMAT(contract_close_dt,'%Y/%m/%d') as contract_close_dt, pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm, birth_dt, cb_dt, cust_pin, inst_cd, DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date, DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date, DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date, DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date, DATE_FORMAT(real_doc_del_date,'%Y/%m/%d') as real_doc_del_date, real_doc_del_userid
+		from cotdl.tbl_piicontract
+		 order by dept_cd, custid, contractno
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piicontract (custid, contractno, dept_cd, dept_name, mgmt_dept_cd, mgmt_dept_name, contract_opn_dt, contract_close_dt, pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm, birth_dt, cb_dt, cust_pin, inst_cd, basedate, actrole_end_date, archive_date, delete_date, arc_del_date, real_doc_del_date, real_doc_del_userid)
+		values (#{custid, jdbcType=VARCHAR}, #{contractno, jdbcType=VARCHAR}, #{dept_cd, jdbcType=VARCHAR}, #{dept_name, jdbcType=VARCHAR}, #{mgmt_dept_cd, jdbcType=VARCHAR}, #{mgmt_dept_name, jdbcType=VARCHAR}, str_to_date(#{contract_opn_dt, jdbcType=VARCHAR},'%Y/%m/%d') ,to_date(#{contract_close_dt, jdbcType=VARCHAR},'%Y/%m/%d') , #{pd_cd, jdbcType=VARCHAR}, #{pd_nm, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{actid, jdbcType=VARCHAR}, #{rsdnt_altrntv_id, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{birth_dt, jdbcType=VARCHAR}, #{cb_dt, jdbcType=VARCHAR}, #{cust_pin, jdbcType=VARCHAR}, #{inst_cd, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{actrole_end_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{archive_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{delete_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{arc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{real_doc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'), #{real_doc_del_userid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piicontract (custid, contractno, dept_cd, dept_name, mgmt_dept_cd, mgmt_dept_name, contract_opn_dt, contract_close_dt, pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm, birth_dt, cb_dt, cust_pin, inst_cd, basedate, actrole_end_date, archive_date, delete_date, arc_del_date, real_doc_del_date, real_doc_del_userid)
+		values (#{custid, jdbcType=VARCHAR}, #{contractno, jdbcType=VARCHAR}, #{dept_cd, jdbcType=VARCHAR}, #{dept_name, jdbcType=VARCHAR}, #{mgmt_dept_cd, jdbcType=VARCHAR}, #{mgmt_dept_name, jdbcType=VARCHAR}, str_to_date(#{contract_opn_dt, jdbcType=VARCHAR},'%Y/%m/%d') ,to_date(#{contract_close_dt, jdbcType=VARCHAR},'%Y/%m/%d') , #{pd_cd, jdbcType=VARCHAR}, #{pd_nm, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{actid, jdbcType=VARCHAR}, #{rsdnt_altrntv_id, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{birth_dt, jdbcType=VARCHAR}, #{cb_dt, jdbcType=VARCHAR}, #{cust_pin, jdbcType=VARCHAR}, #{inst_cd, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{actrole_end_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{archive_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{delete_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{arc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'), str_to_date(#{real_doc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'), #{real_doc_del_userid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiContractVO">
+		select custid, contractno, dept_cd, dept_name, mgmt_dept_cd, mgmt_dept_name, DATE_FORMAT(contract_opn_dt,'%Y/%m/%d') as contract_opn_dt, DATE_FORMAT(contract_close_dt,'%Y/%m/%d') as contract_close_dt, pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm, birth_dt, cb_dt, cust_pin, inst_cd, DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date, DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date, DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date, DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date, DATE_FORMAT(real_doc_del_date,'%Y/%m/%d') as real_doc_del_date, real_doc_del_userid
+		from cotdl.tbl_piicontract where custid= #{custid, jdbcType=VARCHAR} and contractno= #{contractno, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piicontract where custid= #{custid, jdbcType=VARCHAR} and contractno= #{contractno, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piicontract
+		set
+			dept_cd= #{dept_cd, jdbcType=VARCHAR},
+			dept_name= #{dept_name, jdbcType=VARCHAR},
+			mgmt_dept_cd= #{mgmt_dept_cd, jdbcType=VARCHAR},
+			mgmt_dept_name= #{mgmt_dept_name, jdbcType=VARCHAR},
+			contract_opn_dt= str_to_date(#{contract_opn_dt, jdbcType=VARCHAR},'%Y/%m/%d'),
+			contract_close_dt= str_to_date(#{contract_close_dt, jdbcType=VARCHAR},'%Y/%m/%d'),
+			pd_cd= #{pd_cd, jdbcType=VARCHAR},
+			pd_nm= #{pd_nm, jdbcType=VARCHAR},
+			status= #{status, jdbcType=VARCHAR},
+			actid= #{actid, jdbcType=VARCHAR},
+			rsdnt_altrntv_id= #{rsdnt_altrntv_id, jdbcType=VARCHAR},
+			cust_nm= #{cust_nm, jdbcType=VARCHAR},
+			birth_dt= #{birth_dt, jdbcType=VARCHAR},
+			cb_dt= #{cb_dt, jdbcType=VARCHAR},
+			cust_pin= #{cust_pin, jdbcType=VARCHAR},
+			inst_cd= #{inst_cd, jdbcType=VARCHAR},
+			basedate= str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'),
+			actrole_end_date= str_to_date(#{actrole_end_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			archive_date= str_to_date(#{archive_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			delete_date= str_to_date(#{delete_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			arc_del_date= str_to_date(#{arc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			real_doc_del_date= str_to_date(#{real_doc_del_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			real_doc_del_userid= #{real_doc_del_userid, jdbcType=VARCHAR}
+		where custid= #{custid, jdbcType=VARCHAR} and contractno= #{contractno, jdbcType=VARCHAR}
+	</update>
+	<update id="updateStatus">
+		update cotdl.tbl_piicontract
+		set
+			status= #{status, jdbcType=VARCHAR},
+			real_doc_del_date= now(),
+			real_doc_del_userid= #{real_doc_del_userid, jdbcType=VARCHAR}
+		where custid= #{custid, jdbcType=VARCHAR} and contractno= #{contractno, jdbcType=VARCHAR}
+	</update>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiContractVO"> 
+		<![CDATA[
+		select custid, contractno, dept_cd, dept_name, mgmt_dept_cd, mgmt_dept_name, DATE_FORMAT(contract_opn_dt,'%Y/%m/%d') as contract_opn_dt, DATE_FORMAT(contract_close_dt,'%Y/%m/%d') as contract_close_dt, pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm, birth_dt, cb_dt, cust_pin, inst_cd, DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date, DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date, DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date, DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date, DATE_FORMAT(real_doc_del_date,'%Y/%m/%d') as real_doc_del_date, real_doc_del_userid
+		  from cotdl.tbl_piicontract
+		]]>
+		<include refid="criteria_piicontract"></include>
+		<![CDATA[
+		order by dept_cd, custid, contractno
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piicontract 
+		
+		<include refid="criteria_piicontract"></include>
+			
+	</select>
+
+
+	<select id="getStatListWithPaging" resultType="datablocks.dlm.domain.PiiContractStatVO">
+		<![CDATA[
+			select mon, mgmt_dept_cd, mgmt_dept_name, acount, ncount, ycount, concat(ROUND(ycount/acount,1)*100,'%') as progress
+			from(
+				select DATE_FORMAT(arc_del_date,'%Y/%m') as mon, mgmt_dept_cd, mgmt_dept_name, count(1) as acount, COUNT(case when status = 'N' then 1 end) as ncount, COUNT(case when status = 'Y' then 1 end) as ycount
+				  from cotdl.tbl_piicontract
+				]]>
+				<include refid="criteria_piicontractstat"></include>
+				<![CDATA[
+				 group by DATE_FORMAT(arc_del_date,'%Y/%m'), mgmt_dept_cd, mgmt_dept_name
+			 ) a
+			where
+			  mon is not null
+			 order by mon , mgmt_dept_cd, mgmt_dept_name
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+
+	<select id="getStatTotalCount" resultType="int">
+		<![CDATA[
+			select count(1)
+			from(
+				select DATE_FORMAT(arc_del_date,'%Y/%m') as mon, mgmt_dept_cd, mgmt_dept_name
+				  from cotdl.tbl_piicontract
+				]]>
+		<include refid="criteria_piicontractstat"></include>
+		<![CDATA[
+				 group by DATE_FORMAT(arc_del_date,'%Y/%m'), mgmt_dept_cd, mgmt_dept_name
+			 ) a
+			where
+			  mon is not null
+		]]>
+	</select>
+
+	<delete id="delete_piicontractstat">
+		delete from cotdl.TBL_PIICONTRACTSTAT where 1 = 1
+	</delete>
+	<select id="getStatList12Month" resultType="datablocks.dlm.domain.PiiContractStatVO">
+		select chartname, mon, mgmt_dept_cd, mgmt_dept_name, acount, ncount, ycount, progress
+		from COTDL.TBL_PIICONTRACTSTAT
+		where chartname = 'MONTHLY'
+	</select>
+	<insert id="insertStatList12Month" >
+		<![CDATA[
+			insert into COTDL.TBL_PIICONTRACTSTAT
+			select 'MONTHLY',
+			       mon, '*' as mgmt_dept_cd, '*' as mgmt_dept_name, acount, ncount, ycount, concat(ROUND(ycount/acount,1)*100,'%') as progress
+			  from(
+					select DATE_FORMAT(arc_del_date,'%Y/%m') as mon/*, mgmt_dept_cd, mgmt_dept_name*/
+						 , count(1) as acount, COUNT(case when status = 'N' then 1 end) as ncount, COUNT(case when status = 'Y' then 1 end) as ycount
+					  from cotdl.tbl_piicontract
+					 where arc_del_date >= DATE_ADD(NOW(), INTERVAL - 12 MONTH)
+					 group by DATE_FORMAT(arc_del_date,'%Y/%m')/*, mgmt_dept_cd, mgmt_dept_name*/
+				  ) a
+			 where
+			   mon is not null
+			 order by mon /*, mgmt_dept_cd, mgmt_dept_name*/
+		]]>
+	</insert>
+
+	<select id="getDistinctMgmtDept" resultType="datablocks.dlm.domain.PiiContractVO">
+		SELECT DISTINCT mgmt_dept_cd, mgmt_dept_name
+		FROM cotdl.tbl_piicontract
+		WHERE mgmt_dept_cd IS NOT NULL AND mgmt_dept_cd != ''
+		ORDER BY mgmt_dept_name
+	</select>
+</mapper>

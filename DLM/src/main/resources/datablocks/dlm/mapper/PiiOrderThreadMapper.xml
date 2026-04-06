@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderThreadMapper">
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderThreadVO">
+		<![CDATA[
+		select orderid, jobid, version, stepid, seq1, seq2, seq3, status,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart
+		  from cotdl.tbl_piiorderthread
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		 order by orderid, jobid, version, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+	
+	<select id="getListCnt" resultType="int">
+		<![CDATA[
+		select count(1)
+		  from cotdl.tbl_piiorderthread
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert ignore into cotdl.tbl_piiorderthread (orderid, jobid, version, stepid, seq1, seq2, seq3, status, exestart)
+		values (#{orderid, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{status, jdbcType=VARCHAR}, NOW())
+	</insert>
+
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderThreadVO">
+		select orderid, jobid, version, stepid, seq1, seq2, seq3, status,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart
+		  from cotdl.tbl_piiorderthread 
+         where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+           and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piiorderthread where orderid= #{orderid}
+	</delete>
+
+	<delete id="deleteEndOkTabs">
+		delete t1
+			from cotdl.tbl_piiorderthread t1, cotdl.tbl_piiordersteptable t2
+			where t2.orderid = t1.orderid
+				and t2.jobid = t1.jobid
+				and t2.version = t1.version
+				and t2.stepid = t1.stepid
+				and t2.seq1 = t1.seq1
+				and t2.seq2 = t1.seq2
+				and t2.seq3 = t1.seq3
+				and t2.status = 'Ended OK'
+	</delete>
+	
+</mapper>

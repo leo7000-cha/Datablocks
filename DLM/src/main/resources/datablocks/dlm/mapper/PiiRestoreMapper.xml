@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiRestoreMapper">
+
+ 	<sql id="criteria_piirestore">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and a.custid = #{search1}
+						</if>
+						<if test="search2 != null">
+							and a.cust_nm = #{search2}
+						</if>
+						<if test="search3 != null">
+							and a.birth_dt = #{search3}
+						</if>
+						<if test="search4 != null">
+							and a.rsdnt_altrntv_id = #{search4}
+						</if>
+						<if test="search5 != null">
+							and a.cust_pin = #{search5}
+						</if>
+		</trim>
+	</sql> 
+ 	<sql id="criteria_actorder">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and a.custid = #{search1}
+						</if>
+						<if test="search2 != null">
+							and a.cust_nm = #{search2}
+						</if>
+						<if test="search3 != null">
+							and a.birth_dt = #{search3}
+						</if>
+						<if test="search4 != null">
+							and a.rsdnt_altrntv_id = #{search4}
+						</if>
+						<if test="search5 != null">
+							and a.cust_pin = #{search5}
+						</if>
+						<if test="search6 != null">
+							and a.orderid = #{search6}
+						</if>
+						<if test="search7 != null">
+							and b.basedate = STR_TO_DATE(#{search7, jdbcType=VARCHAR}, '%Y/%m/%d')
+						</if>
+						<if test="search8 != null">
+							and a.jobid = #{search8, jdbcType=VARCHAR}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiRestoreVO">
+		<![CDATA[
+		select restoreid, phase, apply_type, old_orderid, new_orderid, keymap_id,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, custid, cust_nm, birth_dt, rsdnt_altrntv_id, cust_pin, old_jobid, old_version, new_jobid, status, DATE_FORMAT(browse_deadline_dt,'%Y/%m/%d %H:%i:%s') as browse_deadline_dt,  DATE_FORMAT(approve_date,'%Y/%m/%d %H:%i:%s') as approve_date, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piirestore a 
+		 where 1=1
+		 order by restoreid desc
+		]]>
+	</select>
+
+	<select id="getActOrderList" resultType="datablocks.dlm.domain.PiiActOrderVO">
+		<![CDATA[
+		select * from (
+			select  b.orderid,  DATE_FORMAT(b.basedate,'%Y/%m/%d') as basedate
+					, b.runcnt, b.jobid, b.version, b.jobname, b.system, b.policy_id, b.keymap_id, b.jobtype, b.runtype, b.calendar, b.time, b.status, b.confirmflag, b.holdflag, b.forceokflag, b.killflag
+					, DATE_FORMAT(b.eststarttime,'%Y/%m/%d %H:%i:%s') as eststarttime, b.runningtime,  DATE_FORMAT(b.realstarttime,'%Y/%m/%d %H:%i:%s') as realstarttime,  DATE_FORMAT(b.realendtime,'%Y/%m/%d %H:%i:%s') as realendtime,  DATE_FORMAT(b.orderdate,'%Y/%m/%d %H:%i:%s') as orderdate
+					, b.orderuserid
+					, DATE_FORMAT(a.archive_date,'%Y/%m/%d %H:%i:%s') as archive_date, DATE_FORMAT(a.delete_date,'%Y/%m/%d %H:%i:%s') as delete_date
+					/*, ( select MAX(upddate) from cotdl.tbl_piirestore r where r.old_orderid=a.orderid and r.custid = a.custid and r.status='Ended OK') as restore_date*/
+					, DATE_FORMAT(a.restore_date,'%Y/%m/%d %H:%i:%s') as restore_date
+					, DATE_FORMAT(a.arc_del_date,'%Y/%m/%d') as arc_del_date
+					, DATE_FORMAT(a.last_base_date,'%Y/%m/%d') as last_base_date
+					, DATE_FORMAT(a.expected_arc_del_date,'%Y/%m/%d') as expected_arc_del_date
+					, a.custid, a.cust_nm, a.birth_dt, a.rsdnt_altrntv_id, a.cust_pin, a.exclude_reason
+			  from cotdl.tbl_piiextract a, cotdl.tbl_piiorder b, cotdl.tbl_piiorderstep c
+			 where 1 = 1
+			   and a.orderid=b.orderid
+			   and a.archive_date is not null and a.delete_date is not null
+			   and b.status = 'Ended OK'
+			   and c.orderid=b.orderid and c.steptype = 'EXE_ARCHIVE'
+			 ]]>
+			<include refid="criteria_actorder"></include>
+			<![CDATA[
+			limit #{offset}, #{amount}
+			]]>
+		) a
+		order by orderid desc, custid
+	</select>
+	<select id="getActOrderListTotalCount" resultType="int">
+		<![CDATA[
+			select count(1)
+			  from cotdl.tbl_piiextract a, cotdl.tbl_piiorder b, cotdl.tbl_piiorderstep c
+                         where 1 =1
+                           and a.orderid=b.orderid
+                           and a.archive_date is not null and a.delete_date is not null 
+                           and b.status = 'Ended OK'
+                           and c.orderid=b.orderid and c.steptype = 'EXE_ARCHIVE'
+	          ]]>
+	          <include refid="criteria_actorder"></include> 
+	</select>
+	<insert id="insert">
+		insert into cotdl.tbl_piirestore (restoreid, phase, apply_type, old_orderid, new_orderid, keymap_id, basedate, custid, cust_nm, birth_dt, rsdnt_altrntv_id, cust_pin, old_jobid, old_version, new_jobid, status, browse_deadline_dt, approve_date, regdate, upddate, reguserid, upduserid)
+		values (#{restoreid}, #{phase, jdbcType=VARCHAR}, #{apply_type, jdbcType=VARCHAR}, #{old_orderid}, #{new_orderid}, #{keymap_id, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), #{custid, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{birth_dt, jdbcType=VARCHAR}, #{rsdnt_altrntv_id, jdbcType=VARCHAR}, #{cust_pin, jdbcType=VARCHAR}, #{old_jobid, jdbcType=VARCHAR}, #{old_version, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, null, null, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		<selectKey resultType="int" keyProperty="restoreid" order="BEFORE">
+	        select COALESCE(max(restoreid),10000)+1 from cotdl.tbl_piirestore        
+	    </selectKey>
+		insert into cotdl.tbl_piirestore (restoreid, phase, apply_type, old_orderid, new_orderid, keymap_id, basedate, custid, cust_nm, birth_dt, rsdnt_altrntv_id, cust_pin, old_jobid, old_version, new_jobid, status, browse_deadline_dt, approve_date, regdate, upddate, reguserid, upduserid)
+		values (#{restoreid}, #{phase, jdbcType=VARCHAR}, #{apply_type, jdbcType=VARCHAR}, #{old_orderid}, #{new_orderid}, #{keymap_id, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), #{custid, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{birth_dt, jdbcType=VARCHAR}, #{rsdnt_altrntv_id, jdbcType=VARCHAR}, #{cust_pin, jdbcType=VARCHAR}, #{old_jobid, jdbcType=VARCHAR}, #{old_version, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, null, null, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="requestapproval">
+		update cotdl.tbl_piirestore
+		   set
+			   phase= 'APPROVING',
+			   status= 'APPLY',
+			   upddate= NOW()
+		 where restoreid= #{restoreid}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piirestore
+		   set phase= 'REJECTED',
+			   status= 'REJECTED',
+			   upddate= NOW()
+		 where restoreid= #{restoreid}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piirestore
+		   set 
+			   phase= 'APPROVED',
+			   status= 'ORDERED',
+			   upddate= NOW()
+		 where restoreid= #{restoreid}
+	</update>
+	<update id="updateRestoreCustStatus">
+		update cotdl.tbl_piiextract
+		set
+			exclude_reason= #{status, jdbcType=VARCHAR},
+			restore_date= NOW()
+		where orderid= #{orderid} and custid= #{custid, jdbcType=VARCHAR} /*and exclude_reason != 'RESTORE'*/
+		  and ARCHIVE_DATE is not null and ARC_DEL_DATE is null
+	</update>
+	<update id="updateExtractBrowseStatus">
+		<![CDATA[
+		update cotdl.tbl_piiextract
+		set
+			exclude_reason= null
+		where exists (
+				select 1
+				from cotdl.tbl_piirestore r
+				where cotdl.tbl_piiextract.orderid = r.old_orderid
+				  and cotdl.tbl_piiextract.custid = r.custid
+				  and r.status='APPROVED_BROWSE'
+				  and r.status=cotdl.tbl_piiextract.exclude_reason
+				  and r.browse_deadline_dt < now()
+		) /*and exclude_reason != 'RESTORE'*/
+		  and ARCHIVE_DATE is not null and RESTORE_DATE is null and ARC_DEL_DATE is null
+		]]>
+	</update>
+	<select id="read" resultType="datablocks.dlm.domain.PiiRestoreVO">
+		select 
+			   restoreid, phase, apply_type, old_orderid, new_orderid, keymap_id,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, custid, cust_nm, birth_dt, rsdnt_altrntv_id, cust_pin, old_jobid, old_version, new_jobid, status,  DATE_FORMAT(browse_deadline_dt,'%Y/%m/%d %H:%i:%s') as browse_deadline_dt,  DATE_FORMAT(approve_date,'%Y/%m/%d %H:%i:%s') as approve_date,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piirestore 
+		 where restoreid= #{restoreid}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piirestore where restoreid= #{restoreid}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piirestore
+		   set 
+			   new_orderid= #{new_orderid},
+			   status= #{status, jdbcType=VARCHAR},
+			   upddate= NOW(),
+			   upduserid= #{upduserid, jdbcType=VARCHAR}
+		 where restoreid= #{restoreid}
+	</update>
+	<update id="updateApprovalInfo">
+		update cotdl.tbl_piirestore
+		   set
+			   new_orderid= #{new_orderid},
+			   status= #{status, jdbcType=VARCHAR},
+			   upddate= NOW(),
+			   browse_deadline_dt= DATE_ADD(now(), INTERVAL 3 DAY),
+			   approve_date= NOW(),
+			   upduserid= #{upduserid, jdbcType=VARCHAR}
+		 where restoreid= #{restoreid}
+	</update>
+
+    <update id="updateStatus">
+		update cotdl.tbl_piirestore
+		   set 
+			   status= (select status from cotdl.tbl_piiorder where orderid= #{new_orderid})
+		 where new_orderid= #{new_orderid}
+	</update>	
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiRestoreVO"> 
+		<![CDATA[ 
+
+		select a.restoreid, a.phase, a.apply_type, a.old_orderid, a.new_orderid, a.keymap_id, DATE_FORMAT(a.basedate,'%Y/%m/%d') as basedate, a.custid, a.cust_nm, a.birth_dt, a.rsdnt_altrntv_id, a.cust_pin, a.old_jobid, a.old_version, a.new_jobid, a.status, DATE_FORMAT(a.browse_deadline_dt,'%Y/%m/%d %H:%i:%s') as browse_deadline_dt, DATE_FORMAT(a.approve_date,'%Y/%m/%d %H:%i:%s') as approve_date, DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate, DATE_FORMAT(a.upddate,'%Y/%m/%d %H:%i:%s') as upddate
+		     , b.requesterid as reguserid, b.requestername as upduserid
+		  from cotdl.tbl_piirestore a, cotdl.tbl_piiapprovalreq b
+		  where a.restoreid = b.jobid
+            and b.approvalid  = 'RESTORE_APPROVAL'
+		]]>
+		<include refid="criteria_piirestore"></include>
+	    <![CDATA[
+		order by a.restoreid desc
+        limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1)
+		  from cotdl.tbl_piirestore a, cotdl.tbl_piiapprovalreq b
+		 where a.restoreid = b.jobid
+		   and b.approvalid  = 'RESTORE_APPROVAL'
+		<include refid="criteria_piirestore"></include>
+			
+	</select>
+	<select id="getMaxRestoreid" resultType="int">
+		select COALESCE(max(restoreid),10000) from cotdl.tbl_piirestore
+	</select>
+	<select id="getArcCustBrowseList" resultType="datablocks.dlm.domain.PiiCustidVO">
+		select custid
+		from cotdl.tbl_piirestore
+		where status = 'APPROVED_BROWSE'
+		  and browse_deadline_dt > now()
+		  and reguserid = #{applicant, jdbcType=VARCHAR}
+		order by custid
+	</select>
+
+
+
+</mapper>

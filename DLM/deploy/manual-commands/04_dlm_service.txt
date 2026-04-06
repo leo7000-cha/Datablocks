@@ -1,0 +1,64 @@
+#=============================================================================
+# 04. DLM Tomcat 간편 관리 - 실명령어 버전
+#
+# ※ 필요한 명령어를 복사하여 실행하세요.
+#=============================================================================
+
+
+# ── 시작 ──
+
+sudo systemctl start tomcat
+sudo systemctl status tomcat --no-pager
+
+
+# ── 중지 ──
+
+sudo systemctl stop tomcat
+
+
+# ── 재시작 ──
+
+sudo systemctl restart tomcat
+sudo systemctl status tomcat --no-pager
+
+
+# ── 상태 확인 ──
+
+sudo systemctl status tomcat --no-pager
+
+# 포트 확인
+ss -tlnp | grep 8080
+
+# PID 확인
+cat /opt/tomcat/latest/temp/tomcat.pid
+
+# 최근 로그 10줄
+tail -10 /opt/tomcat/latest/logs/catalina.out
+
+
+# ── 실시간 로그 모니터링 (Ctrl+C 종료) ──
+
+tail -f /opt/tomcat/latest/logs/catalina.out
+
+
+# ── 전체 환경 점검 ──
+
+# Java 확인
+/usr/lib/jvm/java-11-amazon-corretto/bin/java -version
+
+# Tomcat 확인
+ls -la /opt/tomcat/latest
+ls /opt/tomcat/latest/webapps/*.war
+
+# 서비스 확인
+systemctl is-enabled tomcat
+systemctl is-active tomcat
+
+# 디스크 확인
+df -h / /opt /dlmlogs /dlmapilogs
+
+# DB 연결 확인
+mysql -u root -p -e "SELECT 'MariaDB OK' AS status; USE cotdl; SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='cotdl';"
+
+# 소유권 확인
+stat -c '%U:%G %n' /opt/tomcat /dlmlogs /dlmapilogs

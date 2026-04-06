@@ -1,0 +1,206 @@
+# ==============================================================================
+# DLM Docker Compose
+# DEV : 8 Core / 32GB RAM
+# PROD: 8 Core / 64GB RAM (docker-compose.prod.yml 으로 오버라이드)
+#
+# [DEV] Resource Allocation (32GB):
+#   MariaDB         : 2 CPU /  4GB  (InnoDB buffer pool ~2GB)
+#   DLM (Spring)    : 3 CPU / 12GB  (JVM heap ~8GB + metaspace)
+#   DLM-Privacy-AI  : 2 CPU /  8GB  (AI model + inference)
+#   OS/Docker 예약   : 1 CPU /  8GB
+#   합계             : 7 CPU / 24GB  (여유분 1 CPU / 8GB)
+#
+# [PROD] Resource Allocation (64GB) → docker-compose.prod.yml 참조
+#   MariaDB         : 2 CPU / 10GB
+#   DLM (Spring)    : 3 CPU / 24GB
+#   DLM-Privacy-AI  : 2 CPU / 20GB
+#   OS/Docker 예약   : 1 CPU / 10GB
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # MariaDB Database
+  # ============================================================================
+  dlm-mariadb:
+    image: mariadb:10.11
+    container_name: dlm-mariadb
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb/conf.d/custom.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - ./mariadb/init:/docker-entrypoint-initdb.d:ro
+      - mariadb_logs:/var/log/mysql
+    networks:
+      - dlm-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================================================
+  # DLM - Spring Boot Main Application
+  # ============================================================================
+  dlm:
+    build:
+      context: ./DLM
+      dockerfile: Dockerfile
+    container_name: dlm-app
+    restart: unless-stopped
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      JASYPT_ENCRYPTOR_PASSWORD: ${JASYPT_ENCRYPTOR_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "8080:8080"
+    volumes:
+      - dlm_logs:/app/logs
+      - dlm_upload:/app/upload
+    networks:
+      - dlm-network
+    depends_on:
+      dlm-mariadb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 12G
+        reservations:
+          cpus: "1.5"
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ============================================================================
+  # DLM-Privacy-AI - FastAPI AI Service
+  # ============================================================================
+  dlm-privacy-ai:
+    build:
+      context: ./DLM-Privacy-AI
+      dockerfile: Dockerfile
+    container_name: dlm-privacy-ai
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PRIVACY_AI_DB_HOST: ${PRIVACY_AI_DB_HOST}
+      PRIVACY_AI_DB_PORT: ${PRIVACY_AI_DB_PORT}
+      PRIVACY_AI_DB_NAME: ${PRIVACY_AI_DB_NAME}
+      PRIVACY_AI_DB_USER: ${PRIVACY_AI_DB_USER}
+      PRIVACY_AI_DB_PASSWORD: ${PRIVACY_AI_DB_PASSWORD}
+      PRIVACY_AI_DLM_API_URL: ${PRIVACY_AI_DLM_API_URL}
+      PRIVACY_AI_DEBUG: ${PRIVACY_AI_DEBUG}
+      PRIVACY_AI_LLM_ENABLED: ${PRIVACY_AI_LLM_ENABLED:-false}
+      PRIVACY_AI_LLM_API_URL: ${PRIVACY_AI_LLM_API_URL:-}
+      PRIVACY_AI_LLM_API_KEY: ${PRIVACY_AI_LLM_API_KEY:-}
+      PRIVACY_AI_LLM_MODEL: ${PRIVACY_AI_LLM_MODEL:-}
+      TZ: Asia/Seoul
+    ports:
+      - "8000:8000"
+    volumes:
+      - privacy_ai_logs:/app/logs
+      - privacy_ai_models:/app/models
+    networks:
+      - dlm-network
+    depends_on:
+      dlm-mariadb:
+        condition: service_healthy
+      dlm:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 8G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================================================
+  # Portainer - Docker Management UI
+  # ============================================================================
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: dlm-portainer
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - dlm-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  dlm-network:
+    driver: bridge
+    name: dlm-network
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  mariadb_data:
+    name: dlm-mariadb-data
+  mariadb_logs:
+    name: dlm-mariadb-logs
+  dlm_logs:
+    name: dlm-app-logs
+  dlm_upload:
+    name: dlm-app-upload
+  privacy_ai_logs:
+    name: dlm-privacy-ai-logs
+  privacy_ai_models:
+    name: dlm-privacy-ai-models
+  portainer_data:
+    name: dlm-portainer-data

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiStepTableWaitMapper">
+
+	<select id="getJobList" resultType="datablocks.dlm.domain.PiiStepTableWaitVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		]]>
+	</select>
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiStepTableWaitVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		]]>
+	</select>
+
+	<insert id="insert">
+ 		insert into cotdl.tbl_piisteptablewait (jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{type, jdbcType=VARCHAR}, #{db_w, jdbcType=VARCHAR}, #{owner_w, jdbcType=VARCHAR}, #{table_name_w, jdbcType=VARCHAR})
+	
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiStepTableWaitVO">
+		select jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		   and type= #{type} and db_w= #{db_w} and owner_w= #{owner_w} and table_name_w= #{table_name_w}
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</delete>
+	<delete id="deletebytable">
+		delete from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</delete>
+	<delete id="deletebyjobid">
+		delete from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</delete>
+	<delete id="deletebystepid">
+		delete from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+	</delete>
+	<update id="update">
+		update cotdl.tbl_piisteptablewait
+		   set 
+				type= #{type, jdbcType=VARCHAR},
+				db_w= #{db_w, jdbcType=VARCHAR},
+				owner_w= #{owner_w, jdbcType=VARCHAR},
+				table_name_w= #{table_name_w, jdbcType=VARCHAR}
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		   and type= #{type} and db_w= #{db_w} and owner_w= #{owner_w} and table_name_w= #{table_name_w}
+	</update>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piisteptablewait a
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</select>
+
+	<insert id="checkout">
+ 		insert into cotdl.tbl_piisteptablewait 
+		select jobid, cast(version as INTEGER)+1, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piisteptablewait 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</insert>
+	
+</mapper>

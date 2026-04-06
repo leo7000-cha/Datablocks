@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiStepTableMapper">
+
+ 	<sql id="criteria_piisteptable">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and jobid = #{search1, jdbcType=VARCHAR}
+						</if>
+						<if test="search2 != null">
+							and version = #{search2}
+						</if>
+						<if test="search3 != null">
+							and stepid = #{search3}
+						</if>
+						<if test="search4 != null">
+							and db = #{search4}
+						</if>
+						<if test="search5 != null">
+							and owner like concat('%',#{search5},'%')
+						</if>
+						<if test="search6 != null">
+							and table_name like concat('%',#{search6},'%')
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable a
+		 where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid ) order by jobid, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getJobTableList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		 order by jobid, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getJobStepTableList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		 order by jobid, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+
+	<select id="getArcStepTableList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select a.db, a.owner, a.table_name
+		 from cotdl.tbl_piisteptable a , COTDL.TBL_PIITABLE b
+		where a.exetype = 'ARCHIVE'
+		  and b.db = 'DLMARC'
+		  and CONCAT('PII', a.owner) = b.owner
+		  and a.TABLE_NAME = b.table_name
+		group by a.db, a.owner, a.table_name
+		order by a.db, a.owner, a.table_name
+		]]>
+	</select>
+	<select id="getExeStepTableList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select b.jobid, b.version, b.stepid, b.db, b.owner, b.table_name, b.pagitype, b.pagitypedetail, b.exetype, b.archiveflag, b.status, b.preceding, b.succedding, b.seq1, b.seq2, b.seq3, b.pipeline, b.pk_col, b.where_col, b.where_key_name, b.parallelcnt, b.commitcnt, b.wherestr, b.sqlstr, b.keymap_id, b.key_name, b.key_cols, b.key_refstr, b.sqltype, DATE_FORMAT(b.regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(b.upddate,'%Y/%m/%d') as upddate, b.reguserid, bupduserid, bhintselect, bhintinsert, buval1, buval2, buval3, buval4, buval5
+		  from cotdl.tbl_piijob a, cotdl.tbl_piisteptable b
+		  where a.jobid = b.jobid and a.version = b.version and a.jobtype='PII' and a.runtype='REGULAR' and a.status='ACTIVE' and b.exetype in ('DELETE','UPDATE')
+		]]>
+	    
+		<include refid="criteria_piisteptable"></include>
+	    
+	    <![CDATA[ 
+		 order by jobid, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getTotalCountExeStepTable" resultType="int">
+		<![CDATA[
+		select count(1)
+		  from cotdl.tbl_piijob a, cotdl.tbl_piisteptable b
+		  where a.jobid = b.jobid and a.version = b.version and a.jobtype='PII' and a.runtype='REGULAR' and a.status='ACTIVE' and b.exetype in ('DELETE','UPDATE')
+		]]>
+		<include refid="criteria_piisteptable"></include>
+
+	</select>
+	<select id="getStepTableList" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable
+		  where 1=1
+		]]>
+
+		<include refid="criteria_piisteptable"></include>
+
+		<![CDATA[
+		 order by jobid, stepid, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getList_Keymap" resultType="datablocks.dlm.domain.PiiConfKeymapRefVO">
+		<![CDATA[
+			select distinct keymap_id, key_name, key_cols, pk_col
+			  from cotdl.tbl_piisteptable a
+			 where exetype='KEYMAP'
+			   and SUBSTRING(jobid, 1, 11) = SUBSTRING(#{jobid, jdbcType=VARCHAR}, 1, 11)
+			   and version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid and status='ACTIVE' )
+			 order by key_cols
+		]]>
+	</select>
+	<insert id="insert">
+ 		insert into cotdl.tbl_piisteptable (jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype, regdate, upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{pagitype, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR}, #{exetype, jdbcType=VARCHAR}, #{archiveflag, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{preceding, jdbcType=VARCHAR}, #{succedding, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{pipeline, jdbcType=VARCHAR}, #{pk_col, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{wherestr, jdbcType=CLOB}, #{sqlstr, jdbcType=CLOB}, #{keymap_id, jdbcType=VARCHAR}, #{key_name, jdbcType=VARCHAR}, #{key_cols, jdbcType=VARCHAR}, #{key_refstr, jdbcType=VARCHAR}, #{sqltype, jdbcType=VARCHAR}, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}, #{hintselect, jdbcType=VARCHAR}, #{hintinsert, jdbcType=VARCHAR}, #{uval1, jdbcType=VARCHAR}, #{uval2, jdbcType=VARCHAR}, #{uval3, jdbcType=VARCHAR}, #{uval4, jdbcType=VARCHAR}, #{uval5, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+ 		insert into cotdl.tbl_piisteptable (jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype, regdate, upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{pagitype, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR}, #{exetype, jdbcType=VARCHAR}, #{archiveflag, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{preceding, jdbcType=VARCHAR}, #{succedding, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{pipeline, jdbcType=VARCHAR}, #{pk_col, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{wherestr, jdbcType=CLOB}, #{sqlstr, jdbcType=CLOB}, #{keymap_id, jdbcType=VARCHAR}, #{key_name, jdbcType=VARCHAR}, #{key_cols, jdbcType=VARCHAR}, #{key_refstr, jdbcType=VARCHAR}, #{sqltype, jdbcType=VARCHAR}, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}, #{hintselect, jdbcType=VARCHAR}, #{hintinsert, jdbcType=VARCHAR}, #{uval1, jdbcType=VARCHAR}, #{uval2, jdbcType=VARCHAR}, #{uval3, jdbcType=VARCHAR}, #{uval4, jdbcType=VARCHAR}, #{uval5, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="checkout">
+ 		insert into cotdl.tbl_piisteptable 
+		select jobid, cast(version as INTEGER)+1, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype, regdate, NOW() as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid/*, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5*/
+		  from cotdl.tbl_piisteptable 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</select>
+
+	<select id="readEtc" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid/*, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5*/
+		from cotdl.tbl_piisteptable_etc
+		where jobid= #{jobid, jdbcType=VARCHAR} and stepid= #{stepid}
+	</select>
+	<select id="readEtcCnt" resultType="int">
+		select count(1)
+		from cotdl.tbl_piisteptable_etc
+		where jobid= #{jobid, jdbcType=VARCHAR} and stepid= #{stepid}
+	</select>
+	<select id="readWithSeq" resultType="datablocks.dlm.domain.PiiStepTableVO">
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</select>
+	
+	<select id="readWithSeqExetype" resultType="int">
+		select count(1) 
+		  from cotdl.tbl_piisteptable 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and exetype= #{exetype}
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piisteptable 
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		  and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</delete>
+	<delete id="deleteBySeq">
+		delete from cotdl.tbl_piisteptable 
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</delete>
+	<delete id="deleteStepTable">
+		delete from cotdl.tbl_piisteptable 
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+	</delete>
+	<delete id="deleteJobTable">
+		delete from cotdl.tbl_piisteptable 
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piisteptable
+		set 
+			db= #{db, jdbcType=VARCHAR},
+			owner= #{owner, jdbcType=VARCHAR},
+			table_name= #{table_name, jdbcType=VARCHAR},
+			pagitype= #{pagitype, jdbcType=VARCHAR},
+			pagitypedetail= #{pagitypedetail, jdbcType=VARCHAR},
+			exetype= #{exetype, jdbcType=VARCHAR},
+			archiveflag= #{archiveflag, jdbcType=VARCHAR},
+			status= #{status, jdbcType=VARCHAR},
+			preceding= #{preceding, jdbcType=VARCHAR},
+			succedding= #{succedding, jdbcType=VARCHAR},
+			seq1= #{seq1},
+			seq2= #{seq2_new},
+			seq3= #{seq3},
+			pipeline= #{pipeline, jdbcType=VARCHAR},
+			where_col= #{where_col, jdbcType=VARCHAR},
+			where_key_name= #{where_key_name, jdbcType=VARCHAR},
+			parallelcnt= #{parallelcnt, jdbcType=VARCHAR},
+			commitcnt= #{commitcnt, jdbcType=VARCHAR},
+			pk_col= #{pk_col, jdbcType=VARCHAR},
+			wherestr= #{wherestr, jdbcType=VARCHAR},
+			sqlstr= #{sqlstr, jdbcType=VARCHAR},
+			keymap_id= #{keymap_id, jdbcType=VARCHAR},
+			key_name= #{key_name, jdbcType=VARCHAR},
+			key_cols= #{key_cols, jdbcType=VARCHAR},
+			key_refstr= #{key_refstr, jdbcType=VARCHAR},
+			sqltype= #{sqltype, jdbcType=VARCHAR},
+			upddate= NOW(),
+			reguserid= #{reguserid, jdbcType=VARCHAR},
+			upduserid= #{upduserid, jdbcType=VARCHAR},
+			hintselect= #{hintselect, jdbcType=VARCHAR},
+			hintinsert= #{hintinsert, jdbcType=VARCHAR},
+			uval1= #{uval1, jdbcType=VARCHAR},
+			uval2= #{uval2, jdbcType=VARCHAR},
+			uval3= #{uval3, jdbcType=VARCHAR},
+			uval4= #{uval4, jdbcType=VARCHAR},
+			uval5= #{uval5, jdbcType=VARCHAR}
+			where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		      and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="updateKeymapId">
+		update cotdl.tbl_piisteptable
+		set 
+			keymap_id= #{keymap_id, jdbcType=VARCHAR}
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and EXETYPE= 'KEYMAP'
+	</update>
+	
+	<update id="updateArchiveFromDel">
+		update cotdl.tbl_piisteptable
+		set 
+			pagitype= #{pagitype, jdbcType=VARCHAR},
+			pagitypedetail= #{pagitypedetail, jdbcType=VARCHAR},
+			exetype= #{exetype, jdbcType=VARCHAR},
+			archiveflag= #{archiveflag, jdbcType=VARCHAR},
+			status= #{status, jdbcType=VARCHAR},
+			preceding= #{preceding, jdbcType=VARCHAR},
+			succedding= #{succedding, jdbcType=VARCHAR},
+			seq1= #{seq1},
+			seq2= #{seq2},
+			seq3= #{seq3},
+			pipeline= #{pipeline, jdbcType=VARCHAR},
+			pk_col= #{pk_col, jdbcType=VARCHAR},
+			where_col= #{where_col, jdbcType=VARCHAR},
+			where_key_name= #{where_key_name, jdbcType=VARCHAR},
+<!-- 			parallelcnt= #{parallelcnt, jdbcType=VARCHAR}, -->
+			commitcnt= #{commitcnt, jdbcType=VARCHAR},
+			wherestr= #{wherestr, jdbcType=VARCHAR},
+			sqlstr= #{sqlstr, jdbcType=VARCHAR},
+			keymap_id= #{keymap_id, jdbcType=VARCHAR},
+			key_name= #{key_name, jdbcType=VARCHAR},
+			key_cols= #{key_cols, jdbcType=VARCHAR},
+			key_refstr= #{key_refstr, jdbcType=VARCHAR},
+			sqltype= #{sqltype, jdbcType=VARCHAR},
+			regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d'),
+			upddate= NOW(),
+			reguserid= #{reguserid, jdbcType=VARCHAR},
+			upduserid= #{upduserid, jdbcType=VARCHAR},
+			hintselect= #{hintselect, jdbcType=VARCHAR},
+			hintinsert= #{hintinsert, jdbcType=VARCHAR},
+			uval1= #{uval1, jdbcType=VARCHAR},
+			uval2= #{uval2, jdbcType=VARCHAR},
+			uval3= #{uval3, jdbcType=VARCHAR},
+			uval4= #{uval4, jdbcType=VARCHAR},
+			uval5= #{uval5, jdbcType=VARCHAR}
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiStepTableVO"> 
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piisteptable a
+		where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid )
+		]]>
+		<include refid="criteria_piisteptable"></include>
+	    <![CDATA[
+		order by jobid, stepid, seq1, seq2, seq3
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+	<select id="getListWithPagingWithWait" resultType="datablocks.dlm.domain.PiiStepTableWithWaitVO"> 
+		<![CDATA[
+		select
+			   jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype, regdate, upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+			   ,db_w, owner_w, table_name_w, updates
+		from (
+				select
+					 a.jobid, a.version, a.stepid, a.db, a.owner, a.table_name, a.pagitype, a.pagitypedetail, a.exetype, a.archiveflag, a.status, a.preceding, a.succedding, a.seq1, a.seq2, a.seq3, a.pipeline, a.pk_col, a.where_col, a.where_key_name, a.parallelcnt, a.commitcnt, a.wherestr, a.sqlstr, a.keymap_id, a.key_name, a.key_cols, a.key_refstr, a.sqltype, a.regdate, a.upddate, a.reguserid, a.upduserid, a.hintselect, a.hintinsert, a.uval1, a.uval2, a.uval3, a.uval4, a.uval5
+			   		,b.db_w, b.owner_w, b.table_name_w, c.updates
+				from (
+						select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+						  from cotdl.tbl_piisteptable order by jobid, stepid, seq1, seq2, seq3
+					 ) a
+					left outer join cotdl.tbl_piisteptablewait b
+					on (a.jobid= b.jobid and a.version= b.version and a.stepid= b.stepid
+				  		and a.db= b.db and a.owner= b.owner and a.table_name= b.table_name
+					   )
+					left outer join (
+						select jobid, version, stepid, seq1, seq2, seq3
+						      ,group_concat(concat(column_name,concat('=',update_val)) SEPARATOR ',') as updates
+						  from cotdl.tbl_piisteptableupdate
+				          group by jobid, version, stepid, seq1, seq2, seq3
+				          ) c
+					on (a.jobid= c.jobid and a.version= c.version and a.stepid= c.stepid
+				  		and a.seq1= c.seq1 and a.seq2= c.seq2 and a.seq3= c.seq3
+					   )
+				where a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid )
+	) tmp
+	where 1 = 1
+		]]>
+		<include refid="criteria_piisteptable"></include>
+		<![CDATA[
+		order by jobid, stepid, seq1, seq2, seq3
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piisteptable a
+				where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid )
+		
+		<include refid="criteria_piisteptable"></include> 
+
+	</select>
+	<select id="getTotalDistinctTabCount" resultType="int">
+		<![CDATA[
+		select count(1) from (
+	       select db, owner, table_name from cotdl.tbl_piisteptable a
+	        where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid )
+	          and exetype in ('DELETE', 'UPDATE')
+	        group by db, owner, table_name
+		) f
+		]]> 
+	</select>
+	<select id="getStepMaxseq" resultType="datablocks.dlm.domain.PiiStepMaxSeqVO">
+		<![CDATA[
+		select jobid, version, stepid ,max(seq1) as seq1, max(seq2) as seq2, max(seq3) as seq3 
+		  from cotdl.tbl_piisteptable a
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} and seq2<9000
+		 group by jobid, version, stepid
+		]]>
+	</select>
+	<select id="getTotalTabCnt" resultType="int">
+		select count(1) from cotdl.tbl_piisteptable a
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+	</select>
+	<select id="getTotalTabCntWithExetype" resultType="datablocks.dlm.domain.PiiStepTableCntVO">
+		select a.jobid, a.version, a.stepid, a.exetype,count(1) as tablecnt 
+		from cotdl.tbl_piisteptable a, cotdl.tbl_piijob b
+		where 1=1 
+		   and a.jobid = b.jobid 
+           and a.version = b.version 
+           and b.phase= 'CHECKIN'
+		   and b.status= 'ACTIVE'
+		   and b.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid and phase= 'CHECKIN' and status= 'ACTIVE')
+		 group by a.jobid, a.version, a.stepid, a.exetype	
+	</select>
+	<select id="getTableConfigStatus" resultType="datablocks.dlm.domain.PiiTableConfigStatusVO">
+		select a.policy_id, a.jobid, b.exetype, count(b.table_name) as tablecnt 
+		  from cotdl.tbl_piijob a, cotdl.tbl_piisteptable b
+		 where a.jobid = b.jobid and a.version = b.version 
+		   and a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid and status = 'ACTIVE' )
+		   and b.exetype in ('DELETE', 'UPDATE')
+		 group by a.policy_id, a.jobid, b.exetype
+		 order by a.policy_id, a.jobid, b.exetype	
+	</select>
+
+	<select id="getExistSameTableCnt" resultType="int">
+		select COUNT(1)
+		from cotdl.tbl_piisteptable
+		where jobid = #{jobid, jdbcType=VARCHAR}
+		  and version = #{version, jdbcType=VARCHAR}
+		  and EXETYPE in ('DELETE','UPDATE','SCRAMBLE')
+		  and exetype = #{exetype, jdbcType=VARCHAR}
+		  and db = #{db, jdbcType=VARCHAR}
+		  and owner = #{owner, jdbcType=VARCHAR}
+		  and table_name = #{table_name, jdbcType=VARCHAR}
+	</select>
+
+	<select id="getTDUpdateWhereClauseData" resultType="java.util.Map">
+		SELECT
+			WHERE_COL AS whereCol,
+			WHERE_KEY_NAME AS whereKeyName,
+			WHERESTR AS whereStr
+		FROM cotdl.tbl_piisteptable
+		WHERE jobid = #{jobid} AND version = #{version} AND stepid = #{stepid} AND owner = #{owner} AND table_name = #{table_name}
+	</select>
+
+
+
+</mapper>

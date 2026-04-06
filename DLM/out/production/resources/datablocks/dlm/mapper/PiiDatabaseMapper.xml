@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiDatabaseMapper">
+
+ 	<sql id="criteria_piidatabase">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and db like '%'||#{search1}||'%'
+						</if>
+						<if test="search2 != null">
+							and system like '%'||#{search2}||'%'
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiDatabaseVO">
+		<![CDATA[
+		select db, system, env, dbtype, dbuser, null as pwd, hostname, port, id_type, id, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piidatabase order by db desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piidatabase (db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, regdate, upddate, reguserid, upduserid)
+		values (#{db, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{env, jdbcType=VARCHAR}, #{dbtype, jdbcType=VARCHAR}, #{dbuser, jdbcType=VARCHAR}, #{pwd, jdbcType=VARCHAR}, #{hostname, jdbcType=VARCHAR}, #{port, jdbcType=VARCHAR}, #{id_type, jdbcType=VARCHAR}, #{id, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piidatabase (db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, regdate, upddate, reguserid, upduserid)
+		values (#{db, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{env, jdbcType=VARCHAR}, #{dbtype, jdbcType=VARCHAR}, #{dbuser, jdbcType=VARCHAR}, #{pwd, jdbcType=VARCHAR}, #{hostname, jdbcType=VARCHAR}, #{port, jdbcType=VARCHAR}, #{id_type, jdbcType=VARCHAR}, #{id, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiDatabaseVO">
+		select db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piidatabase where db= #{db}
+	</select>
+	
+	<select id="readByDbid" resultType="datablocks.dlm.domain.PiiDatabaseVO">
+		select db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piidatabase where db= #{db}
+	</select>
+
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piidatabase where db= #{db}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piidatabase
+		set 
+			system= #{system, jdbcType=VARCHAR},
+			env= #{env, jdbcType=VARCHAR},
+			dbtype= #{dbtype},
+			dbuser= #{dbuser},
+			pwd= #{pwd},
+			hostname= #{hostname},
+			port= #{port},
+			id_type= #{id_type},
+			id= #{id},
+			comments= #{comments},
+			upddate= SYSDATE,
+			upduserid= #{upduserid}
+		where db= #{db}
+	</update>
+	<update id="updateWithoutPw">
+		update cotdl.tbl_piidatabase
+		set 
+			system= #{system, jdbcType=VARCHAR},
+			env= #{env, jdbcType=VARCHAR},
+			dbtype= #{dbtype},
+			dbuser= #{dbuser},
+			hostname= #{hostname},
+			port= #{port},
+			id_type= #{id_type},
+			id= #{id},
+			comments= #{comments},
+			upddate= SYSDATE,
+			upduserid= #{upduserid}
+		where db= #{db}
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiDatabaseVO"> 
+		<![CDATA[ 
+		select 
+			db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, regdate, upddate, reguserid, upduserid
+		from ( 
+				select 
+					 ROWNUM rn, db, system, env, dbtype, dbuser, pwd, hostname, port, id_type, id, comments, regdate, upddate, reguserid, upduserid
+				from (
+						select db, system, env, dbtype, dbuser, null as pwd, hostname, port, id_type, id, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piidatabase order by db
+					 ) r
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and db like '%'||#{search1}||'%'
+						</if>
+						<if test="search2 != null">
+							and system like '%'||#{search2}||'%'
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by db
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by db
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piidatabase 
+		
+		<include refid="criteria_piidatabase"></include> 
+			
+	</select>
+
+
+</mapper>

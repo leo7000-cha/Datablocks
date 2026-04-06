@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.LkPiiScrTypeMapper">
+
+ 	<sql id="criteria_lkpiiscrtype">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and piigradeid = #{search1}
+						</if>
+						<if test="search2 != null">
+							and piitypename like concat('%',#{search2},'%')
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.LkPiiScrTypeVO">
+		<![CDATA[
+		select piicode, piigradeid, piigradename, piigroupid, piigroupname, piitypeid, piitypename, scrtype, scrmethod, scrcategory, scrdigits, scrvalidity, remarks, encdecfunctype, encfunc, decfunc
+		  from cotdl.tbl_lkpiiscrtype order by piigradeid, piigroupid, piicode
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_lkpiiscrtype (piicode, piigradeid, piigradename, piigroupid, piigroupname, piitypeid, piitypename, scrtype, scrmethod, scrcategory, scrdigits, scrvalidity, remarks, encdecfunctype, encfunc, decfunc)
+		values (#{piicode, jdbcType=VARCHAR}, #{piigradeid}, #{piigradename, jdbcType=VARCHAR}, #{piigroupid}, #{piigroupname, jdbcType=VARCHAR}, #{piitypeid, jdbcType=VARCHAR}, #{piitypename, jdbcType=VARCHAR}, #{scrtype, jdbcType=VARCHAR}, #{scrmethod, jdbcType=VARCHAR}, #{scrcategory, jdbcType=VARCHAR}, #{scrdigits, jdbcType=VARCHAR}, #{scrvalidity, jdbcType=VARCHAR}, #{remarks, jdbcType=VARCHAR}, #{encdecfunctype, jdbcType=VARCHAR}, #{encfunc, jdbcType=VARCHAR}, #{decfunc, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_lkpiiscrtype (piicode, piigradeid, piigradename, piigroupid, piigroupname, piitypeid, piitypename, scrtype, scrmethod, scrcategory, scrdigits, scrvalidity, remarks, encdecfunctype, encfunc, decfunc)
+		values (#{piicode, jdbcType=VARCHAR}, #{piigradeid}, #{piigradename, jdbcType=VARCHAR}, #{piigroupid}, #{piigroupname, jdbcType=VARCHAR}, #{piitypeid, jdbcType=VARCHAR}, #{piitypename, jdbcType=VARCHAR}, #{scrtype, jdbcType=VARCHAR}, #{scrmethod, jdbcType=VARCHAR}, #{scrcategory, jdbcType=VARCHAR}, #{scrdigits, jdbcType=VARCHAR}, #{scrvalidity, jdbcType=VARCHAR}, #{remarks, jdbcType=VARCHAR}, #{encdecfunctype, jdbcType=VARCHAR}, #{encfunc, jdbcType=VARCHAR}, #{decfunc, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.LkPiiScrTypeVO">
+		select piicode, piigradeid, piigradename, piigroupid, piigroupname, piitypeid, piitypename, scrtype, scrmethod, scrcategory, scrdigits, scrvalidity, remarks, encdecfunctype, encfunc, decfunc
+		  from cotdl.tbl_lkpiiscrtype 
+		 where piicode= #{piicode, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_lkpiiscrtype where piicode= #{piicode, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_lkpiiscrtype
+		   set
+			   piigradeid= #{piigradeid, jdbcType=VARCHAR},
+			   piigradename= #{piigradename, jdbcType=VARCHAR},
+			   piigroupid= #{piigroupid, jdbcType=VARCHAR},
+			   piigroupname= #{piigroupname, jdbcType=VARCHAR},
+			   piitypeid= #{piitypeid, jdbcType=VARCHAR},
+			   piitypename= #{piitypename, jdbcType=VARCHAR},
+			   scrtype= #{scrtype, jdbcType=VARCHAR},
+			   scrmethod= #{scrmethod, jdbcType=VARCHAR},
+			   scrcategory= #{scrcategory, jdbcType=VARCHAR},
+			   scrdigits= #{scrdigits, jdbcType=VARCHAR},
+			   scrvalidity= #{scrvalidity, jdbcType=VARCHAR},
+			   remarks= #{remarks, jdbcType=VARCHAR},
+			   encdecfunctype= #{encdecfunctype, jdbcType=VARCHAR},
+			   encfunc= #{encfunc, jdbcType=VARCHAR},
+			   decfunc= #{decfunc, jdbcType=VARCHAR}
+			   where piicode= #{piicode, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.LkPiiScrTypeVO"> 
+		<![CDATA[
+		select piicode, piigradeid, piigradename, piigroupid, piigroupname, piitypeid, piitypename, scrtype, scrmethod, scrcategory, scrdigits, scrvalidity, remarks, encdecfunctype, encfunc, decfunc
+		  from cotdl.tbl_lkpiiscrtype
+		]]>
+		<include refid="criteria_lkpiiscrtype"></include>
+		<![CDATA[
+		order by piigradeid, piigroupid, piicode
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_lkpiiscrtype 
+		
+		<include refid="criteria_lkpiiscrtype"></include> 
+			
+	</select>
+
+
+</mapper>

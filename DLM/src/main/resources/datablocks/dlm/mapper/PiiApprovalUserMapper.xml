@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalUserMapper">
+
+	<sql id="criteria_piiapprovaluser">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search1 != null">
+				and aprvlineid = #{search1, jdbcType=VARCHAR}
+			</if>
+			<if test="search2 != null">
+				and seq = #{search2}
+			</if>
+			<if test="search3 != null">
+				and approverid = #{search3, jdbcType=VARCHAR}
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+		select aprvlineid, seq, stepname, approverid, approvername
+		from cotdl.tbl_piiapprovaluser order by aprvlineid, seq
+		]]>
+
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiapprovaluser (aprvlineid, seq, stepname, approverid, approvername)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiapprovaluser (aprvlineid, seq, stepname, approverid, approvername)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		select aprvlineid, seq, stepname, approverid, approvername
+		from cotdl.tbl_piiapprovaluser
+		where aprvlineid = #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</select>
+	<select id="getListByAprvlineid" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		select aprvlineid, seq, stepname, approverid, approvername
+		from cotdl.tbl_piiapprovaluser
+		where aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+		order by aprvlineid, seq
+	</select>
+	<select id="readAllUser" resultType="datablocks.dlm.domain.PiiTwoStringVO">
+		<![CDATA[
+			select b.aprvlineid as str1, concat('[', b.aprvlineid, '] ', group_concat(concat('STEP' ,b.seq,'.',b.stepname,' : ','',b.approvername,'  ') order by b.seq separator '> ')) as str2
+			from cotdl.tbl_piiapprovalline a, cotdl.tbl_piiapprovaluser b
+			where a.aprvlineid = b.aprvlineid
+			  and a.approvalid = #{approvalid, jdbcType=VARCHAR}
+			group by b.aprvlineid
+		]]>
+	</select>
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovaluser where aprvlineid= #{aprvlineid} and seq= #{seq}
+	</delete>
+	<delete id="deleteByStep">
+		delete from cotdl.tbl_piiapprovaluser where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</delete>
+	<delete id="deleteByAprvlineid">
+		delete from cotdl.TBL_PIIAPPROVALUSER
+		         where aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+	</delete>
+	<update id="update">
+		update cotdl.tbl_piiapprovaluser
+		set
+			stepname= #{stepname, jdbcType=VARCHAR},
+			approvername= #{approvername, jdbcType=VARCHAR}
+		where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</update>
+
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+		select aprvlineid, seq, stepname, approverid, approvername
+		  from cotdl.tbl_piiapprovaluser
+		]]>
+		<include refid="criteria_piiapprovaluser"></include>
+		<![CDATA[
+		order by aprvlineid, seq
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovaluser
+
+		<include refid="criteria_piiapprovaluser"></include>
+
+	</select>
+
+
+</mapper>

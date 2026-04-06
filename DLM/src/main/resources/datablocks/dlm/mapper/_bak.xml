@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalUserMapper">
+
+ 	<sql id="criteria_piiapprovaluser">
+		<trim prefix="where 1=1 " suffix="" >
+			<if test="search1 != null">
+				and approvalid like concat('%',upper(#{search1}),'%')
+			</if>
+			<if test="search2 != null">
+				and approvalname like concat('%',upper(#{search2}),'%')
+			</if>
+			<if test="search3 != null">
+				and seq = #{search3}
+			</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+		select approvalid, approvalname, seq, approverid, approvername
+		 from cotdl.tbl_piiapprovaluser 
+		 order by approvalid, approverid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiapprovaluser (approvalid, approvalname, seq, approverid, approvername)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piiapprovaluser (approvalid, approvalname, seq, approverid, approvername)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		select approvalid, approvalname, seq, approverid, approvername
+		  from cotdl.tbl_piiapprovaluser 
+		 where approvalid= #{approvalid, jdbcType=VARCHAR}
+		   and approverid= #{approverid, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovaluser 
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		  and approverid= #{approverid, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiapprovaluser
+		set 
+			seq= #{seq, jdbcType=VARCHAR},
+			approvername= #{approvername, jdbcType=VARCHAR}
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+          and approverid= #{approverid, jdbcType=VARCHAR}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalUserVO"> 
+		<![CDATA[ 
+
+		select approvalid, approvalname, seq, approverid, approvername
+		  from cotdl.tbl_piiapprovaluser
+
+		]]>
+	    
+		<include refid="criteria_piiapprovaluser"></include> 
+	    
+	    <![CDATA[
+
+		order by approvalid , approverid
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovaluser 
+		
+		<include refid="criteria_piiapprovaluser"></include>
+			
+	</select>
+
+	<select id="getListApproval" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		<![CDATA[
+		select approvalid, approvalname
+		from cotdl.tbl_piiapproval
+		]]>
+		<include refid="criteria_piiapprovaluser"></include>
+		<![CDATA[
+		order by approvalid
+		]]>
+	</select>
+	<select id="getApprovalTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapproval
+
+		<include refid="criteria_piiapprovaluser"></include>
+
+	</select>
+	<select id="getCount" resultType="int">
+		select  count(1)
+		from cotdl.tbl_piiapprovaluser
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		  and approverid= #{approverid, jdbcType=VARCHAR}
+	</select>
+
+	<select id="getListApprovalUserbyApprovalid" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+
+		select approvalid, approvalname, seq, approverid, approvername
+		  from cotdl.tbl_piiapprovaluser
+		  where approvalid= #{approvalid, jdbcType=VARCHAR}
+		order by approvalid , approverid
+		]]>
+	</select>
+	<select id="getListApprovalStep" resultType="datablocks.dlm.domain.PiiApprovalStepVO">
+		<![CDATA[
+
+		select approvalid, approvalname, seq, stepname
+		from cotdl.tbl_piiapprovalstep
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		order by approvalid , seq
+		]]>
+	</select>
+	<select id="getApprovalStepTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovalstep
+		where approvalid like concat('%',upper(#{approvalid}),'%')
+	</select>
+</mapper>

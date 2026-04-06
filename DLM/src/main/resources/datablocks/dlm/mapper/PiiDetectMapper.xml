@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiDetectMapper">
+
+ 	<sql id="criteria_piidetectconfig">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and conf_id like concat('%',#{search1},'%')
+						</if>
+		</trim>
+	</sql>
+	<sql id="criteria_piidetectresult">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search1 != null">
+				and db like concat('%',#{search1},'%')
+			</if>
+			<if test="search2 != null">
+				and owner like concat('%',#{search2},'%')
+			</if>
+			<if test="search3 != null">
+				and table_name like concat('%',#{search3},'%')
+			</if>
+			<if test="search4 != null">
+				and column_name like concat('%',#{search4},'%')
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiDetectConfigVO">
+		<![CDATA[
+		select conf_id, conf_name, detect_type, detect_pattern1, detect_pattern2, detect_pattern3, detect_pattern4, detect_pattern5, detect_pattern6, detect_pattern7, detect_pattern8, lenth_min, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		from cotdl.tbl_piidetect_config
+		 order by conf_id
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piidetect_config (conf_id, conf_name, detect_type, detect_pattern1, detect_pattern2, detect_pattern3, detect_pattern4, detect_pattern5, detect_pattern6, detect_pattern7, detect_pattern8, lenth_min, regdate, upddate, reguserid, upduserid)
+                values (#{conf_id, jdbcType=VARCHAR}, #{conf_name, jdbcType=VARCHAR}, #{detect_type, jdbcType=VARCHAR}, #{detect_pattern1, jdbcType=VARCHAR}, #{detect_pattern2, jdbcType=VARCHAR}, #{detect_pattern3, jdbcType=VARCHAR}, #{detect_pattern4, jdbcType=VARCHAR}, #{detect_pattern5, jdbcType=VARCHAR}, #{detect_pattern6, jdbcType=VARCHAR}, #{detect_pattern7, jdbcType=VARCHAR}, #{detect_pattern8, jdbcType=VARCHAR}, #{lenth_min, jdbcType=VARCHAR}, now(), now(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiDetectConfigVO">
+		select conf_id, conf_name, detect_type, detect_pattern1, detect_pattern2, detect_pattern3, detect_pattern4, detect_pattern5, detect_pattern6, detect_pattern7, detect_pattern8, lenth_min, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piidetect_config where conf_id= #{conf_id}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piidetect_config where conf_id= #{conf_id}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piidetect_config
+		set
+			conf_name= #{conf_name, jdbcType=VARCHAR},
+			detect_type= #{detect_type, jdbcType=VARCHAR},
+			detect_pattern1= #{detect_pattern1, jdbcType=VARCHAR},
+			detect_pattern2= #{detect_pattern2, jdbcType=VARCHAR},
+			detect_pattern3= #{detect_pattern3, jdbcType=VARCHAR},
+			detect_pattern4= #{detect_pattern4, jdbcType=VARCHAR},
+			detect_pattern5= #{detect_pattern5, jdbcType=VARCHAR},
+			detect_pattern6= #{detect_pattern6, jdbcType=VARCHAR},
+			detect_pattern7= #{detect_pattern7, jdbcType=VARCHAR},
+			detect_pattern8= #{detect_pattern8, jdbcType=VARCHAR},
+			lenth_min= #{lenth_min, jdbcType=VARCHAR}
+		where conf_id= #{conf_id, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiDetectConfigVO"> 
+		<![CDATA[
+		select conf_id, conf_name, detect_type, detect_pattern1, detect_pattern2, detect_pattern3, detect_pattern4, detect_pattern5, detect_pattern6, detect_pattern7, detect_pattern8, lenth_min, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piidetect_config
+		]]>
+		<include refid="criteria_piidetectconfig"></include>
+		<![CDATA[
+		order by conf_id
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piidetect_config 
+		
+		<include refid="criteria_piidetectconfig"></include> 
+			
+	</select>
+
+	<select id="getListResultWithPaging" resultType="datablocks.dlm.domain.PiiDetectResultVO">
+		<![CDATA[
+		select db, owner, table_name, column_name, orderid, piitype, piicnt, detect_all_cnt, pii_ratio, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, sampledata
+		  from cotdl.tbl_piidetect_result
+		]]>
+		<include refid="criteria_piidetectresult"></include>
+		<![CDATA[
+		order by orderid desc, db, owner, table_name, column_name
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+
+	<select id="getResultTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piidetect_result
+
+		<include refid="criteria_piidetectresult"></include>
+
+	</select>
+
+</mapper>

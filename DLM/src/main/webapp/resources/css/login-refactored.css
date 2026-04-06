@@ -1,0 +1,232 @@
+/* =========================
+   X‑One Login – Refactored
+   (logo removed, balanced grid, slogan at bottom)
+   ========================= */
+
+/* ===== Theme Vars ===== */
+:root{
+    --bg1:#0f172a; --bg2:#111827;
+    --accent:#2563eb; --accent-2:#60a5fa;
+    --muted:#9ca3af; --text:#e5e7eb; --text-strong:#e8ecf4;
+
+    --card-bg:rgba(255,255,255,.06);
+    --card-brd:rgba(255,255,255,.12);
+    --ring:rgba(37,99,235,.45);
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+
+    /* ▶ Layout knobs */
+    --layout-max:1100px;   /* 전체 컨테이너 최대 폭 */
+    --grid-gap:2.75rem;    /* 좌우 간격 */
+    --brand-nudge:16px;    /* 왼쪽을 중앙으로 당김 (+값=오른쪽으로) */
+    --auth-width:440px;    /* 로그인 카드 너비 */
+    --card-pad-x:1.5rem;   /* 카드 좌우 패딩 */
+    --card-pad-y:2rem;     /* 카드 상하 패딩 */
+
+    /* spacing scale */
+    --s-1:.25rem; --s0:.5rem; --s1:.75rem; --s2:1rem;
+    --s3:1.25rem; --s4:1.5rem; --s5:2rem; --s6:2.5rem;
+}
+
+/* ===== Base ===== */
+html, body { height:100%; }
+body.login-bg{
+    background:
+            radial-gradient(60% 80% at 10% 10%, #1f2937 0%, transparent 60%),
+            radial-gradient(70% 90% at 90% 20%, #0ea5e9 0%, transparent 60%),
+            linear-gradient(135deg, var(--bg1), var(--bg2));
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+}
+
+/* ===== Layout ===== */
+.auth-wrapper{
+    min-height:100vh;
+    display:grid;
+    grid-template-columns:1fr 1fr; /* 좌우 동일 비율 */
+    gap:var(--grid-gap);
+    align-items:center;
+    justify-content:center;
+    max-width:var(--layout-max);
+    margin:0 auto;
+    padding:4rem 2rem;
+}
+@media (max-width:992px){
+    .auth-wrapper{
+        grid-template-columns:1fr;
+        gap:2rem;
+        max-width:100%;
+        padding:3rem 1.25rem;
+    }
+}
+
+/* ===== Brand (left) – logo removed ===== */
+.brand-side{
+    width:100%;
+    max-width:620px;
+    padding-left:1rem;
+    transform:translateX(var(--brand-nudge)); /* 중앙 쪽으로 살짝 이동 */
+}
+
+.brand-stack{
+    /* 제품 블록 + 슬로건 블록을 분리하기 위해 수직 플렉스 */
+    display:flex;
+    flex-direction:column;
+    justify-content:center; /* 세로 중앙 */
+    align-items:flex-start;
+    gap:2rem;               /* 제품영역 ↔ 슬로건 간격 */
+    text-align:left;
+}
+
+/* 제품 영역(제품명 + 태그라인) */
+.brand-main{
+    display:flex;
+    flex-direction:column;
+    gap:.5rem; /* 제품명과 태그라인 간격 */
+}
+
+/* 타이포 */
+.brand-product{
+    margin:0;
+    color:var(--text-strong);
+    font-weight:800;
+    font-size:clamp(32px, 5vw, 42px);
+    line-height:1.1;
+    letter-spacing:-0.02em;
+}
+.brand-tagline{
+    margin:0;
+    color:var(--accent-2);
+    font-weight:600;
+    font-size:clamp(15px, 1.6vw, 18px);
+    line-height:1.35;
+}
+
+/* 슬로건을 섹션 하단에 고정 느낌으로 */
+.brand-footer{
+    margin-top:auto; /* 남는 공간만큼 아래로 밀림 */
+}
+.brand-quote{
+    margin:0;
+    color:var(--muted);
+    font-size:clamp(14px, 1.4vw, 16px);
+    line-height:1.6;
+}
+
+@media (min-width:1200px){
+    .brand-stack{ gap:2.25rem; }
+}
+@media (max-width:992px){
+    .brand-side{ padding-left:0; transform:none; }
+    .brand-stack{ align-items:center; text-align:center; }
+}
+
+/* ===== Auth card (right) ===== */
+.auth-card{
+    width:100%; max-width:var(--auth-width);
+    background:var(--card-bg);
+    border:1px solid var(--card-brd);
+    backdrop-filter:blur(10px);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:var(--card-pad-y) var(--card-pad-x);
+}
+@media (min-width:576px){
+    .auth-card{
+        padding:calc(var(--card-pad-y) + .5rem) calc(var(--card-pad-x) + .25rem);
+    }
+}
+
+.auth-header{ margin-bottom:1.25rem; }
+.auth-title{ margin:0; font-size:1.75rem; font-weight:700; }
+.auth-subtitle{ margin-top:.35rem; color:var(--muted); }
+
+/* ===== Fields ===== */
+.form-group{ margin-bottom:1.1rem; }
+.field-wrap{ position:relative; }
+.field-icon{
+    position:absolute; top:50%; left:.9rem; transform:translateY(-50%);
+    font-size:.95rem; color:#b7c2d0; pointer-events:none;
+}
+.field-input{
+    background:rgba(17,24,39,.55);
+    border:1px solid rgba(255,255,255,.18);
+    color:#eaf0f8;
+    padding-left:2.4rem;
+    padding-right:2.8rem;  /* eye 아이콘 공간 */
+    height:3rem;
+    border-radius:12px;
+    transition:border .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.field-input::placeholder{ color:#b8c0cc; opacity:.9; }
+.field-input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 .25rem var(--ring);
+    background:rgba(17,24,39,.7);
+}
+
+/* Toggle password button */
+.toggle-password{
+    position:absolute; right:.6rem; top:50%; transform:translateY(-50%);
+    background:transparent; border:0; color:#c0ccda;
+    padding:.4rem .55rem; border-radius:10px;
+}
+.toggle-password:hover{ background:rgba(255,255,255,.08); color:#fff; }
+
+/* ===== Actions ===== */
+.auth-actions{
+    margin-top:1rem;
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+}
+.btn-login{
+    display:inline-flex; align-items:center; height:2.75rem;
+    padding:0 1.25rem; border-radius:12px; border:0;
+    background:linear-gradient(135deg, var(--accent), #1e40af);
+    box-shadow:0 8px 22px rgba(37,99,235,.35);
+}
+.btn-login:hover{
+    filter:brightness(1.05);
+    box-shadow:0 10px 28px rgba(37,99,235,.45);
+}
+.auth-links{ display:flex; gap:1rem; }
+.link-join{ color:var(--accent-2); text-decoration:none; }
+.link-join:hover{ text-decoration:underline; }
+
+/* ===== Footer & Alerts ===== */
+.auth-footer{ margin-top:1.5rem; color:#aab3c0; text-align:center; }
+.alert{
+    border-radius:12px; border:1px solid rgba(255,255,255,.14);
+    background:rgba(220,38,38,.1); color:#fecaca;
+}
+
+/* ===== A11y ===== */
+.sr-only{
+    position:absolute !important; width:1px !important; height:1px !important;
+    padding:0 !important; margin:-1px !important; overflow:hidden !important;
+    clip:rect(0,0,0,0) !important; border:0 !important;
+}
+
+/* 슬로건을 최상단 중앙에 배치 */
+.slogan-top {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.slogan-top .brand-quote {
+    font-size: clamp(18px, 2vw, 22px);
+    font-weight: 500;
+    color: var(--accent-2);
+    margin: 0;
+}
+
+@media (max-width: 992px) {
+    .slogan-top {
+        align-items: center;
+        text-align: center;
+    }
+}
+

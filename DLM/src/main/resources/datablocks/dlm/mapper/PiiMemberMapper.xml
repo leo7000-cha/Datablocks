@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiMemberMapper">
+
+ 	<sql id="criteria_piimember">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and userid like concat('%',#{search1},'%')
+						</if>
+						<if test="search2 != null">
+							and username like concat('%',#{search2},'%')
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiMemberVO">
+		<![CDATA[
+		select userid, null as userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled, dept_cd, dept_name
+		  from cotdl.tbl_member where userid != 'admin'
+		 order by regdate desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiMemberVO">
+		select userid, userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled
+			 , dept_cd, dept_name
+		  from cotdl.tbl_member where userid= #{userid}
+	</select>
+	<select id="getPwdElapsedCount" resultType="int">
+		<![CDATA[
+		select count(1)
+		from cotdl.tbl_member where userid= #{userid} and UPDATEDATE <= DATE_SUB(now(), INTERVAL 6 MONTH)
+		]]>
+	</select>
+	<delete id="delete">
+		delete from cotdl.tbl_member where userid= #{userid} and userid != 'admin'
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_member
+		set 
+			userpw= #{userpw, jdbcType=VARCHAR},
+			username= #{username, jdbcType=VARCHAR},
+			regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+			updatedate= now(),
+			enabled= #{enabled, jdbcType=VARCHAR},
+			dept_cd= upper(#{dept_cd, jdbcType=VARCHAR}),
+			dept_name= #{dept_name, jdbcType=VARCHAR}
+		where userid= #{userid} and userid != 'admin'
+	</update>
+	<update id="updateWithoutPw">
+		update cotdl.tbl_member
+		set 
+			username= #{username, jdbcType=VARCHAR},
+			regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+			updatedate= str_to_date(#{updatedate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+			enabled= #{enabled, jdbcType=VARCHAR},
+			dept_cd= upper(#{dept_cd, jdbcType=VARCHAR}),
+			dept_name= #{dept_name, jdbcType=VARCHAR}
+		where userid= #{userid} and userid != 'admin'
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiMemberVO"> 
+		<![CDATA[
+		select userid, null as userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled
+			 , dept_cd, dept_name
+		  from cotdl.tbl_member
+		where userid != 'admin'
+		]]>
+		<include refid="criteria_piimember"></include>
+		<![CDATA[
+		order by regdate desc
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_member where userid != 'admin'
+		
+		<include refid="criteria_piimember"></include> 
+			
+	</select>
+
+
+</mapper>

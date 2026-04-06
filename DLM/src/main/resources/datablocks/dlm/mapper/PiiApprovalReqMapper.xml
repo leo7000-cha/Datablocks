@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalReqMapper">
+
+ 	<sql id="criteria_piiapprovalreq">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and requesterid = #{search1}
+						</if>
+
+						<if test="search3 != null">
+							and f.phase_new = #{search3}
+						</if>
+		</trim>
+	</sql>
+	<sql id="criteria_search2">
+		<trim prefix=" " suffix="" >
+			<if test="search2 != null">
+				and b.approverid = #{search2, jdbcType=VARCHAR}
+			</if>
+		</trim>
+	</sql>
+
+	<select id="getLastApprovalReq" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+		<![CDATA[
+		select a.reqid, a.aprvlineid, a.seq, a.approvalid
+		     , a.phase, a.jobid, a.version
+			 , a.requesterid, a.requestername, DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate, DATE_FORMAT(a.upddate,'%Y/%m/%d %H:%i:%s') as upddate, a.reqreason
+		  from cotdl.tbl_piiapprovalreq a
+		 where a.approvalid = #{approvalid, jdbcType=VARCHAR}
+		   and a.requesterid = #{requesterid, jdbcType=VARCHAR}
+		 order by a.reqid desc
+		 limit 1
+		]]>
+	</select>
+	<select id="getSameDeptApprovalUser" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+		select b.*
+		from cotdl.tbl_piiapprovalline a, cotdl.tbl_piiapprovaluser b, cotdl.tbl_member m
+		where a.aprvlineid = b.aprvlineid
+		  and a.approvalid = #{approvalid, jdbcType=VARCHAR}
+		  and b.APPROVERID = m.userid
+		  and m.dept_cd = #{deptid, jdbcType=VARCHAR}
+		order by b.seq, b.aprvlineid
+		limit 1
+		]]>
+	</select>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+		<![CDATA[
+		select  a.reqid, a.aprvlineid, a.seq, a.approvalid
+					   , a.phase, a.jobid, a.version
+					   , a.requesterid, a.requestername,  DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate,  DATE_FORMAT(a.upddate,'%Y/%m/%d %H:%i:%s') as upddate, a.reqreason
+		from cotdl.tbl_piiapprovalreq a
+		  order by reqid desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiapprovalreq (reqid, aprvlineid, seq, approvalid, phase, jobid, version, requesterid, requestername, regdate, upddate, reqreason)
+		values (#{reqid, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{requesterid, jdbcType=VARCHAR}, #{requestername, jdbcType=VARCHAR}, NOW(), NOW(), #{reqreason, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piiapprovalreq (reqid, aprvlineid, seq, approvalid, phase, jobid, version, requesterid, requestername, regdate, upddate, reqreason)
+		values (#{reqid, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{requesterid, jdbcType=VARCHAR}, #{requestername, jdbcType=VARCHAR}, NOW(), NOW(), #{reqreason, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+        select a.reqid, a.aprvlineid, a.seq, a.approvalid
+					  , a.phase, a.jobid, a.version
+					  , a.requesterid, a.requestername,  DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate,  DATE_FORMAT(a.upddate,'%Y/%m/%d %H:%i:%s') as upddate, a.reqreason
+		from cotdl.tbl_piiapprovalreq a
+          where reqid= #{reqid, jdbcType=VARCHAR}
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovalreq 
+		 where reqid= #{reqid, jdbcType=VARCHAR}
+	</delete>
+	<update id="approve">
+		update cotdl.tbl_piiapprovalreq
+		set 
+			phase= #{phase, jdbcType=VARCHAR},
+			upddate = NOW()
+		where reqid= #{reqid, jdbcType=VARCHAR}
+
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piiapprovalreq
+		set 
+			phase= 'REJECTED',
+			upddate = NOW()
+		where reqid= #{reqid, jdbcType=VARCHAR}
+	</update>
+	<update id="update">
+		update cotdl.tbl_piiapprovalreq
+		set
+			seq= #{seq, jdbcType=VARCHAR},
+			phase= #{phase, jdbcType=VARCHAR},
+			upddate= NOW()
+		where reqid= #{reqid, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalReqWithApproverVO">
+		<![CDATA[ 
+		select
+			f.reqid, f.aprvlineid, f.seq, f.approvalid, f.phase_new as phase, f.jobid, f.version, f.requesterid, f.requestername, f.regdate, f.upddate, f.reqreason, f.approverid, f.approvername
+				 ,(case when f.approvalid = 'RESTORE_APPROVAL' OR f.approvalid = 'BROWSE_APPROVAL' then (select custid from cotdl.tbl_piirestore where restoreid=f.jobid) else null end) as custid
+				 ,r.report_type, r.date_from, r.date_to, r.val1, r.val2, r.val3, DATE_FORMAT(r.apply_date,'%Y/%m/%d') as apply_date, r.apply_userid
+		from (
+					 select a.reqid, a.aprvlineid, a.seq, a.approvalid
+								   , (case when a.phase = 'FINAL_APPROVAL' then a.phase else b.status end) as phase_new, a.jobid, a.version
+								   , a.requesterid, a.requestername,  DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate,  DATE_FORMAT(b.regdate,'%Y/%m/%d %H:%i:%s') as upddate, a.reqreason
+					 			   , b.approverid, b.approvername
+					 from cotdl.tbl_piiapprovalreq a, cotdl.TBL_PIIAPPROVALSTEPREQ b
+					 where a.reqid = b.reqid
+						]]>
+						<include refid="criteria_search2"></include>
+						<![CDATA[
+					union all
+					select a.reqid, a.aprvlineid, a.seq, a.approvalid
+								   , a.phase as phase_new, a.jobid, a.version
+								   , a.requesterid, a.requestername,  DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate,  DATE_FORMAT(a.upddate,'%Y/%m/%d %H:%i:%s') as upddate, a.reqreason
+					 			   , b.approverid, b.approvername
+					 from cotdl.tbl_piiapprovalreq a, cotdl.tbl_piiapprovaluser b
+					 where a.aprvlineid = b.aprvlineid
+					   and a.seq = b.seq
+					   and a.phase != 'FINAL_APPROVAL'
+					   ]]>
+						<include refid="criteria_search2"></include>
+						<![CDATA[
+				) as f
+				left outer join cotdl.tbl_piireport r
+				on  f.aprvlineid = r.aprvlineid
+				and f.jobid = r.reportid
+		]]>
+		<include refid="criteria_piiapprovalreq"></include>
+		<![CDATA[
+
+		order by reqid desc, seq desc
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		<![CDATA[
+		select count(1)
+		from (
+					 select a.reqid, a.requesterid, b.approverid
+								   , (case when a.phase = 'FINAL_APPROVAL' then a.phase else b.status end) as phase_new
+					 from cotdl.tbl_piiapprovalreq a, cotdl.TBL_PIIAPPROVALSTEPREQ b
+					 where a.reqid = b.reqid
+						]]>
+		<include refid="criteria_search2"></include>
+		<![CDATA[
+					union all
+					select a.reqid, a.requesterid, b.approverid
+								   , a.phase as phase_new
+					 from cotdl.tbl_piiapprovalreq a, cotdl.tbl_piiapprovaluser b
+					 where a.aprvlineid = b.aprvlineid
+					   and a.seq = b.seq
+					   and a.phase != 'FINAL_APPROVAL'
+					   ]]>
+		<include refid="criteria_search2"></include>
+		<![CDATA[
+				) as f
+		]]>
+		<include refid="criteria_piiapprovalreq"></include>
+	</select>
+
+	<select id="getMaxReqid" resultType="int">
+		select COALESCE(max(reqid),10000) from cotdl.tbl_piiapprovalreq
+	</select>
+
+	<select id="hasSameDeptApproverInLine" resultType="int">
+		<![CDATA[
+		select exists(
+			select 1
+			from cotdl.tbl_piiapprovaluser b, cotdl.tbl_member m
+			where b.approverid = m.userid
+			  and b.aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+			  and m.dept_cd = #{deptid, jdbcType=VARCHAR}
+			limit 1
+		)
+		]]>
+	</select>
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiConfTableMapper">
+
+ 	<sql id="criteria_piijconftable">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and db like concat('%',upper(#{search1}),'%')
+						</if>
+						<if test="search2 != null">
+							and owner like concat('%',upper(#{search2}),'%')
+						</if>
+						<if test="search3 != null">
+							and table_name like concat('%',upper(#{search3}),'%')
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiConfTableVO">
+		<![CDATA[
+		select db, owner, table_name, pagitype, pagitypedetail, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_columns, pk_data_type, imatable_name, masterkey, where_col, where_key_name, parallelcnt, totalcnt, wherestr,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piiconftable order by db desc, seq1, seq2, seq3;
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiconftable (db, owner, table_name, pagitype, pagitypedetail, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_columns, pk_data_type, imatable_name, masterkey, where_col, where_key_name, parallelcnt, totalcnt, wherestr, regdate, upddate, reguserid, upduserid)
+		values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{pagitype, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR}, #{archiveflag, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{preceding, jdbcType=VARCHAR}, #{succedding, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{pipeline, jdbcType=VARCHAR}, #{pk_columns, jdbcType=VARCHAR}, #{pk_data_type, jdbcType=VARCHAR}, #{imatable_name, jdbcType=VARCHAR}, #{masterkey, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{totalcnt, jdbcType=VARCHAR}, #{wherestr, jdbcType=VARCHAR}, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiConfTableVO">
+		select * from cotdl.tbl_piiconftable 
+		 where db= #{db}
+		   and owner= #{owner}
+		   and table_name= #{table_name}
+									
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiconftable 
+		 where db= #{db}
+		   and owner= #{owner}
+		   and table_name= #{table_name}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiconftable
+		set 
+			db= #{db},
+			owner= #{owner},
+			table_name= #{table_name},
+			pagitype= #{pagitype},
+			pagitypedetail= #{pagitypedetail},
+			archiveflag= #{archiveflag},
+			status= #{status},
+			preceding= #{preceding},
+			succedding= #{succedding},
+			seq1= #{seq1},
+			seq2= #{seq2},
+			seq3= #{seq3},
+			pipeline= #{pipeline, jdbcType=VARCHAR},
+			pk_columns= #{pk_columns},
+			pk_data_type= #{pk_data_type},
+			imatable_name= #{imatable_name},
+			masterkey= #{masterkey},
+			where_col= #{where_col},
+			where_key_name= #{where_key_name},
+			parallelcnt= #{parallelcnt, jdbcType=VARCHAR},
+			totalcnt= #{totalcnt, jdbcType=VARCHAR},
+			wherestr= #{wherestr},
+			upddate= NOW(),
+			reguserid= #{reguserid},
+			upduserid= #{upduserid}
+		where db= #{db}
+		  and owner= #{owner}
+		  and table_name= #{table_name}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiConfTableVO"> 
+		<![CDATA[ 
+		select db, owner, table_name, pagitype, pagitypedetail, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_columns, pk_data_type, imatable_name, masterkey, where_col, where_key_name, parallelcnt, totalcnt, wherestr,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piiconftable order by db desc, seq1, seq2, seq3
+		]]>
+		<include refid="criteria_piijconftable"></include>
+		<![CDATA[
+		order by db desc, seq1, seq2, seq3
+		limit #{offset}, #{amount}
+		]]> 
+	</select>
+	
+
+	<select id="getTotalCount" resultType="int">
+		select count(*) from cotdl.tbl_piiconftable 
+		
+		<include refid="criteria_piijconftable"></include> 
+			
+	</select>
+
+
+</mapper>

@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiStepMapper">
+
+ 	<sql id="criteria_piistep">
+		<trim prefix=" where 1=1" suffix="" >
+						<if test="search1 != null">
+							and jobid = #{search1, jdbcType=VARCHAR}
+						</if>
+						<if test="search2 != null">
+							and version = #{search2}
+						</if>
+						<if test="search3 != null">
+							and stepid = #{search3}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiStepVO">
+		<![CDATA[
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+		  from cotdl.tbl_piistep a
+				where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piistep where jobid = a.jobid and stepid = a.stepid )
+				 order by jobid, stepseq
+		]]>
+	</select>
+	<select id="getJobList" resultType="datablocks.dlm.domain.PiiStepVO">
+		<![CDATA[
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+		  from cotdl.tbl_piistep 
+		 where jobid= #{jobid, jdbcType=VARCHAR}
+		   and version= #{version, jdbcType=VARCHAR}
+		 order by stepseq
+		]]>
+	</select>
+
+	<insert id="insert">
+ 		insert into cotdl.tbl_piistep (jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt, enddate, regdate, upddate, reguserid, upduserid
+ 		, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq}, #{db, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR},  #{threadcnt, jdbcType=INTEGER}, #{commitcnt, jdbcType=INTEGER}, str_to_date(#{enddate, jdbcType=VARCHAR}, '%Y/%m/%d'), NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}
+			   , #{data_handling_method, jdbcType=VARCHAR}, #{processing_method, jdbcType=VARCHAR}, #{fk_disable_flag, jdbcType=VARCHAR}, #{index_unusual_flag, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR}, #{val3, jdbcType=VARCHAR}, #{val4, jdbcType=VARCHAR}, #{val5, jdbcType=VARCHAR})
+	</insert>
+	<insert id="checkout">
+ 		insert into cotdl.tbl_piistep 
+		select jobid, cast(version as INTEGER)+1, stepid, stepname, steptype, stepseq, db, status, 'CHECKOUT', threadcnt, commitcnt, enddate, regdate, NOW() as upddate, reguserid, upduserid, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+          from cotdl.tbl_piistep where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</insert>
+	<update id="checkin">
+		update cotdl.tbl_piistep
+		set
+			phase= 'APPROVING',
+			upddate= NOW()
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piistep
+		set phase= 'CHECKOUT',
+			upddate= NOW()
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piistep
+		set
+			phase= 'CHECKIN',
+			upddate= NOW()
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piistep (jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt, enddate, regdate, upddate, reguserid, upduserid
+									  , data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq}, #{db, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR},  #{threadcnt, jdbcType=INTEGER}, #{commitcnt, jdbcType=INTEGER}, str_to_date(#{enddate, jdbcType=VARCHAR}, '%Y/%m/%d'), NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}
+			   , #{data_handling_method, jdbcType=VARCHAR}, #{processing_method, jdbcType=VARCHAR}, #{fk_disable_flag, jdbcType=VARCHAR}, #{index_unusual_flag, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR}, #{val3, jdbcType=VARCHAR}, #{val4, jdbcType=VARCHAR}, #{val5, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiStepVO">
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+					, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+          from cotdl.tbl_piistep where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</select>
+	<select id="readWithSteptype" resultType="datablocks.dlm.domain.PiiStepVO">
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+					, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+          from cotdl.tbl_piistep where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and steptype= #{steptype, jdbcType=VARCHAR}
+	</select>
+	<select id="readWithStepEXE" resultType="datablocks.dlm.domain.PiiStepVO">
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+					, data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+		from cotdl.tbl_piistep
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		  and steptype in ('EXE_DELETE', 'EXE_UPDATE')
+	</select>
+	<select id="getCountWithSteptype" resultType="int">
+		select count(1) 
+          from cotdl.tbl_piistep where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and steptype= #{steptype, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piistep 
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+	</delete>
+	<delete id="deleteJobStep">
+		delete from cotdl.tbl_piistep 
+		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piistep
+		   set 
+				stepname= #{stepname, jdbcType=VARCHAR},
+				steptype= #{steptype, jdbcType=VARCHAR},
+				stepseq= #{stepseq, jdbcType=INTEGER},
+				db= #{db, jdbcType=VARCHAR},
+				status= #{status, jdbcType=VARCHAR},
+				phase= #{phase, jdbcType=VARCHAR},
+				threadcnt= #{threadcnt, jdbcType=INTEGER},
+				commitcnt= #{commitcnt, jdbcType=INTEGER},
+				version= #{version, jdbcType=VARCHAR},
+				enddate= null,
+				upddate= NOW(),
+				reguserid= #{reguserid, jdbcType=VARCHAR},
+				upduserid= #{upduserid, jdbcType=VARCHAR},
+				data_handling_method= #{data_handling_method, jdbcType=VARCHAR},
+				processing_method= #{processing_method, jdbcType=VARCHAR},
+				fk_disable_flag= #{fk_disable_flag, jdbcType=VARCHAR},
+				index_unusual_flag= #{index_unusual_flag, jdbcType=VARCHAR},
+				val1= #{val1, jdbcType=VARCHAR},
+				val2= #{val2, jdbcType=VARCHAR},
+				val3= #{val3, jdbcType=VARCHAR},
+				val4= #{val4, jdbcType=VARCHAR},
+				val5= #{val5, jdbcType=VARCHAR}
+				where jobid= #{jobid, jdbcType=VARCHAR}
+				  and version= #{version, jdbcType=VARCHAR}
+				  and stepid= #{stepid, jdbcType=VARCHAR}
+	</update>
+
+	<update id="update_seq">
+		update cotdl.tbl_piistep
+		set 
+			stepseq= #{stepseq}
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+	</update>
+
+	<update id="update_status">
+		update cotdl.tbl_piistep
+		set 
+			status= #{status, jdbcType=VARCHAR}
+		where (jobid, version) in (select jobid, max(cast(version as INTEGER)) version from cotdl.tbl_piijob where policy_id= #{policy_id, jdbcType=VARCHAR} and status='ACTIVE' group by jobid)
+          and steptype= 'EXE_ARCHIVE'
+     </update>
+
+	<update id="updateStepStatus">
+		update cotdl.tbl_piistep
+		set
+			status= #{status, jdbcType=VARCHAR}
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+		  and steptype= #{steptype}
+	</update>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiStepVO"> 
+		<![CDATA[
+		select jobid, version, stepid, stepname, steptype, stepseq, db, status, phase, threadcnt, commitcnt,  DATE_FORMAT(enddate,'%Y/%m/%d') as enddate,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+			 , data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+		  from cotdl.tbl_piistep
+		]]>
+		<include refid="criteria_piistep"></include>
+		<![CDATA[
+		order by jobid, stepseq
+        limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piistep a
+		
+		<include refid="criteria_piistep"></include> 
+			
+	</select>
+	<select id="getMaxStepseq" resultType="int">
+		select COALESCE(max(stepseq),0)+1 from cotdl.tbl_piistep where jobid= #{jobid, jdbcType=VARCHAR}
+	</select>
+
+</mapper>

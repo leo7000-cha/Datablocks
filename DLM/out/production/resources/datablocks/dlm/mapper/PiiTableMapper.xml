@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiTableMapper">
+
+ 	<sql id="criteria_piitable">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search4 != null">
+							and upper(db) = upper(#{search4})
+						</if>
+						<if test="search5 != null">
+							and upper(owner) = upper(#{search5})
+						</if>
+						<if test="search6 != null">
+							and upper(table_name) = upper(#{search6})
+						</if>
+		</trim>
+	</sql> 
+
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiTableVO">
+		<![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piitable 
+		 order by db, owner, table_name, column_id
+		]]>
+	</select>
+	
+	<insert id="insert">
+		insert into cotdl.tbl_piitable (db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid)
+		values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR}, #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR}, #{data_length, jdbcType=VARCHAR}, #{nullable, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piitable (db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid)
+		values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR}, #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR}, #{data_length, jdbcType=VARCHAR}, #{nullable, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="readTable" resultType="datablocks.dlm.domain.PiiTableVO">
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		 order by db, owner, table_name, column_id
+	</select>
+	
+	<select id="read" resultType="datablocks.dlm.domain.PiiTableVO">
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="getTableCnt" resultType="int">
+		select count(1) 
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piitable 
+		 where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piitable
+		   set 
+				column_id= #{column_id, jdbcType=VARCHAR},
+				pk_yn= #{pk_yn, jdbcType=VARCHAR},
+				pk_position= #{pk_position, jdbcType=VARCHAR},
+				full_data_type= #{full_data_type, jdbcType=VARCHAR},
+				data_type= #{data_type, jdbcType=VARCHAR},
+				data_length= #{data_length, jdbcType=VARCHAR},
+				nullable= #{nullable, jdbcType=VARCHAR},
+				comments= #{comments, jdbcType=VARCHAR},
+				regdate= to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+				upddate= SYSDATE,
+				reguserid= #{reguserid, jdbcType=VARCHAR},
+				upduserid= #{upduserid, jdbcType=VARCHAR}
+		where db= #{db, jdbcType=VARCHAR}
+		  and owner= #{owner, jdbcType=VARCHAR}
+		  and table_name= #{table_name, jdbcType=VARCHAR}
+		  and column_name= #{column_name, jdbcType=VARCHAR}
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiTableVO"> 
+		<![CDATA[ 
+		select 
+			db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid
+		from ( 
+				select 
+					 ROWNUM rn, db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid
+				from (
+						select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piitable order by db, owner, table_name, column_id
+					 ) b
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search4 != null">
+							and upper(db) = upper(#{search4})
+						</if>
+						<if test="search5 != null">
+							and upper(owner) = upper(#{search5})
+						</if>
+						<if test="search6 != null">
+							and upper(table_name) = upper(#{search6})
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by db, owner, table_name, column_id
+			  ) d
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by db, owner, table_name, column_id
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piitable 
+		
+		<include refid="criteria_piitable"></include> 
+			
+	</select>
+
+	<select id="getTableListWithPaging" resultType="datablocks.dlm.domain.PiiTablePkVO"> 
+		<![CDATA[ 
+		select 
+			db, owner, table_name
+		from ( 
+				select 
+					 ROWNUM rn, db, owner, table_name
+				from (
+						select db, owner, table_name
+						  from cotdl.tbl_piitable 
+						  ]]>
+	    
+								<trim prefix="where 1=1" suffix="" >
+										<if test="search4 != null">
+											and upper(db) = upper(#{search4})
+										</if>
+										<if test="search5 != null">
+											and upper(owner) like upper(#{search5})||'%'
+										</if>
+										<if test="search6 != null">
+											and upper(table_name) like upper(#{search6})||'%'
+										</if>
+								</trim>
+	    
+	    				<![CDATA[
+						  group by db, owner, table_name
+						  order by db, owner, table_name
+					 ) c
+				where 
+
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by db, owner, table_name
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by db, owner, table_name
+		]]> 
+	</select>	
+
+	<select id="getTableTotalCount" resultType="int">
+		<![CDATA[ 
+		select count(1) from 
+							(
+							select  db, owner, table_name
+							  from cotdl.tbl_piitable 
+							 
+						where 1=1
+		]]>
+	    
+						<trim prefix="" suffix="" >
+							<if test="search4 != null">
+								and upper(db) = upper(#{search4})
+							</if>
+							<if test="search5 != null">
+								and upper(owner) like upper(#{search5})||'%'
+							</if>
+							<if test="search6 != null">
+								and upper(table_name) like upper(#{search6})||'%'
+							</if>
+						</trim>
+		<![CDATA[
+							 group by db, owner, table_name
+							) c
+		]]>
+	</select>
+	
+	<select id="getLayoutGapListWithPaging" resultType="datablocks.dlm.domain.PiiLayoutGapVO"> 
+		<![CDATA[ 
+		select 
+			rn, owner_src, table_name_src, column_id_src, column_name_src, data_length_src, owner_arc, table_name_arc, column_id_arc, column_name_arc, data_length_arc, gapdate
+		from ( 
+				select 
+					 ROWNUM rn, owner_src, table_name_src, column_id_src, column_name_src, data_length_src, owner_arc, table_name_arc, column_id_arc, column_name_arc, data_length_arc, gapdate
+				from (
+					select substr(a.owner,4,100) as owner_src, a.table_name as table_name_src, a.column_id as column_id_src, a.column_name as column_name_src, a.data_length as data_length_src, 
+							b.owner as owner_arc, b.table_name as table_name_arc, b.column_id- 5 as column_id_arc, b.column_name as column_name_arc, b.data_length as data_length_arc,
+							SYSDATE as gapdate
+					  from (
+								select distinct 'PII'||b.owner as owner, b.table_name, b.column_id, b.column_name, b.data_length  
+								  from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+								 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name --and a.table_name='LKDLPPAC'
+								   and ('PII'||b.owner, b.table_name, b.column_id, b.column_name, b.data_length) not in (
+                                                    select distinct b.owner, b.table_name, b.column_id-5, b.column_name, b.data_length  
+                                                      from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+                                                     where a.exetype='ARCHIVE' and 'PII'||a.owner = b.owner and a.table_name = b.table_name --and a.table_name='LKDLPPAC'
+                                                       and b.column_name not in ('PII_ORDER_ID'
+                                                                                ,'PII_BASE_DATE'
+                                                                                ,'PII_CUST_ID'
+                                                                                ,'PII_JOB_ID'
+                                                                                ,'PII_DESTRUCT_DATE')
+                                        )
+					 	   ) a LEFT OUTER JOIN cotdl.tbl_piitable b
+                            ON( a.owner = b.owner and a.table_name = b.table_name and a.column_name = b.column_name)
+						where a.table_name is null
+					 ) c 
+				where 
+
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by owner_src, table_name_src, column_id_src
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by owner_src, table_name_src, column_id_src
+		]]> 
+	</select>	
+
+	<select id="getLayoutGapTotalCount" resultType="int">
+		select count(1)
+		from (
+				 select distinct 'PII'||b.owner as owner, b.table_name, b.column_id, b.column_name, b.data_length
+				 from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+				 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name --and a.table_name='LKDLPPAC'
+				   and ('PII'||b.owner, b.table_name, b.column_id, b.column_name, b.data_length) not in (
+					 select distinct b.owner, b.table_name, b.column_id-5, b.column_name, b.data_length
+					 from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+					 where a.exetype='ARCHIVE' and 'PII'||a.owner = b.owner and a.table_name = b.table_name --and a.table_name='LKDLPPAC'
+					   and b.column_name not in ('PII_ORDER_ID'
+						 ,'PII_BASE_DATE'
+						 ,'PII_CUST_ID'
+						 ,'PII_JOB_ID'
+						 ,'PII_DESTRUCT_DATE')
+				 )
+			 ) a LEFT OUTER JOIN cotdl.tbl_piitable b
+								 ON( a.owner = b.owner and a.table_name = b.table_name and a.column_name = b.column_name)
+		where a.table_name is null
+
+
+	</select>
+</mapper>

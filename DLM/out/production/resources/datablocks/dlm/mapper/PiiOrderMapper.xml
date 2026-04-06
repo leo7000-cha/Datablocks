@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderMapper">
+
+ 	<sql id="criteria_piiorder">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and trunc(basedate) = (to_date(#{search2, jdbcType=VARCHAR},'yyyymmdd'))
+						</if>
+						<if test="search3 != null">
+							and orderuserid = #{search3}
+						</if>
+						<if test="search4 != null">
+							and status = #{search4}
+						</if>
+						<if test="search5 != null">
+							and runtype = #{search5}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderVO">
+		<![CDATA[
+		select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid
+		  from cotdl.tbl_piiorder order by orderid desc
+		]]>
+	</select>
+
+	<select id="getRunableList" resultType="datablocks.dlm.domain.PiiOrderVO">
+		<![CDATA[
+		select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid
+		  from cotdl.tbl_piiorder
+		 where (jobid, basedate) in(
+		    select a.jobid, min(a.basedate)
+		      from cotdl.tbl_piiorder a
+		     where 1=1 
+		       and eststarttime <= SYSDATE
+		       and status in ('Wait condition', 'Running')  and holdflag = 'N' and forceokflag = 'N' and killflag = 'N' and confirmflag = 'N'
+		       and not exists(select 1 from cotdl.tbl_piiorder where jobid=a.jobid and status in ('Ended not OK', 'Running', 'Hold') and orderid!=a.orderid)
+		       and (select count(distinct jobid_w) from cotdl.tbl_piiorderjobwait b where a.orderid = b.orderid and type='PRE') 
+		           = (select count(1) from cotdl.tbl_piiorder c
+		                where c.jobid in (select jobid_w from cotdl.tbl_piiorderjobwait b where a.orderid = b.orderid and type='PRE')
+		                  and c.basedate = a.basedate
+		                  and c.status = 'Ended OK' )
+		    group by a.jobid
+		  )
+		]]>
+	</select>
+	<select id="getRunableListCnt" resultType="int">
+		<![CDATA[
+		select count(1)
+		  from cotdl.tbl_piiorder
+		 where (jobid, basedate) in(
+		    select a.jobid, min(a.basedate)
+		      from cotdl.tbl_piiorder a
+		     where 1=1 
+		       and eststarttime <= SYSDATE
+		       and status in ('Wait condition', 'Running')  and holdflag = 'N' and forceokflag = 'N' and killflag = 'N' and confirmflag = 'N'
+		       and not exists(select 1 from cotdl.tbl_piiorder where jobid=a.jobid and status in ('Ended not OK', 'Running', 'Hold') and orderid!=a.orderid)
+		       and (select count(distinct jobid_w) from cotdl.tbl_piiorderjobwait b where a.orderid = b.orderid and type='PRE') 
+		           = (select count(1) from cotdl.tbl_piiorder c
+		                where c.jobid in (select jobid_w from cotdl.tbl_piiorderjobwait b where a.orderid = b.orderid and type='PRE')
+		                  and c.basedate = a.basedate
+		                  and c.status = 'Ended OK' )
+		    group by a.jobid
+		  )
+		]]>
+	</select>
+	<select id="getRecoveredCntWithJobidBasedate" resultType="int">
+		<![CDATA[
+			select count(1) 
+              from cotdl.tbl_piiorder 
+             where jobid= #{jobid}
+               and status = 'Recovered'
+               and trunc(basedate) = (to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'))
+		]]>
+	</select>
+	<insert id="insert">
+		insert into cotdl.tbl_piiorder (orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid)
+		values (#{orderid}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{runcnt, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{jobname, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{policy_id, jdbcType=VARCHAR}, #{keymap_id, jdbcType=VARCHAR}, #{jobtype, jdbcType=VARCHAR}, #{runtype, jdbcType=VARCHAR}, #{calendar, jdbcType=VARCHAR}, #{time, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, #{holdflag, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, #{killflag, jdbcType=VARCHAR}, to_date(#{eststarttime, jdbcType=VARCHAR},'yyyy/mm/dd hh24:mi:ss'), null, null, null, #{job_owner_id1, jdbcType=VARCHAR}, #{job_owner_name1, jdbcType=VARCHAR}, #{job_owner_id2, jdbcType=VARCHAR}, #{job_owner_name2, jdbcType=VARCHAR}, #{job_owner_id3, jdbcType=VARCHAR}, #{job_owner_name3, jdbcType=VARCHAR}, SYSDATE, #{orderuserid, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+<!-- 		<selectKey resultType="int" keyProperty="orderid" order="BEFORE">
+	        select COALESCE(max(orderid),10000)+1 from cotdl.tbl_piiorder        
+	    </selectKey>  -->
+		insert into cotdl.tbl_piiorder (orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid)
+		values (#{orderid}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{runcnt, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{jobname, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{policy_id, jdbcType=VARCHAR}, #{keymap_id, jdbcType=VARCHAR}, #{jobtype, jdbcType=VARCHAR}, #{runtype, jdbcType=VARCHAR}, #{calendar, jdbcType=VARCHAR}, #{time, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, #{holdflag, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, #{killflag, jdbcType=VARCHAR}, to_date(#{eststarttime, jdbcType=VARCHAR},'yyyy/mm/dd hh24:mi:ss'), null, null, null, #{job_owner_id1, jdbcType=VARCHAR}, #{job_owner_name1, jdbcType=VARCHAR}, #{job_owner_id2, jdbcType=VARCHAR}, #{job_owner_name2, jdbcType=VARCHAR}, #{job_owner_id3, jdbcType=VARCHAR}, #{job_owner_name3, jdbcType=VARCHAR}, SYSDATE, #{orderuserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderVO">
+		select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid 
+          from cotdl.tbl_piiorder 
+         where orderid= #{orderid}
+	</select>
+	
+	<select id="readMaxOrderOkByJobid" resultType="datablocks.dlm.domain.PiiOrderVO">
+		select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid 
+          from cotdl.tbl_piiorder 
+         where orderid= (select max(orderid) from cotdl.tbl_piiorder where jobid = #{jobid, jdbcType=VARCHAR} and jobtype='PII' and status = 'Ended OK')
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiorder where orderid= #{orderid}
+	</delete>
+	
+	
+	<select id="readrunresultstat" resultType="datablocks.dlm.domain.PiiOrderRunRusultStatVO">
+		select 
+		         sum(case when status='Ended OK' then 1 else 0 end ) as ok
+		        ,sum(case when status='Running' then 1 else 0 end ) as run
+		        ,sum(case when status='Wait condition' then 1 else 0 end ) as wait
+		        ,sum(case when status='Ended not OK' then 1 else 0 end ) as ko
+		        ,sum(case when status='Recovered' then 1 else 0 end ) as recovered
+		        ,count(1) total 
+		 from cotdl.tbl_piiorder 
+		/*where basedate >= SYSDATE - 7*/
+	</select>
+	<update id="updatebefore">
+		update cotdl.tbl_piiorder
+		   set 
+				status= 'Running',
+				realstarttime= COALESCE(realstarttime,SYSDATE),
+				realendtime= null,
+				runningtime= (
+					       TRUNC((sysdate-realstarttime)*24) || ':' || 
+					       LPAD(TRUNC(mod((sysdate - realstarttime)*24,1)*60),2,'0' ) || ':' || 
+					       LPAD(TRUNC(round(mod((sysdate - realstarttime)*24*60,1)*60)),2,'0' )
+					       <!-- TIMESTAMPDIFF(8, CHAR(SYSDATE - realstarttime ))  ||':'||
+					       LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(4, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          ) ||':'    ||
+					        LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(2, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          ) --> 
+						),
+				runcnt = runcnt + 1
+		where orderid= #{orderid}
+	</update>
+	<update id="updateend">
+		update cotdl.tbl_piiorder
+		   set 
+		 	    status= (select rtrim(case when ok = 0 then 'Ended OK'
+							               when notok > 0 then 'Ended not OK'
+							               when running > 0 then 'Running'
+							               when wait > 0 then 'Running'
+						        	  end)
+						   from (
+								select 
+									  COALESCE(sum(case when status != 'Ended OK' then 1 end),0) as ok
+									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok 
+									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running 
+									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait 
+								from cotdl.tbl_piiorderstep
+								where orderid= #{orderid} 
+								)
+		 				),				
+				runningtime= (
+					       TRUNC((sysdate-realstarttime)*24) || ':' || 
+					       LPAD(TRUNC(mod((sysdate - realstarttime)*24,1)*60),2,'0' ) || ':' || 
+					       LPAD(TRUNC(round(mod((sysdate - realstarttime)*24*60,1)*60)),2,'0' )
+					       <!-- TIMESTAMPDIFF(8, CHAR(SYSDATE - realstarttime ))  ||':'||
+					       LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(4, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          ) ||':'    ||
+					        LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(2, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          ) --> 
+						),
+				realendtime= (select case when ok = 0 then SYSDATE
+						             when notok > 0 then SYSDATE
+						             when running > 0 then null
+						             when wait > 0 then null
+						        end
+						   from (
+								select 
+									  COALESCE(sum(case when status != 'Ended OK' then 1 end),0) as ok
+									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok 
+									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running 
+									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait 
+								from cotdl.tbl_piiorderstep
+								where orderid= #{orderid} 
+								)
+		 					)
+		where orderid= #{orderid}
+	</update>
+	<update id="update">
+		update cotdl.tbl_piiorder
+		   set 
+				runcnt= #{runcnt, jdbcType=VARCHAR},
+				status= #{status, jdbcType=VARCHAR},
+				confirmflag= #{confirmflag, jdbcType=VARCHAR},
+				holdflag= #{holdflag, jdbcType=VARCHAR},
+				forceokflag= #{forceokflag, jdbcType=VARCHAR},
+				killflag= #{killflag, jdbcType=VARCHAR}
+		where orderid= #{orderid}
+	</update>
+	<update id="updateactionflag">
+		update cotdl.tbl_piiorder
+		   set 
+				confirmflag= #{confirmflag, jdbcType=VARCHAR},
+				holdflag= #{holdflag, jdbcType=VARCHAR},
+				forceokflag= #{forceokflag, jdbcType=VARCHAR}
+				<!-- killflag= #{killflag, jdbcType=VARCHAR}, -->
+		where orderid= #{orderid}
+	</update>
+	<update id="updatestatus">
+		update cotdl.tbl_piiorder
+		   set 
+				status= #{status, jdbcType=VARCHAR}
+		where orderid= #{orderid}
+	</update>
+	<update id="rerun">
+		update cotdl.tbl_piiorder
+		   set 
+				status= 'Wait condition',
+				confirmflag= 'N',
+				holdflag= 'N',
+				forceokflag= 'N',
+				<!-- killflag= N, -->
+				eststarttime=SYSDATE,
+				runningtime= null,
+				realstarttime= null,
+				realendtime= null
+		where orderid= #{orderid}
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiOrderVO"> 
+		<![CDATA[ 
+		select 
+			orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid
+
+		from ( 
+				select 
+					 ROWNUM rn, orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid
+				from (
+						select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid
+					  	  from cotdl.tbl_piiorder  
+					  	  		]]>
+
+		<trim prefix=" where 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and trunc(basedate) = (to_date(#{search2, jdbcType=VARCHAR},'yyyymmdd'))
+						</if>
+						<if test="search3 != null">
+							and orderuserid = #{search3}
+						</if>
+						<if test="search4 != null">
+							and status = #{search4}
+						</if>
+						<if test="search5 != null">
+							and runtype = #{search5}
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+					  	  order by orderid desc
+					 ) f
+				 
+
+				
+				order by orderid desc
+			  ) d
+		where rn <= #{pagenum} * #{amount} 
+		  and rn > (#{pagenum} -1) * #{amount} 
+		order by orderid desc
+		]]> 
+	</select>
+
+	<select id="getListWithPagingDetail" resultType="datablocks.dlm.domain.PiiOrderDetailVO">
+		<![CDATA[
+		select
+			orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid
+			,  (select LISTAGG(orderid, ',') WITHIN GROUP(ORDER BY orderid) from cotdl.tbl_piiorder where jobid=d.jobid and status in ('Ended not OK', 'Running', 'Hold') and orderid!=d.orderid) as waitreason_samejobnotcompleted
+			, (case when eststarttime_org > SYSDATE then eststarttime else '' end) as waitreason_executiontime
+			, (case when
+						(select count(distinct jobid_w) from cotdl.tbl_piiorderjobwait b where d.orderid = b.orderid and type='PRE')
+					   		!= (select count(1) from cotdl.tbl_piiorder c
+								where c.jobid in (select jobid_w from cotdl.tbl_piiorderjobwait b where d.orderid = b.orderid and type='PRE')
+								  and c.basedate = d.basedate
+								  and c.status = 'Ended OK' )
+					then (select LISTAGG(jobid, ',') WITHIN GROUP(ORDER BY jobid) from (select distinct jobid_w as jobid from cotdl.tbl_piiorderjobwait b where d.orderid = b.orderid and type='PRE'
+					minus
+				  	select distinct c.jobid as jobid from cotdl.tbl_piiorder c
+									where c.jobid in (select jobid_w from cotdl.tbl_piiorderjobwait b where d.orderid = b.orderid and type='PRE')
+									  and c.basedate = d.basedate
+									  and c.status = 'Ended OK' )) else null end) as waitreason_waitjob
+		from (
+				select
+					 ROWNUM rn, orderid, basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, eststarttime, eststarttime_org, runningtime, realstarttime, realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, orderdate, orderuserid
+				from (
+						select orderid, to_char(basedate,'yyyy/mm/dd') as basedate, runcnt, jobid, version, jobname,system, policy_id, keymap_id, jobtype, runtype, calendar, time, status, confirmflag, holdflag, forceokflag, killflag, to_char(eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, eststarttime as eststarttime_org, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, orderuserid
+					  	  from cotdl.tbl_piiorder
+					  	  		]]>
+
+		<trim prefix=" where 1=1" suffix="" >
+			<if test="search1 != null">
+				and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+			</if>
+			<if test="search2 != null">
+				and trunc(basedate) = (to_date(#{search2, jdbcType=VARCHAR},'yyyymmdd'))
+			</if>
+			<if test="search3 != null">
+				and orderuserid = #{search3}
+			</if>
+			<if test="search4 != null">
+				and status = #{search4}
+			</if>
+			<if test="search5 != null">
+				and runtype = #{search5}
+			</if>
+		</trim>
+
+		<![CDATA[
+					  	  order by orderid desc
+					 ) f
+
+
+
+				order by orderid desc
+			  ) d
+		where rn <= #{pagenum} * #{amount}
+		  and rn > (#{pagenum} -1) * #{amount}
+		order by orderid desc
+		]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiorder 
+		
+		<include refid="criteria_piiorder"></include> 
+			
+	</select>
+
+	<select id="getMaxOrderid" resultType="int">
+		select COALESCE(max(orderid),10000) from cotdl.tbl_piiorder
+	</select>
+	
+	<select id="getSameOrderCnt" resultType="int">
+		select count(1)
+          from cotdl.tbl_piiorder 
+         where upper(jobid) = upper(#{jobid, jdbcType=VARCHAR})
+           and version = #{version, jdbcType=VARCHAR}
+           and trunc(basedate) = trunc(to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'))
+	</select>
+	
+	<select id="getSteptypeCnt" resultType="int">
+		select count(1)
+          from cotdl.tbl_piiorderstep 
+         where orderid= #{orderid}
+           and steptype= #{steptype, jdbcType=VARCHAR}
+	</select>
+
+	<select id="getOrderJobList" resultType="datablocks.dlm.domain.PiiOrderJobVO">
+		<![CDATA[
+		select jobid, max(version) as version, max(jobtype) as jobtype, max(runtype) as runtype, max(system) as system, max(calendar) as calendar, max(time) as time, max(job_owner_name1) as job_owner_name1
+		, max(policy_id) as policy_id, max(keymap_id) as keymap_id, count(jobid) as runcnt, min(basedate) as basedate_min, max(basedate) as basedate_max
+		, max(realstarttime) as lastexedatetime
+		from cotdl.tbl_piiorder
+		group by jobid
+		order by jobid
+		]]>
+	</select>
+</mapper>

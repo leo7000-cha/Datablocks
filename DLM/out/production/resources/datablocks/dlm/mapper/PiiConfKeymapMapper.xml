@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiConfKeymapMapper">
+
+ 	<sql id="criteria_piijconfkeymap">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and keymap_id like '%'||#{search1}||'%'
+						</if>
+						<if test="search2 != null">
+							and key_name like '%'||#{search2}||'%'
+						</if>
+						<if test="search3 != null">
+							and key_cols like '%'||#{search3}||'%'
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiConfKeymapVO">
+		<![CDATA[
+		select keymap_id,key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		 from cotdl.tbl_piiconfkeymap where order by keymap_id, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getList_distinct" resultType="datablocks.dlm.domain.PiiConfKeymapRefVO">
+		<![CDATA[
+			select distinct keymap_id, key_name, key_cols, refstr from cotdl.tbl_piiconfkeymap where keymap_id= #{keymap_id, jdbcType=VARCHAR} order by key_cols
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiconfkeymap (keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, regdate, upddate, reguserid, upduserid)
+		values (#{keymap_id, jdbcType=VARCHAR},#{key_name, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{key_cols, jdbcType=VARCHAR}, #{src_owner, jdbcType=VARCHAR}, #{src_table_name, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{sqltype, jdbcType=VARCHAR}, #{insertstr, jdbcType=VARCHAR}, #{wherestr, jdbcType=VARCHAR}, #{refstr, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiconfkeymap (keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, regdate, upddate, reguserid, upduserid)
+		values (#{keymap_id, jdbcType=VARCHAR},#{key_name, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{key_cols, jdbcType=VARCHAR}, #{src_owner, jdbcType=VARCHAR}, #{src_table_name, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{sqltype, jdbcType=VARCHAR}, #{insertstr, jdbcType=VARCHAR}, #{wherestr, jdbcType=VARCHAR}, #{refstr, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiConfKeymapVO">
+		select keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid 
+		from cotdl.tbl_piiconfkeymap where keymap_id= #{keymap_id, jdbcType=VARCHAR} and
+									 key_name= #{key_name, jdbcType=VARCHAR} and
+									 db= #{db, jdbcType=VARCHAR} and
+									 seq1= #{seq1} and
+									 seq2= #{seq2} and
+									 seq3= #{seq3}
+									
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiconfkeymap where 	keymap_id= #{keymap_id, jdbcType=VARCHAR} and
+									    key_name= #{key_name, jdbcType=VARCHAR} and
+										db= #{db, jdbcType=VARCHAR} and
+										seq1= #{seq1} and
+										seq2= #{seq2} and
+										seq3= #{seq3}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiconfkeymap
+		set 
+			key_cols= #{key_cols, jdbcType=VARCHAR},
+			src_owner= #{src_owner, jdbcType=VARCHAR},
+			src_table_name= #{src_table_name, jdbcType=VARCHAR},
+			where_col= #{where_col, jdbcType=VARCHAR},
+			where_key_name= #{where_key_name, jdbcType=VARCHAR},
+			parallelcnt= #{parallelcnt, jdbcType=VARCHAR},
+			status= #{status, jdbcType=VARCHAR},
+			sqltype= #{sqltype, jdbcType=VARCHAR},
+			insertstr= #{insertstr, jdbcType=VARCHAR},
+			wherestr= #{wherestr, jdbcType=VARCHAR},
+			refstr= #{refstr, jdbcType=VARCHAR},
+			regdate= to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+			upddate= SYSDATE,
+			reguserid= #{reguserid, jdbcType=VARCHAR},
+			upduserid= #{upduserid, jdbcType=VARCHAR}
+		where keymap_id= #{keymap_id, jdbcType=VARCHAR}
+			and key_name= #{key_name, jdbcType=VARCHAR}
+			and	db= #{db, jdbcType=VARCHAR}
+			and	seq1= #{seq1}
+			and	seq2= #{seq2}
+			and	seq3= #{seq3}
+
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiConfKeymapVO"> 
+		<![CDATA[ 
+		select 
+			keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, regdate, upddate, reguserid, upduserid
+		from ( 
+				select
+					 ROWNUM rn, keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, regdate, upddate, reguserid, upduserid 
+				from (
+						select keymap_id, key_name, db, seq1, seq2, seq3, key_cols, src_owner, src_table_name, where_col, where_key_name, parallelcnt, status, sqltype, insertstr, wherestr, refstr, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piiconfkeymap order by seq1, seq2, seq3 
+					 ) f
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and keymap_id like '%'||#{search1}||'%'
+						</if>
+						<if test="search2 != null">
+							and key_name like '%'||#{search2}||'%'
+						</if>
+						<if test="search3 != null">
+							and key_cols like '%'||#{search3}||'%'
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by keymap_id, seq1, seq2, seq3
+			  ) r
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by keymap_id, seq1, seq2, seq3
+		]]> 
+	</select>
+	
+
+	<select id="getTotalCount" resultType="int">
+		select count(*) from cotdl.tbl_piiconfkeymap 
+		
+		<include refid="criteria_piijconfkeymap"></include> 
+			
+	</select>
+
+
+</mapper>

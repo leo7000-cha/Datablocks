@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderStepTableUpdateMapper">
+
+	<select id="getJobList" resultType="datablocks.dlm.domain.PiiOrderStepTableUpdateVO">
+		<![CDATA[
+		select orderid, jobid, version, stepid, seq1, seq2, seq3, column_name, update_val, status 
+		  from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} 
+		]]>
+	</select>
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderStepTableUpdateVO">
+		<![CDATA[
+		select orderid, jobid, version, stepid, seq1, seq2, seq3, column_name, update_val, status 
+		  from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and stepid= #{stepid} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+		]]>
+	</select>
+
+	<insert id="insert">
+ 		insert into COTDL.tbl_piiordersteptableupdate (orderid, jobid, version, stepid, seq1, seq2, seq3, column_name, update_val, status)
+		values (#{orderid}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{seq1, jdbcType=VARCHAR}, #{seq2, jdbcType=VARCHAR}, #{seq3, jdbcType=VARCHAR}, #{column_name, jdbcType=VARCHAR}, #{update_val, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR})
+	
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderStepTableUpdateVO">
+		select orderid, jobid, version, stepid, seq1, seq2, seq3, column_name, update_val, status 
+		  from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</delete>
+	<delete id="deletebyorderid">
+		delete from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid}
+	</delete>
+	<delete id="deletebyseq">
+		delete from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</delete>
+	<delete id="deletebyjobid">
+		delete from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</delete>
+	<delete id="deletebystepid">
+		delete from cotdl.tbl_piiordersteptableupdate 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid}
+	</delete>
+	<update id="update">
+		update cotdl.tbl_piiordersteptableupdate
+		   set 
+			   update_val= #{update_val, jdbcType=VARCHAR},
+			   status= #{status, jdbcType=VARCHAR} 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiordersteptableupdate a
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+   		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}		
+	</select>
+
+
+	
+</mapper>

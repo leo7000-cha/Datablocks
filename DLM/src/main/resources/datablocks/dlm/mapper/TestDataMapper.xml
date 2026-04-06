@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.TestDataMapper">
+
+ 	<sql id="criteria_testdata">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and a.custid like concat('%',#{search1},'%')
+						</if>
+						<if test="search2 != null">
+							and b.requesterid like concat('%',#{search2},'%')
+						</if>
+						<if test="search3 != null">
+							and b.requestername like concat('%',#{search3},'%')
+						</if>
+		</trim>
+	</sql>
+	<sql id="criteria_testdata2">
+		<trim prefix=" " suffix="" >
+			<if test="search2 != null">
+				and b.requesterid like concat('%',#{search2},'%')
+			</if>
+			<if test="search3 != null">
+				and b.requestername like concat('%',#{search3},'%')
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.TestDataVO">
+		<![CDATA[
+		select testdataid, system, sourcedb, targetdb, phase, apply_type, new_orderid, jobid, idtype, custid, custid_new, cust_nm, ssn, new_jobid, status, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, DATE_FORMAT(regdate,'%Y/%m/%d %H:%i:%s') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d %H:%i:%s') as upddate, reguserid, upduserid, disposal_status, DATE_FORMAT(disposal_sche_date,'%Y/%m/%d') as disposal_sche_date, DATE_FORMAT(disposal_exec_date,'%Y/%m/%d') as disposal_exec_date
+		from cotdl.tbl_testdata a 
+		 where 1=1
+		 order by testdataid desc
+		]]>
+	</select>
+	<select id="getDisposalList" resultType="datablocks.dlm.domain.TestDataVO">
+		<![CDATA[
+		select testdataid, system, sourcedb, targetdb, phase, apply_type, new_orderid, jobid, idtype, custid, custid_new, cust_nm, ssn, new_jobid, status, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, DATE_FORMAT(regdate,'%Y/%m/%d %H:%i:%s') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d %H:%i:%s') as upddate, reguserid, upduserid, disposal_status, DATE_FORMAT(disposal_sche_date,'%Y/%m/%d') as disposal_sche_date, DATE_FORMAT(disposal_exec_date,'%Y/%m/%d') as disposal_exec_date
+		from cotdl.tbl_testdata a
+		where DATE_FORMAT(disposal_sche_date, '%Y/%m/%d') <= #{basedate}
+		  and a.status = 'Ended OK'
+		  and a.disposal_exec_date is null
+		order by testdataid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_testdata (testdataid, system, sourcedb, targetdb, phase, apply_type, new_orderid, jobid, idtype, custid, custid_new, cust_nm, ssn, new_jobid, status, approve_date, regdate, upddate, reguserid, upduserid)
+        values (#{testdataid}, #{system, jdbcType=VARCHAR}, #{sourcedb, jdbcType=VARCHAR}, #{targetdb, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{apply_type, jdbcType=VARCHAR}, #{new_orderid}, #{jobid, jdbcType=VARCHAR}, #{idtype, jdbcType=VARCHAR}, #{custid, jdbcType=VARCHAR}, #{custid_new, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{ssn, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, str_to_date(#{approve_date, jdbcType=VARCHAR},'%Y/%m/%d'), NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		<selectKey resultType="int" keyProperty="testdataid" order="BEFORE">
+	        select COALESCE(max(testdataid),10000)+1 from cotdl.tbl_testdata        
+	    </selectKey>
+		insert into COTDL.tbl_testdata (testdataid, system, sourcedb, targetdb, phase, apply_type, new_orderid, jobid, idtype, custid, custid_new, cust_nm, ssn, new_jobid, status, approve_date, regdate, upddate, reguserid, upduserid)
+		values (#{testdataid}, #{system, jdbcType=VARCHAR}, #{sourcedb, jdbcType=VARCHAR}, #{targetdb, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{apply_type, jdbcType=VARCHAR}, #{new_orderid}, #{jobid, jdbcType=VARCHAR}, #{idtype, jdbcType=VARCHAR}, #{custid, jdbcType=VARCHAR}, #{custid_new, jdbcType=VARCHAR}, #{cust_nm, jdbcType=VARCHAR}, #{ssn, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, str_to_date(#{approve_date, jdbcType=VARCHAR},'%Y/%m/%d'), NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="requestapproval">
+		update cotdl.tbl_testdata
+		   set
+			   phase = 'APPROVING',
+			   status = 'APPLY',
+			   upddate = NOW()
+		 where testdataid = #{testdataid}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_testdata
+		   set phase = 'REJECTED',
+			   status = 'REJECTED',
+			   upddate = NOW()
+		 where testdataid = #{testdataid}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_testdata
+		   set 
+			   phase = 'APPROVED',
+			   status = 'ORDERED',
+			   upddate = NOW(),
+			   disposal_sche_date = DATE_ADD(NOW()
+			       , INTERVAL (
+							   SELECT DEL_DEADLINE
+								FROM cotdl.tbl_piipolicy tp
+								WHERE
+									POLICY_ID = 'PII_TESTDATA'
+									AND PHASE = 'CHECKIN'
+									AND STATUS = 'ACTIVE'
+								ORDER BY
+									VERSION DESC
+								LIMIT 1
+				   ) DAY)
+		 where testdataid= #{testdataid}
+	</update>
+
+	<select id="read" resultType="datablocks.dlm.domain.TestDataVO">
+		select
+			   testdataid, system, sourcedb, targetdb, phase, apply_type, new_orderid, jobid, idtype, custid, custid_new, cust_nm, ssn, new_jobid, status, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, DATE_FORMAT(regdate,'%Y/%m/%d %H:%i:%s') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d %H:%i:%s') as upddate, reguserid, upduserid, disposal_status, DATE_FORMAT(disposal_sche_date,'%Y/%m/%d') as disposal_sche_date, DATE_FORMAT(disposal_exec_date,'%Y/%m/%d') as disposal_exec_date
+		  from cotdl.tbl_testdata 
+		 where testdataid= #{testdataid}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_testdata where testdataid= #{testdataid}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_testdata
+		   set 
+			   new_orderid = #{new_orderid},
+			   status = #{status, jdbcType=VARCHAR},
+			   upddate = NOW(),
+			   upduserid = #{upduserid, jdbcType=VARCHAR}
+		 where testdataid = #{testdataid}
+	</update>
+	<update id="updateApprovalInfo">
+		update cotdl.tbl_testdata
+		   set
+			   new_orderid = #{new_orderid},
+			   status = #{status, jdbcType=VARCHAR},
+			   upddate = NOW(),
+			   approve_date = NOW(),
+			   upduserid = #{upduserid, jdbcType=VARCHAR}
+		 where testdataid= #{testdataid}
+	</update>
+	<update id="updateDisposalStatus">
+		update cotdl.tbl_testdata
+		set
+			status = 'DISPOSED',
+			disposal_status = 'Y',
+			disposal_exec_date = NOW()
+		where testdataid= #{testdataid}
+	</update>
+	<update id="updateDisposalScheDate" parameterType="datablocks.dlm.domain.UpdateDisposalScheDateVO">
+		UPDATE cotdl.tbl_testdata
+		SET disposal_sche_date = STR_TO_DATE(#{disposalScheDate}, '%Y/%m/%d')
+		WHERE testdataid = #{testdataid}
+	</update>
+    <update id="updateStatus">
+		update cotdl.tbl_testdata
+		   set 
+			   status = (select status from cotdl.tbl_piiorder where orderid= #{new_orderid})
+		 where new_orderid = #{new_orderid}
+	</update>
+	<update id="updateNewCustid">
+		update cotdl.tbl_testdata
+		set
+			custid_new = #{custid_new, jdbcType=VARCHAR})
+		where new_orderid = #{new_orderid}
+	</update>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.TestDataVO">
+		<![CDATA[
+		SELECT a.testdataid, a.system, concat(a.sourcedb,' [', p.env,']') as sourcedb, concat(a.targetdb,' [', d.env,']') as targetdb, a.phase, a.apply_type, a.new_orderid, COALESCE(j.jobname, a.jobid) as jobid, COALESCE(t.idname, '고객번호') AS idtype, a.custid, a.custid_new, a.cust_nm, a.ssn, a.new_jobid, a.status, /*DATE_FORMAT(a.approve_date,'%Y/%m/%d %H:%i:%s')*/j.JOBNAME AS approve_date, DATE_FORMAT(a.regdate,'%Y/%m/%d') AS regdate, DATE_FORMAT(a.upddate,'%Y/%m/%d') AS upddate, a.reguserid, a.upduserid
+		  , b.requesterid AS reguserid, b.requestername AS upduserid
+		  , a.disposal_status, DATE_FORMAT(a.disposal_sche_date,'%Y/%m/%d') as disposal_sche_date, DATE_FORMAT(a.disposal_exec_date,'%Y/%m/%d') as disposal_exec_date
+		FROM cotdl.tbl_testdata a
+		INNER JOIN (
+			SELECT jobid, requesterid, requestername
+			FROM cotdl.tbl_piiapprovalreq
+			WHERE approvalid = 'TESTDATA_APPROVAL'
+			  AND reqid IN (
+				SELECT MAX(reqid)
+				FROM cotdl.tbl_piiapprovalreq
+				WHERE approvalid = 'TESTDATA_APPROVAL'
+				GROUP BY jobid
+			  )
+		) b ON a.testdataid = b.jobid
+		    ]]>
+			<include refid="criteria_testdata2"></include>
+			<![CDATA[
+		LEFT OUTER JOIN COTDL.TBL_TESTDATAIDTYPE t ON a.idtype = t.id
+		LEFT OUTER JOIN (
+			SELECT jobid, jobname
+			FROM COTDL.TBL_PIIJOB
+			WHERE STATUS='ACTIVE' AND PHASE='CHECKIN'
+			GROUP BY jobid, jobname
+		) j ON a.jobid = j.jobid
+		LEFT OUTER JOIN COTDL.TBL_PIIDATABASE p ON p.db = a.sourcedb
+		LEFT OUTER JOIN COTDL.TBL_PIIDATABASE d ON d.db = a.targetdb
+		]]>
+		<include refid="criteria_testdata"></include>
+	    <![CDATA[
+		order by a.testdataid desc
+        limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1)
+		  from cotdl.tbl_testdata a
+		 INNER JOIN (
+			SELECT jobid, requesterid, requestername
+			FROM cotdl.tbl_piiapprovalreq
+			WHERE approvalid = 'TESTDATA_APPROVAL'
+			  AND reqid IN (
+				SELECT MAX(reqid)
+				FROM cotdl.tbl_piiapprovalreq
+				WHERE approvalid = 'TESTDATA_APPROVAL'
+				GROUP BY jobid
+			  )
+		) b ON a.testdataid = b.jobid
+		<include refid="criteria_testdata"></include>
+
+	</select>
+	<select id="getMaxTestdataid" resultType="int">
+		select COALESCE(max(testdataid),10000) from cotdl.tbl_testdata
+	</select>
+
+	<select id="getListMasterKeymap" resultType="datablocks.dlm.domain.MasterKeymapVO">
+		<![CDATA[
+		select B.KEY_NAME keyid, A.KEY_NAME2 keyname, B.CUSTID custid, B.VAL1 val, B.NEWVAL1 newval
+		from
+		   (select SUCCEDDING KEYMAPID, PK_COL KEY_NAME2
+		    from TBL_PIIORDERSTEPTABLE
+		    where ORDERID= #{new_orderid} and STEPTYPE='GEN_KEYMAP' and PK_COL is not null and SUCCEDDING is not null group by SUCCEDDING, PK_COL) A,
+		   TBL_PIIMASTERKEYMAP B
+		where B.ORDERID= #{new_orderid}
+		  and A.KEYMAPID = concat('KEY_',B.KEY_NAME)
+		order by B.KEY_NAME, B.CUSTID, B.VAL1
+		]]>
+	</select>
+
+	<select id="getCombinedTestDataStatus" resultType="datablocks.dlm.domain.TestDataCombinedStatusVO">
+		<![CDATA[
+		   SELECT
+		   member.DEPT_NAME AS deptname,
+		   member.USERNAME AS userName,
+		   SUM(CASE WHEN user_data.신청유형 = '자동생성' THEN user_data.총건수 ELSE 0 END) AS autoGenRequestCount,
+		   SUM(CASE WHEN user_data.신청유형 = '자동생성' THEN user_data.PII건수 ELSE 0 END) AS autoGenCustomerCount,
+		   SUM(CASE WHEN user_data.신청유형 = '테이블적재' THEN user_data.총건수 ELSE 0 END) AS tableLoadRequestCount,
+		   SUM(CASE WHEN user_data.신청유형 = '테이블적재' THEN user_data.PII건수 ELSE 0 END) AS tableLoadTableCount
+		   FROM
+		   (
+		   -- 1. 테스트데이터 자동생성 쿼리
+		   SELECT
+		   reguserid AS 신청자ID,
+		   '자동생성' AS 신청유형,
+		   COUNT(*) AS 총건수,
+		   SUM(LENGTH(custid) - LENGTH(REPLACE(custid, ',', '')) + 1) AS PII건수
+		   FROM cotdl.tbl_testdata
+		   WHERE 1=1
+		   ]]>
+				<if test="startDate != null and startDate != ''">
+					AND regdate >= STR_TO_DATE(#{startDate}, '%Y/%m/%d')
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND regdate <![CDATA[ <= ]]> STR_TO_DATE(#{endDate}, '%Y/%m/%d')
+				</if>
+				<![CDATA[
+		   GROUP BY
+		   reguserid
+		   UNION ALL
+		   -- 2. 테이블 단위 테스트데이터 적재 쿼리
+		   SELECT
+		   A.JOB_OWNER_ID1 AS 신청자ID,
+		   '테이블적재' AS 신청유형,
+		   COUNT(DISTINCT B.ORDERID) AS 총건수,
+		   COUNT(B.TABLE_NAME) AS PII건수
+		   FROM cotdl.tbl_piiorder A
+		   JOIN cotdl.tbl_piiorderstepTABLE B ON A.ORDERID = B.ORDERID
+		   WHERE A.JOBID not like 'TESTDATA_AUTO%' and (B.STEPTYPE = 'EXE_SCRAMBLE' or B.STEPTYPE = 'EXE_MIGRATE')
+		   ]]>
+				<if test="startDate != null and startDate != ''">
+					AND A.ORDERDATE >= STR_TO_DATE(#{startDate}, '%Y/%m/%d')
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND A.ORDERDATE <![CDATA[ <= ]]> STR_TO_DATE(#{endDate}, '%Y/%m/%d')
+				</if>
+				<![CDATA[
+		   GROUP BY
+		   A.JOB_OWNER_ID1
+		   ) AS user_data
+		   JOIN cotdl.tbl_member member ON user_data.신청자ID = member.USERID and member.USERID not like 'admin%' and member.USERID not like 'member%' and member.USERID not like 'user%'
+		   GROUP BY
+			   user_data.신청자ID,
+			   member.DEPT_NAME,
+			   member.USERNAME
+		   ORDER BY
+			   member.USERNAME
+		]]>
+	</select>
+
+</mapper>

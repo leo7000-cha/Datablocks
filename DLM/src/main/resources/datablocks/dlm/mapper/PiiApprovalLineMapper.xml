@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalLineMapper">
+
+ 	<sql id="criteria_piiapprovalline">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and aprvlineid = #{search1}
+						</if>
+						<if test="search2 != null">
+							and approvalid = #{search2}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalLineVO">
+		<![CDATA[
+		select aprvlineid, approvalid, approvalname
+		 from cotdl.tbl_piiapprovalline order by approvalid, aprvlineid
+		]]>
+	</select>
+	<select id="getListbyApprovalid" resultType="datablocks.dlm.domain.PiiApprovalLineVO">
+		<![CDATA[
+		select aprvlineid, approvalid, approvalname
+		 from cotdl.tbl_piiapprovalline
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		order by approvalid, aprvlineid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiapprovalline (aprvlineid, approvalid, approvalname)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiapprovalline (aprvlineid, approvalid, approvalname)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalLineVO">
+		select aprvlineid, approvalid, approvalname
+		  from cotdl.tbl_piiapprovalline 
+		 where aprvlineid= #{aprvlineid, jdbcType=VARCHAR}  
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovalline where aprvlineid= #{aprvlineid} 
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiapprovalline
+		set
+			approvalid= #{approvalid, jdbcType=VARCHAR},
+			approvalname= #{approvalname, jdbcType=VARCHAR}
+			where aprvlineid= #{aprvlineid, jdbcType=VARCHAR}  
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalLineVO"> 
+		<![CDATA[
+		select aprvlineid, approvalid, approvalname
+		  from cotdl.tbl_piiapprovalline
+		]]>
+		<include refid="criteria_piiapprovalline"></include>
+	    <![CDATA[
+		order by approvalid, aprvlineid
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovalline 
+		
+		<include refid="criteria_piiapprovalline"></include> 
+			
+	</select>
+
+
+</mapper>

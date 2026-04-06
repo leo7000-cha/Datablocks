@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderStepTableWaitMapper">
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderStepTableWaitVO">
+		<![CDATA[
+		select orderid, jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piiordersteptablewait 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		]]>
+	</select>
+
+	<insert id="insert">
+ 		insert into COTDL.tbl_piiordersteptablewait (orderid, jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w)
+		values (#{orderid}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{type, jdbcType=VARCHAR}, #{db_w, jdbcType=VARCHAR}, #{owner_w, jdbcType=VARCHAR}, #{table_name_w, jdbcType=VARCHAR})
+	
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderStepTableWaitVO">
+		select orderid, jobid, version, stepid, db, owner, table_name, type, db_w, owner_w, table_name_w
+		  from cotdl.tbl_piiordersteptablewait 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		   and type= #{type} and db_w= #{db_w} and owner_w= #{owner_w} and table_name_w= #{table_name_w}
+	</select>
+	<delete id="deletebyorderid">
+		delete from cotdl.tbl_piiordersteptablewait where orderid= #{orderid}
+	</delete>
+	<delete id="deletebytable">
+		delete from cotdl.tbl_piiordersteptablewait
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</delete>
+	<delete id="delete">
+		delete from cotdl.tbl_piiordersteptablewait 
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		   and type= #{type} and db_w= #{db_w} and owner_w= #{owner_w} and table_name_w= #{table_name_w}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiordersteptablewait
+		   set 
+			   type= #{type, jdbcType=VARCHAR},
+			   db_w= #{db_w, jdbcType=VARCHAR},
+			   owner_w= #{owner_w, jdbcType=VARCHAR},
+			   table_name_w= #{table_name_w, jdbcType=VARCHAR}
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+		   and type= #{type} and db_w= #{db_w} and owner_w= #{owner_w} and table_name_w= #{table_name_w}
+	</update>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiordersteptablewait a
+		 where orderid= #{orderid} and jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid} 
+		   and db= #{db} and owner= #{owner} and table_name= #{table_name}
+	</select>
+
+</mapper>

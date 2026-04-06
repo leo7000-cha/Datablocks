@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiReportMapper">
+
+ 	<sql id="criteria_piireport">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and reportid = #{search1}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiReportVO">
+		<![CDATA[
+		select reportid, phase, aprvlineid, approvalid, report_type, date_from, date_to, val1, val2, val3, DATE_FORMAT(apply_date,'%Y/%m/%d') as apply_date, apply_userid, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, approve_userid
+		 from cotdl.tbl_piireport order by reportid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piireport (reportid, phase, aprvlineid, approvalid, report_type, date_from, date_to, val1, val2, val3, apply_date, apply_userid, approve_date, approve_userid)
+			values (#{reportid, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{report_type, jdbcType=VARCHAR}, #{date_from, jdbcType=VARCHAR}, #{date_to, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR}, #{val3, jdbcType=VARCHAR}, now(), #{apply_userid, jdbcType=VARCHAR}, null, #{approve_userid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piireport (reportid, phase, aprvlineid, approvalid, report_type, date_from, date_to, val1, val2, val3, apply_date, apply_userid, approve_date, approve_userid)
+			values (#{reportid, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{report_type, jdbcType=VARCHAR}, #{date_from, jdbcType=VARCHAR}, #{date_to, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR}, #{val3, jdbcType=VARCHAR}, now(), #{apply_userid, jdbcType=VARCHAR}, null, #{approve_userid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiReportVO">
+		select reportid, phase, aprvlineid, approvalid, report_type, date_from, date_to, val1, val2, val3, DATE_FORMAT(apply_date,'%Y/%m/%d') as apply_date, apply_userid, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, approve_userid
+		  from cotdl.tbl_piireport 
+		 where reportid= #{reportid, jdbcType=VARCHAR} 
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piireport where reportid= #{reportid}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piireport
+		set
+			phase= #{phase, jdbcType=VARCHAR},
+			aprvlineid= #{aprvlineid, jdbcType=VARCHAR},
+			approvalid= #{approvalid, jdbcType=VARCHAR},
+			report_type= #{report_type, jdbcType=VARCHAR},
+			date_from= str_to_date(#{date_from, jdbcType=VARCHAR},'%Y/%m'),
+			date_to= str_to_date(#{date_to, jdbcType=VARCHAR},'%Y/%m'),
+			val1= #{val1, jdbcType=VARCHAR},
+			val2= #{val2, jdbcType=VARCHAR},
+			val3= #{val3, jdbcType=VARCHAR},
+			apply_date= str_to_date(#{apply_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			apply_userid= #{apply_userid, jdbcType=VARCHAR},
+			approve_date= str_to_date(#{approve_date, jdbcType=VARCHAR},'%Y/%m/%d'),
+			approve_userid= #{approve_userid, jdbcType=VARCHAR}
+		where reportid= #{reportid, jdbcType=VARCHAR}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiReportVO"> 
+		<![CDATA[
+		select reportid, phase, aprvlineid, approvalid, report_type, date_from, date_to, val1, val2, val3, DATE_FORMAT(apply_date,'%Y/%m/%d') as apply_date, apply_userid, DATE_FORMAT(approve_date,'%Y/%m/%d') as approve_date, approve_userid
+		  from cotdl.tbl_piireport
+		]]>
+		<include refid="criteria_piireport"></include>
+	    <![CDATA[
+		order by reportid
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piireport 
+		
+		<include refid="criteria_piireport"></include> 
+			
+	</select>
+
+	<select id="getMaxReportid" resultType="int">
+		select COALESCE(max(reportid),10000) from cotdl.tbl_piireport
+	</select>
+
+	<update id="requestapproval">
+		update cotdl.tbl_piireport
+		set
+			phase= 'APPROVING',
+			apply_date	= NOW()
+		where reportid= #{reportid}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piireport
+		set phase= 'REJECTED'
+		where reportid= #{reportid}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piireport
+		set
+			phase= 'APPROVED',
+			approve_date= NOW()
+		where reportid= #{reportid}
+	</update>
+</mapper>

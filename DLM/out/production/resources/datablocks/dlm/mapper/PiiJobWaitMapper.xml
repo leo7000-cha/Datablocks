@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiJobWaitMapper">
+
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiJobWaitVO">
+		<![CDATA[
+		select jobid, version, type, jobid_w, jobname_w
+		  from cotdl.tbl_piijobwait a 
+		 where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piijobwait (jobid, version, type, jobid_w, jobname_w)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{type, jdbcType=VARCHAR}, #{jobid_w, jdbcType=VARCHAR}, #{jobname_w, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiJobWaitVO">
+		select jobid, version, type, jobid_w, jobname_w
+		  from cotdl.tbl_piijobwait 
+		 where jobid= #{jobid} 
+		   and version= #{version, jdbcType=VARCHAR}
+		   and type = #{type, jdbcType=VARCHAR}
+		   and jobid_w = #{jobid_w} 
+		   and jobname_w = #{jobname_w, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piijobwait 
+		 where upper(jobid) = upper(#{jobid, jdbcType=VARCHAR})
+		   and version = #{version, jdbcType=VARCHAR}
+		   and type = #{type, jdbcType=VARCHAR}
+		   and jobid_w = #{jobid_w} 
+		   and jobname_w = #{jobname_w, jdbcType=VARCHAR}
+	</delete>
+	<delete id="deleteJob">
+		delete from cotdl.tbl_piijobwait 
+		 where upper(jobid) = upper(#{jobid, jdbcType=VARCHAR})
+		   and version = #{version, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piijobwait
+			set 
+				jobid_w= #{jobid_w, jdbcType=VARCHAR},
+				jobname_w= #{jobname_w, jdbcType=VARCHAR},
+				type= #{type, jdbcType=VARCHAR},
+		 where upper(jobid) = upper(#{jobid, jdbcType=VARCHAR})
+		   and version = #{version, jdbcType=VARCHAR}
+		   and type = #{type, jdbcType=VARCHAR}
+		   and jobid_w = #{jobid_w} 
+		   and jobname_w = #{jobname_w, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) 
+		  from cotdl.tbl_piijobwait a
+		 where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</select>
+
+	<insert id="checkout">
+ 		insert into cotdl.tbl_piijobwait 
+		select jobid, TO_NUMBER(version)+1, type, jobid_w, jobname_w
+		  from cotdl.tbl_piijobwait 
+		 where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR} 
+	</insert>
+	
+</mapper>

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderStepMapper">
+
+ 	<sql id="criteria_piiorderstep">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and basedate = #{search2}
+						</if>
+						<if test="search3 != null">
+							and stepid = #{search3}
+						</if>
+						<if test="search4 != null">
+							and status = #{search4}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		<![CDATA[
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+		  from cotdl.tbl_piiorderstep order by orderid, jobid, version, stepseq
+		]]>
+	</select>
+
+	<select id="getOrderStepList" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		<![CDATA[
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+		  from cotdl.tbl_piiorderstep
+		 where orderid= #{orderid}
+		    order by orderid, stepseq
+		]]>
+	</select>
+	<select id="getRunnableOrderStepList" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		<![CDATA[
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+		  from cotdl.tbl_piiorderstep
+		 where orderid= #{orderid} 
+		   and status not in ('Ended OK') and confirmflag = 'N' and holdflag = 'N' and forceokflag = 'N' and killflag = 'N'
+		    order by orderid, jobid, version, stepseq
+		]]>
+	</select>
+	<select id="getRunStatusList" resultType="datablocks.dlm.domain.PiiOrderStepRunStatusVO">
+		<![CDATA[
+		select orderid, jobid, version, stepid, stepname, stepseq
+				, sum(1) as total
+		        , sum(case when status = 'Ended OK' then 1 else 0 end) as ok
+		        , sum(case when status = 'Ended not OK' then 1 else 0 end) as notok 
+		        , sum(case when status = 'Running' then 1 else 0 end) as running 
+		        ,sum(case when status = 'Wait condition' then 1 else 0 end) as wait 
+		  from cotdl.tbl_piiordersteptable  
+		 where orderid= #{orderid}
+		 group by orderid, jobid, version, stepid, stepname, stepseq
+		 order by orderid, jobid, version, stepseq
+		]]>
+	</select>
+	<delete id="deletebyorderid">
+		delete from cotdl.tbl_piiorderstep where orderid= #{orderid}
+	</delete>
+	<insert id="insert">
+		insert into cotdl.tbl_piiorderstep (orderid, status, confirmflag, holdflag, forceokflag, killflag, basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, realstarttime, realendtime, orderuserid)
+		values (#{orderid}, #{status, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, #{holdflag, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, #{killflag, jdbcType=VARCHAR}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{threadcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{runcnt, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq}, #{db, jdbcType=VARCHAR}, #{totaltabcnt}, #{successtabcnt}, #{runningtime, jdbcType=VARCHAR}, null, null, #{orderuserid, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiorderstep (orderid, status, confirmflag, holdflag, forceokflag, killflag, basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, realstarttime, realendtime, orderuserid)
+		values (#{orderid}, #{status, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, #{holdflag, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, #{killflag, jdbcType=VARCHAR}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{threadcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{runcnt, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq}, #{db, jdbcType=VARCHAR}, #{totaltabcnt}, #{successtabcnt}, #{runningtime, jdbcType=VARCHAR}, null, null, #{orderuserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+          from cotdl.tbl_piiorderstep 
+         where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</select>
+
+	<select id="readByStepEXE" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+          from cotdl.tbl_piiorderstep 
+         where orderid= #{orderid} and steptype in ('EXE_DELETE', 'EXE_UPDATE')
+	</select>
+	
+	<select id="readByStepseq" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+          from cotdl.tbl_piiorderstep 
+         where orderid= #{orderid} and stepseq= #{stepseq, jdbcType=VARCHAR}
+	</select>
+			
+	<select id="readFirstStep" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+          from cotdl.tbl_piiorderstep 
+         where orderid= #{orderid} and stepseq= (select min(stepseq) from cotdl.tbl_piiorderstep where orderid= #{orderid} group by orderid )
+	</select>
+			
+	<update id="updatebefore">
+		update cotdl.tbl_piiorderstep
+		   set 
+				status= 'Running',
+				realstarttime= SYSDATE,
+				realendtime= null,
+				runcnt = runcnt + 1
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</update>		
+	<update id="updateend">
+		update cotdl.tbl_piiorderstep
+		   set 
+				status= (select rtrim(case when ok = 0 then 'Ended OK'
+							                    when notok > 0 then 'Ended not OK'
+							                    when running > 0 then 'Running'
+							                    when wait > 0 then 'Running'
+							               end)
+						   from (
+								select 
+									  COALESCE(sum(case when status != 'Ended OK' then 1 end),0) as ok
+									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok 
+									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running 
+									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait 
+								from cotdl.tbl_piiordersteptable
+								where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+								)
+		 				),
+				runningtime= (
+					       TRUNC((sysdate-realstarttime)*24) || ':' || 
+					       LPAD(TRUNC(mod((sysdate - realstarttime)*24,1)*60),2,'0' ) || ':' || 
+					       LPAD(TRUNC(round(mod((sysdate - realstarttime)*24*60,1)*60)),2,'0' )
+					       <!-- TIMESTAMPDIFF(8, CHAR(SYSDATE - realstarttime ))  ||':'||
+					       LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(4, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          ) ||':'    ||
+					        LPAD(
+					            MOD(
+					                 TIMESTAMPDIFF(2, CHAR(SYSDATE - realstarttime ))
+					                ,60
+					               )
+					           ,2
+					           ,'0'
+					          )  -->
+						),
+				realendtime= SYSDATE,
+				successtabcnt = (select sum(CASE WHEN status='Ended OK' THEN 1 ELSE 0 END)
+				  				   from cotdl.tbl_piiordersteptable
+				 				  where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+		 						)
+		where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</update>
+	<update id="update">
+		update cotdl.tbl_piiorderstep
+		   set 
+				status= #{status, jdbcType=VARCHAR},
+				confirmflag= #{confirmflag, jdbcType=VARCHAR},
+				holdflag= #{holdflag, jdbcType=VARCHAR},
+				forceokflag= #{forceokflag, jdbcType=VARCHAR},
+				killflag= #{killflag, jdbcType=VARCHAR},
+				basedate= to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+				threadcnt= #{threadcnt, jdbcType=VARCHAR},
+				commitcnt= #{commitcnt, jdbcType=VARCHAR},
+				runcnt= #{runcnt, jdbcType=VARCHAR},
+				jobid= #{jobid, jdbcType=VARCHAR},
+				version= #{version, jdbcType=VARCHAR},
+				stepid= #{stepid, jdbcType=VARCHAR},
+				stepname= #{stepname, jdbcType=VARCHAR},
+				steptype= #{steptype, jdbcType=VARCHAR},
+				stepseq= #{stepseq, jdbcType=VARCHAR},
+				db= #{db, jdbcType=VARCHAR},
+				totaltabcnt= #{totaltabcnt, jdbcType=VARCHAR},
+				successtabcnt= #{successtabcnt, jdbcType=VARCHAR},
+				runningtime= #{runningtime, jdbcType=VARCHAR},
+				realstarttime= to_date(#{realstarttime, jdbcType=VARCHAR},'yyyy/mm/dd hh24:mi:ss'),
+				realendtime= to_date(#{realendtime, jdbcType=VARCHAR},'yyyy/mm/dd hh24:mi:ss')
+				orderuserid= #{orderuserid, jdbcType=VARCHAR}
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</update>
+	<update id="updateactionflag">
+		update cotdl.tbl_piiorderstep
+		   set 
+				confirmflag= #{confirmflag, jdbcType=VARCHAR},
+				holdflag= #{holdflag, jdbcType=VARCHAR},
+				forceokflag= #{forceokflag, jdbcType=VARCHAR}
+				<!-- killflag= #{killflag, jdbcType=VARCHAR}, -->
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
+	</update>
+	<update id="rerun">
+		update cotdl.tbl_piiorderstep
+		   set 
+				status='Wait condition',
+				runningtime=null,
+				successtabcnt=null,
+				realstarttime=null,
+				confirmflag= 'N',
+				holdflag= 'N',
+				forceokflag= 'N'
+				<!-- killflag= N, -->
+		 where orderid= #{orderid} 
+		   and status not in ('Ended OK', 'Wait condition') 
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiOrderStepVO"> 
+		<![CDATA[ 
+		select 
+			orderid, status, confirmflag, holdflag, forceokflag, killflag, basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, realstarttime, realendtime, orderuserid
+		from ( 
+				select 
+					 ROWNUM rn, orderid, status, confirmflag, holdflag, forceokflag, killflag, basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, realstarttime, realendtime, orderuserid
+				from (
+						select orderid, status, confirmflag, holdflag, forceokflag, killflag, to_char(basedate,'yyyy/mm/dd') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, to_char(realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, orderuserid
+					  	  from cotdl.tbl_piiorderstep  
+					  	  order by orderid, jobid, version, stepseq
+					 ) f
+				 
+		]]>
+	    
+		<trim prefix=" where 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and basedate = #{search2}
+						</if>
+						<if test="search3 != null">
+							and stepid = #{search3}
+						</if>
+						<if test="search4 != null">
+							and status = #{search4}
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				
+				order by orderid, jobid, version, stepseq
+			  ) d
+		where rn <= #{pagenum} * #{amount} 
+		  and rn > (#{pagenum} -1) * #{amount} 
+		order by orderid, jobid, version, stepseq
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiorderstep 
+		
+		<include refid="criteria_piiorderstep"></include> 
+			
+	</select>
+
+</mapper>

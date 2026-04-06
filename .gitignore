@@ -1,0 +1,52 @@
+# ==============================================================================
+# Datablocks Docker Monorepo .gitignore
+# ==============================================================================
+
+# --- Environment / Secrets ---
+.env
+*.env.local
+
+# --- DLM 기존 Git repo (서브디렉토리 repo 무시) ---
+DLM/.git
+
+# --- IDE ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Java / Gradle Build ---
+DLM/build/
+DLM/target/
+DLM/bin/
+DLM/.gradle/
+*.class
+*.jar
+*.war
+*.zip
+*.tar.gz
+
+# --- Python ---
+DLM-Privacy-AI/__pycache__/
+DLM-Privacy-AI/**/__pycache__/
+DLM-Privacy-AI/*.pyc
+DLM-Privacy-AI/.venv/
+DLM-Privacy-AI/venv/
+
+# --- Docker volumes / data ---
+mariadb/data/
+
+# --- Logs ---
+*.log
+*.log.*
+logs/
+
+# --- Claude ---
+.claude/

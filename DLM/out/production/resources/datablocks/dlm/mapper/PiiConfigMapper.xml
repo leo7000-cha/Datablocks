@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiConfigMapper">
+
+ 	<sql id="criteria_piipiiconfig">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and cfgkey like '%'||#{search1}||'%'
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiConfigVO">
+		<![CDATA[
+		select cfgkey, value, comments
+		 from cotdl.tbl_piiconfig 
+		 order by cfgkey
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiconfig (cfgkey, value, comments)
+		values (#{cfgkey, jdbcType=VARCHAR}, #{value, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectcfgkey">
+				insert into COTDL.tbl_piiconfig (cfgkey, value, comments)
+		values (#{cfgkey, jdbcType=VARCHAR}, #{value, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiConfigVO">
+		select cfgkey, value, comments
+		  from cotdl.tbl_piiconfig where cfgkey= #{cfgkey}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiconfig where cfgkey= #{cfgkey}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiconfig
+		set 
+			value= #{value, jdbcType=VARCHAR},
+			comments= #{comments, jdbcType=VARCHAR}
+		where cfgkey= #{cfgkey}
+	</update>
+	
+	<update id="updateVal">
+		update cotdl.tbl_piiconfig
+		set 
+			value= #{value, jdbcType=VARCHAR}
+		where cfgkey= #{cfgkey}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiConfigVO"> 
+		<![CDATA[ 
+		select 
+			cfgkey, value, comments
+		from ( 
+				select 
+					 ROWNUM rn, cfgkey, value, comments
+				from (
+						select cfgkey, value, comments
+						  from cotdl.tbl_piiconfig 
+						 order by cfgkey
+					 ) r 
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and cfgkey like '%'||#{search1}||'%'
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by cfgkey 
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by cfgkey
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiconfig 
+		
+		<include refid="criteria_piipiiconfig"></include> 
+			
+	</select>
+
+
+</mapper>

@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.MetaTableMapper">
+
+    <!--
+        검색 필드에서 사용자가 직접 %를 입력하여 와일드카드 검색 가능
+        예: "ACTEUR" = 정확히 일치, "%ACTEUR%" = 포함, "ACTEUR%" = 시작
+    -->
+    <sql id="criteria_Metatable">
+        <trim prefix="where 1=1" suffix="">
+            <if test="search1 != null">
+                and db = #{search1}
+            </if>
+            <if test="search2 != null">
+                and owner = #{search2}
+            </if>
+            <if test="search3 != null">
+                and table_name like #{search3}
+            </if>
+            <if test="search4 != null">
+                and column_name like #{search4}
+            </if>
+            <if test="search5 == 'Y'.toString()">
+                and encript_flag = 'Y'
+            </if>
+            <if test="search5 == 'N'.toString()">
+                and (encript_flag != 'Y' or encript_flag is null)
+            </if>
+            <if test="search6 == 'GRADE'">
+                and piigrade is not null
+            </if>
+            <if test="search6 == 'NOTGRADE'">
+                and piigrade is null
+            </if>
+            <if test="search6 != null and search6 != 'GRADE' and search6 != 'NOTGRADE'">
+                and piigrade = #{search6}
+            </if>
+            <if test="search7 == 'PII'">
+                and piitype is not null
+            </if>
+            <if test="search7 == 'NOTPII'">
+                and piitype is null
+            </if>
+            <if test="search7 != null and search7 != 'PII' and search7 != 'NOTPII'">
+                and piitype = #{search7}
+            </if>
+            <if test="search8 == 'Y'.toString()">
+                and scramble_type is not null
+            </if>
+            <if test="search8 == 'N'.toString()">
+                and scramble_type is null
+            </if>
+            <if test="search9 == 'Y'.toString()">
+                and val1 = 'Y'
+            </if>
+            <if test="search9 == 'N'.toString()">
+                and (val1 != 'Y' or val1 is null)
+            </if>
+            <if test="search10 != null">
+                and column_comment like #{search10}
+            </if>
+            <if test="search12 != null">
+                <![CDATA[ and DATE_FORMAT(upddate,'%Y/%m/%d')  >= #{search12, jdbcType=VARCHAR} ]]>
+            </if>
+            <if test="search13 != null">
+                <![CDATA[ and DATE_FORMAT(upddate,'%Y/%m/%d')  <= #{search13, jdbcType=VARCHAR} ]]>
+            </if>
+            <if test="search14 == 'Y'.toString()">
+                and val2 like 'PII%'
+            </if>
+            <if test="search14 == 'N'.toString()">
+                and val2 like 'NONPII%'
+            </if>
+            <if test="search15 == 'Y'.toString()">
+                and val3 is not null and val3 != ''
+            </if>
+            <if test="search15 == 'N'.toString()">
+                and (val3 is null or val3 = '')
+            </if>
+            <if test="search16 == 'Y'.toString()">
+                and val2 is not null and val2 like '%|%'
+            </if>
+            <if test="search16 == 'N'.toString()">
+                and (val2 is null or val2 not like '%|%')
+            </if>
+        </trim>
+    </sql>
+    <sql id="criteria_Metatable_Exact">
+        <trim prefix="where 1=1" suffix="">
+            <if test="search1 != null">
+                and db = #{search1}
+            </if>
+            <if test="search2 != null">
+                and owner = #{search2}
+            </if>
+            <if test="search3 != null">
+                and table_name = #{search3}
+            </if>
+
+        </trim>
+    </sql>
+    <sql id="criteria_Metatable_GapVO">
+        <trim prefix=" " suffix="">
+            <if test="search1 != null">
+                and t.db = #{search1}
+            </if>
+            <if test="search2 != null">
+                and t.owner = #{search2}
+            </if>
+            <if test="search3 != null">
+                and t.table_name like #{search3}
+            </if>
+            <if test="search4 != null">
+                and t.column_name like #{search4}
+            </if>
+            <if test="search5 == 'Y'.toString()">
+                and r.column_name is not null
+            </if>
+            <if test="search5 == 'N'.toString()">
+                and r.column_name is null
+            </if>
+            <if test="search9 == 'Y'.toString()">
+                and t.val1 = 'Y'
+            </if>
+            <if test="search9 == 'N'.toString()">
+                and (t.val1 != 'Y' or t.val1 is null)
+            </if>
+            <if test="search12 != null">
+                <![CDATA[ and t.upddate >= STR_TO_DATE(#{search12, jdbcType=VARCHAR}, '%Y/%m/%d') ]]>
+            </if>
+            <if test="search13 != null">
+                <![CDATA[ and t.upddate < DATE_ADD(STR_TO_DATE(#{search13, jdbcType=VARCHAR}, '%Y/%m/%d'), INTERVAL 1 DAY) ]]>
+            </if>
+
+        </trim>
+    </sql>
+    <select id="getList" resultType="datablocks.dlm.domain.MetaTableVO">
+		<![CDATA[
+        select db,
+               owner,
+               table_name,
+               column_name,
+               column_id,
+               pk_yn,
+               pk_position,
+               full_data_type,
+               data_type,
+               data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate, '%Y/%m/%d') as regdate, DATE_FORMAT(upddate, '%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+        from cotdl.tbl_metatable
+        order by db, owner, table_name, column_id
+        ]]>
+	</select>
+
+    <insert id="insert">
+        insert into COTDL.tbl_metatable (db, owner, table_name, column_name, column_id, pk_yn, pk_position,
+                                         full_data_type, data_type, data_length, domain, piitype, piigrade,
+                                         encript_flag, scramble_type, regdate, upddate, reguserid, upduserid, masterkey,
+                                         masteryn, table_comment, column_comment, val1, val2, val3, val4)
+        values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR},
+                #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR},
+                #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR},
+                #{data_length, jdbcType=VARCHAR}, #{domain, jdbcType=VARCHAR}, #{piitype, jdbcType=VARCHAR},
+                #{piigrade, jdbcType=VARCHAR}, #{encript_flag, jdbcType=VARCHAR}, #{scramble_type, jdbcType=VARCHAR},
+                NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR},
+                #{masterkey, jdbcType=VARCHAR}, #{masteryn, jdbcType=VARCHAR}, #{table_comment, jdbcType=VARCHAR},
+                #{column_comment, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR},
+                #{val3, jdbcType=VARCHAR}, #{val4, jdbcType=VARCHAR})
+    </insert>
+
+    <insert id="insertSelectKey">
+        insert into COTDL.tbl_metatable (db, owner, table_name, column_name, column_id, pk_yn, pk_position,
+                                         full_data_type, data_type, data_length, domain, piitype, piigrade,
+                                         encript_flag, scramble_type, regdate, upddate, reguserid, upduserid, masterkey,
+                                         masteryn, table_comment, column_comment, val1, val2, val3, val4)
+        values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR},
+                #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR},
+                #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR},
+                #{data_length, jdbcType=VARCHAR}, #{domain, jdbcType=VARCHAR}, #{piitype, jdbcType=VARCHAR},
+                #{piigrade, jdbcType=VARCHAR}, #{encript_flag, jdbcType=VARCHAR}, #{scramble_type, jdbcType=VARCHAR},
+                NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR},
+                #{masterkey, jdbcType=VARCHAR}, #{masteryn, jdbcType=VARCHAR}, #{table_comment, jdbcType=VARCHAR},
+                #{column_comment, jdbcType=VARCHAR}, #{val1, jdbcType=VARCHAR}, #{val2, jdbcType=VARCHAR},
+                #{val3, jdbcType=VARCHAR}, #{val4, jdbcType=VARCHAR})
+    </insert>
+
+    <select id="read" resultType="datablocks.dlm.domain.MetaTableVO">
+        select db,
+               owner,
+               table_name,
+               column_name,
+               column_id,
+               pk_yn,
+               pk_position,
+               full_data_type,
+               data_type,
+               data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate, '%Y/%m/%d') as regdate, DATE_FORMAT(upddate, '%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+        from cotdl.tbl_metatable
+        where db= #{db, jdbcType=VARCHAR}
+          and owner= #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and column_name = #{column_name, jdbcType=VARCHAR}
+    </select>
+
+    <delete id="delete">
+        delete
+        from cotdl.tbl_metatable
+        where db = #{db, jdbcType=VARCHAR}
+          and owner = #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and column_name = #{column_name, jdbcType=VARCHAR}
+    </delete>
+
+    <update id="update">
+        update cotdl.tbl_metatable
+        set pk_yn= #{pk_yn, jdbcType=VARCHAR},
+            pk_position= #{pk_position, jdbcType=VARCHAR},
+            full_data_type= #{full_data_type, jdbcType=VARCHAR},
+            data_type= #{data_type, jdbcType=VARCHAR},
+            data_length= #{data_length, jdbcType=VARCHAR},
+            domain= #{domain, jdbcType=VARCHAR},
+            piitype= #{piitype, jdbcType=VARCHAR},
+            piigrade= #{piigrade, jdbcType=VARCHAR},
+            encript_flag= #{encript_flag, jdbcType=VARCHAR},
+            scramble_type= #{scramble_type, jdbcType=VARCHAR},
+            masterkey= #{masterkey, jdbcType=VARCHAR},
+            masteryn= #{masteryn, jdbcType=VARCHAR},
+            table_comment= #{table_comment, jdbcType=VARCHAR},
+            column_comment= #{column_comment, jdbcType=VARCHAR},
+            val1= #{val1, jdbcType=VARCHAR},
+            val2= #{val2, jdbcType=VARCHAR},
+            val4= #{val4, jdbcType=VARCHAR},
+            upddate= NOW()
+        where db = #{db, jdbcType=VARCHAR}
+          and owner = #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and column_name = #{column_name, jdbcType=VARCHAR}
+    </update>
+    <update id="piiupdate">
+        update cotdl.tbl_metatable
+        set piitype= #{piitype, jdbcType=VARCHAR},
+            piigrade= #{piigrade, jdbcType=VARCHAR},
+            encript_flag= #{encript_flag, jdbcType=VARCHAR},
+            scramble_type= #{scramble_type, jdbcType=VARCHAR},
+            masterkey= #{masterkey},
+            masteryn= #{masteryn, jdbcType=VARCHAR},
+            val1= #{val1, jdbcType=VARCHAR},
+            upddate= NOW()
+        where db = #{db, jdbcType=VARCHAR}
+          and owner = #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and column_name = #{column_name, jdbcType=VARCHAR}
+    </update>
+    <update id="vefifyupdate">
+        update cotdl.tbl_metatable
+        set
+            val3= DATE_FORMAT(now(),'%Y/%m/%d')
+        where db = #{db, jdbcType=VARCHAR}
+          and owner = #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and column_name = #{column_name, jdbcType=VARCHAR}
+    </update>
+    <select id="getListForOneTable" resultType="datablocks.dlm.domain.MetaTableVO">
+        <![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+		  from cotdl.tbl_metatable
+		]]>
+        <include refid="criteria_Metatable_Exact"></include>
+        order by
+        db, owner, table_name, column_id
+        <![CDATA[
+		limit #{offset}, #{amount}
+		]]>
+    </select>
+    <select id="getListWithPaging" resultType="datablocks.dlm.domain.MetaTableVO">
+        <![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+		  from cotdl.tbl_metatable
+		]]>
+        <include refid="criteria_Metatable"></include>
+		order by
+		    <choose>
+		        <when test="search11 == 'V'.toString()">
+                   val3 DESC,
+                </when>
+		        <when test="search11 == 'U'.toString()">
+                   upddate DESC,
+                </when>
+		        <otherwise>
+                   regdate DESC,
+                </otherwise>
+		    </choose>
+		    db, owner, table_name, column_id
+        <![CDATA[
+		limit #{offset}, #{amount}
+		]]>
+    </select>
+    <select id="getListOneTable" resultType="datablocks.dlm.domain.MetaTableVO">
+        select db,
+               owner,
+               table_name,
+               column_name,
+               column_id,
+               pk_yn,
+               pk_position,
+               full_data_type,
+               data_type,
+               data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate, '%Y/%m/%d') as regdate, DATE_FORMAT(upddate, '%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+        from cotdl.tbl_metatable
+        where db= #{db, jdbcType=VARCHAR}
+          and owner= #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+    </select>
+    <select id="getListOneTableScramble" resultType="datablocks.dlm.domain.MetaTableVO">
+		<![CDATA[
+        select db,
+               owner,
+               table_name,
+               column_name,
+               column_id,
+               pk_yn,
+               pk_position,
+               full_data_type,
+               data_type,
+               data_length, domain, piitype, piigrade, encript_flag, scramble_type, DATE_FORMAT(regdate, '%Y/%m/%d') as regdate, DATE_FORMAT(upddate, '%Y/%m/%d') as upddate, reguserid, upduserid, masterkey, masteryn, table_comment, column_comment, val1, val2, val3, val4
+        from cotdl.tbl_metatable
+        where db= #{db, jdbcType=VARCHAR}
+          and owner= #{owner, jdbcType=VARCHAR}
+          and table_name = #{table_name, jdbcType=VARCHAR}
+          and scramble_type is not null
+        ]]>
+	</select>
+    <select id="getTotalCount" resultType="int">
+        select count(1) from cotdl.tbl_metatable
+        <include refid="criteria_Metatable"></include>
+    </select>
+
+    <select id="getStats" resultType="java.util.HashMap">
+        SELECT
+            COUNT(DISTINCT CONCAT(db, '.', owner, '.', table_name)) AS tableCount,
+            COUNT(*) AS columnCount,
+            SUM(CASE WHEN val3 IS NOT NULL AND val3 != '' THEN 1 ELSE 0 END) AS verifiedCount,
+            SUM(CASE WHEN val3 IS NULL OR val3 = '' THEN 1 ELSE 0 END) AS unverifiedCount,
+            SUM(CASE WHEN piitype IS NOT NULL THEN 1 ELSE 0 END) AS piiCount
+        FROM cotdl.tbl_metatable
+    </select>
+    <select id="getDistinctDbOwners" resultType="java.util.HashMap">
+        SELECT DISTINCT db, owner
+        FROM cotdl.tbl_metatable
+        ORDER BY db, owner
+    </select>
+    <select id="getListWithPaging_GapVO" resultType="datablocks.dlm.domain.MetaTableGapVO">
+        <![CDATA[
+		with registered_cols as (
+            SELECT t.*
+                 , s.jobid as jobid
+                 , DATE_FORMAT(s.regdate, '%Y/%m/%d') as confregdate
+            FROM cotdl.tbl_metatable t
+            inner join
+            (
+                  select a.jobid, a.version, a.jobname, b.db, b.owner, b.table_name, b.regdate
+                    from cotdl.tbl_piijob a, cotdl.tbl_piisteptable b
+                    where 1=1
+                    and a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid)
+                    and a.status = 'ACTIVE'
+                    and a.runtype = 'REGULAR'
+                    and a.jobtype = 'PII'
+                    /*and a.POLICY_ID = 'PII_POLICY3'*/
+        ]]>
+                    <trim prefix="" suffix="">
+                        <if test="search6 != null">
+                            and a.POLICY_ID = #{search6}
+                        </if>
+                    </trim>
+        <![CDATA[
+                    and a.jobid = b.jobid
+                    and a.version = b.version
+                    and b.exetype ='DELETE'
+            ) s
+            on  t.db =s.db
+            and t.owner = s.owner
+            and t.table_name = s.table_name
+            where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+            union
+            SELECT t.*
+                 , s.jobid as jobid
+                 ,  DATE_FORMAT(s.regdate, '%Y/%m/%d') as confregdate
+            FROM cotdl.tbl_metatable t
+            inner join
+            (
+                  select a.jobid, a.version, a.jobname, b.db, b.owner, b.table_name, c.column_name, b.regdate
+                    from cotdl.tbl_piijob a , cotdl.tbl_piisteptable b, cotdl.tbl_piisteptableupdate C
+                    where 1=1
+                    and a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid)
+                    and a.status = 'ACTIVE'
+                    and a.runtype = 'REGULAR'
+                    and a.jobtype = 'PII'
+                    /*and a.POLICY_ID = 'PII_POLICY3'*/
+        ]]>
+        <trim prefix="" suffix="">
+            <if test="search6 != null">
+                and a.POLICY_ID = #{search6}
+            </if>
+        </trim>
+        <![CDATA[
+                    and a.jobid = b.jobid
+                    and a.version = b.version
+                    and a.jobid = c.jobid
+                    and a.version = c.version
+                    and b.exetype ='UPDATE'
+                    and b.seq1 = c.seq1
+                    and b.seq2 = c.seq2
+                    and b.seq3 = c.seq3
+            ) s
+            on  t.db =s.db
+            and t.owner = s.owner
+            and t.table_name = s.table_name
+            and t.column_name = s.column_name
+            where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+        )
+        SELECT
+            t.db, t.owner, t.table_name, t.column_name, t.column_id, t.pk_yn, t.pk_position, t.full_data_type, t.data_type, t.data_length, t.domain, t.piitype, t.piigrade, t.encript_flag, t.scramble_type, DATE_FORMAT(t.regdate,'%Y/%m/%d') as regdate, DATE_FORMAT(t.upddate,'%Y/%m/%d') as upddate, t.reguserid, t.upduserid, t.masterkey, t.masteryn, t.table_comment, t.column_comment, t.val1, t.val2, t.val3, t.val4
+          , r.jobid AS jobid
+          , r.confregdate AS confregdate
+          , null as detect_results
+          , null as detect_date
+        FROM cotdl.tbl_metatable t
+        LEFT OUTER JOIN registered_cols r
+        on  t.db =r.db
+        and t.owner = r.owner
+        and t.table_name = r.table_name
+        and t.column_name = r.column_name
+        where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+          /*and r.column_name is not null*/
+        ]]>
+            <include refid="criteria_Metatable_GapVO"></include>
+        order by
+        <if test="search11 == 'R'.toString()">
+            regdate DESC,
+        </if>
+        <if test="search11 == 'V'.toString()">
+            val3 DESC,
+        </if>
+        <if test="search11 == 'U'.toString()">
+            upddate DESC,
+        </if>
+        db, owner, table_name, column_id
+        <![CDATA[
+		limit #{offset}, #{amount}
+		]]>
+    </select>
+
+    <select id="getTotalCount_GapVO" resultType="int">
+        <![CDATA[
+        with registered_cols as (
+            SELECT t.*
+                 , s.jobid as jobid
+                 , s.regdate as confregdate
+            FROM cotdl.tbl_metatable t
+                     inner join
+                 (
+                     select a.jobid, a.version, a.jobname, b.db, b.owner, b.table_name, b.regdate
+                     from cotdl.tbl_piijob a, cotdl.tbl_piisteptable b
+                     where 1=1
+                       and a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid)
+                       and a.status = 'ACTIVE'
+                       and a.runtype = 'REGULAR'
+                       and a.jobtype = 'PII'
+                       /*and a.POLICY_ID = 'PII_POLICY3'*/
+        ]]>
+        <trim prefix="" suffix="">
+            <if test="search6 != null">
+                and a.POLICY_ID = #{search6}
+            </if>
+        </trim>
+        <![CDATA[
+                       and a.jobid = b.jobid
+                       and a.version = b.version
+                       and b.exetype ='DELETE'
+                 ) s
+                 on  t.db =s.db
+                     and t.owner = s.owner
+                     and t.table_name = s.table_name
+            where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+            union
+            SELECT t.*
+                 , s.jobid as jobid
+                 , s.regdate as confregdate
+            FROM cotdl.tbl_metatable t
+                     inner join
+                 (
+                     select a.jobid, a.version, a.jobname, b.db, b.owner, b.table_name, c.column_name, b.regdate
+                     from cotdl.tbl_piijob a , cotdl.tbl_piisteptable b, cotdl.tbl_piisteptableupdate C
+                     where 1=1
+                       and a.version in (select max(cast(version as INTEGER)) from cotdl.tbl_piijob where jobid = a.jobid)
+                       and a.status = 'ACTIVE'
+                       and a.runtype = 'REGULAR'
+                       and a.jobtype = 'PII'
+                       /*and a.POLICY_ID = 'PII_POLICY3'*/
+        ]]>
+        <trim prefix="" suffix="">
+            <if test="search6 != null">
+                and a.POLICY_ID = #{search6}
+            </if>
+        </trim>
+        <![CDATA[
+                       and a.jobid = b.jobid
+                       and a.version = b.version
+                       and a.jobid = c.jobid
+                       and a.version = c.version
+                       and b.exetype ='UPDATE'
+                       and b.seq1 = c.seq1
+                       and b.seq2 = c.seq2
+                       and b.seq3 = c.seq3
+
+                 ) s
+                 on  t.db =s.db
+                     and t.owner = s.owner
+                     and t.table_name = s.table_name
+                     and t.column_name = s.column_name
+            where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+        )
+        SELECT count(1)
+        FROM cotdl.tbl_metatable t
+                 LEFT OUTER JOIN registered_cols r
+                                 on  t.db =r.db
+                                     and t.owner = r.owner
+                                     and t.table_name = r.table_name
+                                     and t.column_name = r.column_name
+        where t.PIITYPE is not null and t.PIITYPE not in ('3_3_corpno')
+          /*and r.column_name is not null*/
+        ]]>
+        <include refid="criteria_Metatable_GapVO"></include>
+
+    </select>
+
+    <select id="getListEntireTableToScramble" resultType="datablocks.dlm.domain.PiiStepTableTargetVO">
+		<![CDATA[
+        SELECT distinct db,
+                        owner,
+                        table_name,
+                        (SELECT COALESCE(MAX(seq2), 0)
+                         FROM cotdl.tbl_PIISTEPTABLE
+                         where jobid = #{jobid, jdbcType=VARCHAR}
+                           and version = #{version, jdbcType=VARCHAR}
+                           and EXETYPE = 'SCRAMBLE') seq2
+        FROM cotdl.tbl_metatable
+        WHERE db in (select DISTINCT db
+                    from cotdl.tbl_piidatabase
+                    where env = 'PRODUCTION'
+                      and system in (select b.system
+                                    from cotdl.TBL_PIISTEP a,
+                                         cotdl.TBL_PIIDATABASE b
+                                    where a.jobid = #{jobid, jdbcType=VARCHAR}
+                                      and a.version = #{version, jdbcType=VARCHAR}
+                                      and a.stepid = #{stepid, jdbcType=VARCHAR}
+                                      and a.db = b.db)
+                    )
+          and (owner, table_name) NOT IN (SELECT owner, table_name
+                                          FROM cotdl.tbl_PIISTEPTABLE
+                                          where jobid = #{jobid, jdbcType=VARCHAR}
+                                            and version = #{version, jdbcType=VARCHAR}
+                                            and EXETYPE = 'SCRAMBLE')
+          and scramble_type is not null
+          and owner != 'COTDL'
+        order by db, owner, table_name
+        ]]>
+	</select>
+
+</mapper>

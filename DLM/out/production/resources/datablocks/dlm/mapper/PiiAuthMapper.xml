@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiAuthMapper">
+
+ 	<sql id="criteria_piimember_auth">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and upper(userid) like '%'||upper(#{search1})||'%'
+						</if>
+						<if test="search2 != null">
+							and upper(auth) like '%'||upper(#{search2})||'%'
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.AuthVO">
+		<![CDATA[
+		select userid, auth
+		 from cotdl.tbl_member_auth where userid != 'admin'
+		 order by auth
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_member_auth (userid, auth)
+		values (#{userid, jdbcType=VARCHAR}, #{auth, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+				insert into COTDL.tbl_member_auth (userid, auth)
+		values (#{userid, jdbcType=VARCHAR}, #{auth, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.AuthVO">
+		select userid, auth
+		  from cotdl.tbl_member_auth where userid= #{userid} and auth= #{auth, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_member_auth where userid= #{userid} and auth= #{auth, jdbcType=VARCHAR} and userid != 'admin'
+	</delete>
+	<delete id="deleteByUserid">
+		delete from cotdl.tbl_member_auth where userid= #{userid} and userid != 'admin'
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_member_auth
+		set 
+			auth= #{authtochange, jdbcType=VARCHAR}
+		where userid= #{userid} and auth= #{auth, jdbcType=VARCHAR} and userid != 'admin'
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.AuthVO"> 
+		<![CDATA[ 
+		select 
+			userid, auth
+		from ( 
+				select 
+					 ROWNUM rn, userid, auth
+				from (
+						select userid, auth
+						  from cotdl.tbl_member_auth 
+						 order by auth
+					 ) r
+				where  userid != 'admin' and
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and upper(userid) like '%'||upper(#{search1})||'%'
+						</if>
+						<if test="search2 != null">
+							and upper(auth) like '%'||upper(#{search2})||'%'
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by auth 
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by auth
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_member_auth where userid != 'admin'
+		
+		<include refid="criteria_piimember_auth"></include> 
+			
+	</select>
+
+
+</mapper>

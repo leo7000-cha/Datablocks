@@ -1,0 +1,106 @@
+plugins {
+    id 'org.springframework.boot' version '3.3.0'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'java'
+    id 'war'
+}
+
+group = 'datablocks'
+version = ''
+sourceCompatibility = '21'
+// 아래 모두 추가 내용
+/*apply plugin: 'war'
+
+bootWar {
+
+    archiveName("DLM.war")
+
+}*/
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    // JPA 사용 안함 - MyBatis만 사용 (OSIV 문제로 인해 제거)
+    // implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'  // AOP 사용을 위해 추가
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+
+    implementation 'org.springframework.security:spring-security-taglibs'
+    implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16' /* Log4JDBC */
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11:23.4.0.24.05'
+
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+
+    implementation group: 'org.mybatis.spring.boot', name: 'mybatis-spring-boot-starter', version: '3.0.3'
+
+    implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api:3.0.1'
+    implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl:3.0.1'
+
+    providedRuntime 'org.apache.tomcat.embed:tomcat-embed-jasper'
+
+    // https://mvnrepository.com/artifact/commons-codec/commons-codec
+    implementation group: 'commons-codec', name: 'commons-codec', version: '1.15'
+    // https://mvnrepository.com/artifact/commons-io/commons-io
+    implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
+    // https://mvnrepository.com/artifact/net.coobird/thumbnailator
+    implementation group: 'net.coobird', name: 'thumbnailator', version: '0.4.17'
+    // for JNDI
+    implementation group: 'org.apache.commons', name: 'commons-dbcp2', version: '2.9.0'
+
+    // https://mvnrepository.com/artifact/org.apache.poi/poi
+    implementation group: 'org.apache.poi', name: 'poi', version: '5.2.2'
+    // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+    implementation group: 'org.apache.poi', name: 'poi-ooxml', version: '5.2.2'
+
+    // ⛔️ 아래 의존성들은 spring-boot-starter-web에 이미 포함되어 있으므로 삭제하는 것을 권장합니다.
+    // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.2'
+    // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.2.2'
+
+    implementation group: 'com.github.ulisesbocchio', name: 'jasypt-spring-boot-starter', version: '3.0.5'
+    // commons-fileupload 제거 — Spring Boot 3.x 내장 StandardServletMultipartResolver 사용
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'com.jcraft:jsch:0.1.55'
+
+    implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
+    implementation 'com.openhtmltopdf:openhtmltopdf-slf4j:1.0.10'
+
+    //test
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+}
+
+tasks.withType(JavaCompile) {
+    options.fork = true
+    options.forkOptions.jvmArgs = ['-Xss8m']
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -1,0 +1,196 @@
+#=============================================================================
+# 03. DLM Tomcat 배포 - 실명령어 버전 (고객사 서버 - Ubuntu)
+#
+# ※ .sh 실행 권한이 없는 경우 아래 명령어를 한 줄씩 복사하여 실행하세요.
+# ※ sudo 또는 root 권한으로 실행하세요.
+# ※ [변경필요] 표시된 부분은 환경에 맞게 수정 후 복사하세요.
+#=============================================================================
+
+
+# ── 아카이브 해제 ──
+# [변경필요] 아카이브 파일명을 실제 파일명으로 교체
+
+rm -rf /tmp/dlm_deploy_work
+mkdir -p /tmp/dlm_deploy_work
+tar xzf /tmp/dlm_deploy_20260327.tar.gz -C /tmp/dlm_deploy_work
+ls /tmp/dlm_deploy_work/
+
+
+#=============================================================================
+# STEP 1. tomcat 시스템 사용자 생성
+#=============================================================================
+
+# 이미 있으면 건너뜀
+id tomcat
+# 없으면 아래 실행
+useradd -m -U -d /opt/tomcat -s /bin/false tomcat
+
+
+#=============================================================================
+# STEP 2. Java Corretto 11 설치
+#=============================================================================
+
+mkdir -p /usr/lib/jvm/java-11-amazon-corretto
+
+# [변경필요] 해제된 폴더 경로 확인 후 수정
+rsync -a /tmp/dlm_deploy_work/dlm_deploy_20260327/java/amazon-corretto-11/ /usr/lib/jvm/java-11-amazon-corretto/
+chmod +x /usr/lib/jvm/java-11-amazon-corretto/bin/*
+
+# JAVA_HOME 환경변수 설정
+# ※ 아래 내용을 vi 등으로 파일에 직접 작성
+# vi /etc/profile.d/dlm_java.sh
+#
+# 파일 내용:
+# export JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto
+# export PATH=${JAVA_HOME}/bin:${PATH}
+
+# 적용
+source /etc/profile.d/dlm_java.sh
+
+# 확인
+/usr/lib/jvm/java-11-amazon-corretto/bin/java -version
+
+
+#=============================================================================
+# STEP 3. Tomcat 설치
+# [변경필요] apache-tomcat-9.0.87 은 실제 톰캣 버전 폴더명으로 교체
+#=============================================================================
+
+# 패키징에서 Tomcat 복사
+rsync -a /tmp/dlm_deploy_work/dlm_deploy_20260327/tomcat/apache-tomcat-9.0.87/ /opt/tomcat/apache-tomcat-9.0.87/
+
+# symlink 생성
+rm -f /opt/tomcat/latest
+ln -s /opt/tomcat/apache-tomcat-9.0.87 /opt/tomcat/latest
+
+# 런타임 디렉토리 생성
+mkdir -p /opt/tomcat/latest/logs
+mkdir -p /opt/tomcat/latest/temp
+mkdir -p /opt/tomcat/latest/work
+
+# 확인
+ls -la /opt/tomcat/latest
+
+
+#=============================================================================
+# STEP 4. 실행 권한 설정
+#=============================================================================
+
+chmod 755 /opt/tomcat/latest/bin/*
+chmod +x /opt/tomcat/latest/bin/*.sh
+
+
+#=============================================================================
+# STEP 5. 로그 디렉토리 + 소유권
+#=============================================================================
+
+mkdir -p /dlmlogs
+mkdir -p /dlmapilogs
+chown -R tomcat:tomcat /dlmlogs
+chown -R tomcat:tomcat /dlmapilogs
+chown -R tomcat:tomcat /opt/tomcat
+
+# 확인
+stat -c '%U:%G %n' /opt/tomcat /dlmlogs /dlmapilogs
+
+
+#=============================================================================
+# STEP 6. sudoers 설정
+#=============================================================================
+
+# ※ 아래 내용을 vi 등으로 파일에 직접 작성
+# vi /etc/sudoers.d/tomcat
+#
+# 파일 내용:
+# tomcat ALL=(ALL) NOPASSWD: ALL
+
+chmod 440 /etc/sudoers.d/tomcat
+visudo -cf /etc/sudoers.d/tomcat
+
+
+#=============================================================================
+# STEP 7. systemd 서비스 등록
+# ※ 아래 내용을 vi 등으로 파일에 직접 작성
+# vi /etc/systemd/system/tomcat.service
+#=============================================================================
+
+# 파일 내용:
+# [Unit]
+# Description=X-One Apache Tomcat Service
+# After=network.target mariadb.service
+# Wants=mariadb.service
+#
+# [Service]
+# Type=forking
+#
+# User=tomcat
+# Group=tomcat
+# UMask=0007
+#
+# Environment=JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto
+# Environment=CATALINA_HOME=/opt/tomcat/latest
+# Environment=CATALINA_BASE=/opt/tomcat/latest
+# Environment=CATALINA_PID=/opt/tomcat/latest/temp/tomcat.pid
+#
+# Environment="CATALINA_OPTS=-Xms4096M -Xmx22464M -server -XX:+UseParallelGC"
+# Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom -Dspring.profiles.active=prod"
+#
+# PIDFile=/opt/tomcat/latest/temp/tomcat.pid
+#
+# ExecStart=/opt/tomcat/latest/bin/catalina.sh start
+# ExecStop=/opt/tomcat/latest/bin/catalina.sh stop
+#
+# SuccessExitStatus=143
+# Restart=on-failure
+# RestartSec=10
+#
+# [Install]
+# WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl enable tomcat.service
+
+
+#=============================================================================
+# STEP 8. 방화벽 (ufw)
+#=============================================================================
+
+ufw allow 8080/tcp comment "DLM Tomcat"
+
+
+#=============================================================================
+# 검증
+#=============================================================================
+
+# Java
+/usr/lib/jvm/java-11-amazon-corretto/bin/java -version
+
+# Tomcat symlink
+ls -la /opt/tomcat/latest
+
+# WAR 파일
+ls /opt/tomcat/latest/webapps/*.war
+
+# 소유권
+stat -c '%U:%G %n' /opt/tomcat /dlmlogs /dlmapilogs
+
+# sudoers
+cat /etc/sudoers.d/tomcat
+
+# 서비스 상태
+systemctl is-enabled tomcat
+
+
+#=============================================================================
+# 서비스 시작
+#=============================================================================
+
+systemctl start tomcat
+systemctl status tomcat --no-pager
+
+# 접속 확인: http://<서버IP>:8080
+
+
+# ── 임시 파일 정리 ──
+
+rm -rf /tmp/dlm_deploy_work

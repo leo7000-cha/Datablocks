@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.OrderDdlMapper">
+
+	<sql id="criteria_orderddl2">
+		<trim prefix="where 1=1" suffix="">
+			<if test="orderid != null">
+				and orderid = #{orderid}
+			</if>
+			<if test="stepid != null">
+				and stepid = #{stepid, jdbcType=VARCHAR}
+			</if>
+			<if test="seq1 != null">
+				and seq1 = #{seq1}
+			</if>
+			<if test="seq2 != null">
+				and seq2 = #{seq2}
+			</if>
+			<if test="seq3 != null">
+				and seq3 = #{seq3}
+			</if>
+			<if test="object_type != null">
+				and object_type = #{object_type}
+			</if>
+			<if test="object_owner != null">
+				and object_owner = #{object_owner}
+			</if>
+			<if test="object_name != null">
+				and object_name = #{object_name}
+			</if>
+		</trim>
+	</sql>
+	<sql id="criteria_orderddl">
+		<trim prefix="where 1=1" suffix="">
+			<if test="orderid != null">
+				and orderid = #{orderid}
+			</if>
+			<if test="stepid != null">
+				and stepid = #{stepid, jdbcType=VARCHAR}
+			</if>
+			<if test="seq1 != null">
+				and seq1 = #{seq1}
+			</if>
+			<if test="seq2 != null">
+				and seq2 = #{seq2}
+			</if>
+			<if test="seq3 != null">
+				and seq3 = #{seq3}
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.OrderDdlVO">
+		<![CDATA[
+		select orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl
+		from cotdl.tbl_orderddl
+		order by `orderid`
+			   , `stepid`
+			   , `seq1`
+			   , `seq2`
+			   , `seq3`
+			   , `object_type` desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_orderddl (orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl)
+		values (#{orderid}, #{stepid, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}
+			, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{constraint_type, jdbcType=VARCHAR}, #{object_type, jdbcType=VARCHAR}, #{object_owner, jdbcType=VARCHAR}
+			, #{object_name, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{result, jdbcType=VARCHAR}, #{ddl, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectcfgkey">
+		insert into COTDL.tbl_orderddl (orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl)
+		values (#{orderid}, #{stepid, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}
+			   , #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{constraint_type, jdbcType=VARCHAR}, #{object_type, jdbcType=VARCHAR}, #{object_owner, jdbcType=VARCHAR}
+			   , #{object_name, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{result, jdbcType=VARCHAR}, #{ddl, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.OrderDdlVO">
+		<![CDATA[
+        select orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl
+        from cotdl.tbl_orderddl
+        ]]>
+		<include refid="criteria_orderddl2"></include>
+	</select>
+	<update id="update">
+		<![CDATA[
+		update cotdl.tbl_orderddl
+		set
+			result= #{result, jdbcType=VARCHAR}
+		]]>
+		<include refid="criteria_orderddl2"></include>
+	</update>
+	<delete id="delete">
+		<![CDATA[
+        delete
+        from cotdl.tbl_orderddl
+        ]]>
+		<include refid="criteria_orderddl"></include>
+	</delete>
+	<delete id="deletebyorderid">
+		delete from cotdl.tbl_orderddl where orderid= #{orderid}
+	</delete>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.OrderDdlVO">
+		<![CDATA[
+		select orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl
+        from cotdl.tbl_orderddl
+		]]>
+		<include refid="criteria_orderddl"></include>
+		<![CDATA[
+		order by `orderid`
+       , `stepid`
+       , `seq1`
+       , `seq2`
+       , `seq3`
+       , `object_type` desc
+		]]>
+	</select>
+	<select id="getExeListWithPaging" resultType="datablocks.dlm.domain.OrderDdlVO">
+		<![CDATA[
+		select orderid, stepid, seq1, seq2, seq3, db, owner, table_name, constraint_type, object_type, object_owner, object_name, status, result, ddl
+        from cotdl.tbl_orderddl
+		]]>
+		<include refid="criteria_orderddl"></include>
+		<![CDATA[
+		order by `orderid`
+       , `stepid`
+       , `seq1`
+       , `seq2`
+       , `seq3`
+       , `object_type`
+		]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_orderddl
+		<include refid="criteria_orderddl"></include>
+
+	</select>
+
+
+
+</mapper>

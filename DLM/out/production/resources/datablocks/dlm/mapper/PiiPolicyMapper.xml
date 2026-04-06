@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiPolicyMapper">
+
+ 	<sql id="criteria_piipolicy">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							upper(policy_id) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and policy_name = #{search2}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiPolicyVO">
+		<![CDATA[
+		select policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid 
+		  from cotdl.tbl_piipolicy a 
+		 where 1=1 
+		   and version in (select max(to_number(version)) from cotdl.tbl_piipolicy where policy_id = a.policy_id)
+		 order by policy_id desc
+		]]>
+	</select>
+	<select id="getAllVersionList" resultType="datablocks.dlm.domain.PiiPolicyVO">
+		<![CDATA[
+		select policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid 
+		  from cotdl.tbl_piipolicy a 
+		 where 1=1 
+		   and upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR})
+		 order by to_number(version) desc
+		]]>
+	</select>
+	<select id="getMaxVersionByPolicy" resultType="int">
+		select max(to_number(version)) from cotdl.tbl_piipolicy a
+				where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR})
+	</select>
+	<insert id="insert">
+		insert into COTDL.tbl_piipolicy (policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, regdate, upddate, reguserid, upduserid)
+		values (#{policy_id, jdbcType=VARCHAR}, #{policy_name, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{del_deadline, jdbcType=VARCHAR}, #{del_deadline_unit, jdbcType=VARCHAR}, #{archive_flag, jdbcType=VARCHAR}, #{arc_del_deadline, jdbcType=VARCHAR}, #{arc_del_deadline_unit, jdbcType=VARCHAR}, #{related_law, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'), to_date(#{upddate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piipolicy (policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, regdate, upddate, reguserid, upduserid)
+		values (#{policy_id, jdbcType=VARCHAR}, #{policy_name, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{del_deadline, jdbcType=VARCHAR}, #{del_deadline_unit, jdbcType=VARCHAR}, #{archive_flag, jdbcType=VARCHAR}, #{arc_del_deadline, jdbcType=VARCHAR}, #{arc_del_deadline_unit, jdbcType=VARCHAR}, #{related_law, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'), to_date(#{upddate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiPolicyVO">
+		select policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piipolicy a 
+		 where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR}) and version= #{version, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="readCurrent" resultType="datablocks.dlm.domain.PiiPolicyVO">
+		select policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piipolicy a 
+		 where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR})
+		   and phase= 'CHECKIN'
+		   and status= 'ACTIVE'
+		   and version in (select max(to_number(version)) from cotdl.tbl_piipolicy where policy_id = a.policy_id and phase= 'CHECKIN' and status= 'ACTIVE') 
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piipolicy where upper(policy_id) = upper(#{search1, jdbcType=VARCHAR}) and version= #{version, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piipolicy
+		   set 
+				policy_name= #{policy_name, jdbcType=VARCHAR},
+				version= #{version, jdbcType=VARCHAR},
+				phase= #{phase, jdbcType=VARCHAR},
+				status= #{status, jdbcType=VARCHAR},
+				del_deadline= #{del_deadline, jdbcType=VARCHAR},
+				del_deadline_unit= #{del_deadline_unit, jdbcType=VARCHAR},
+				archive_flag= #{archive_flag, jdbcType=VARCHAR},
+				arc_del_deadline= #{arc_del_deadline, jdbcType=VARCHAR},
+				arc_del_deadline_unit= #{arc_del_deadline_unit, jdbcType=VARCHAR},
+				related_law= #{related_law, jdbcType=VARCHAR},
+				comments= #{comments, jdbcType=VARCHAR},
+				upddate= SYSDATE,
+				upduserid= #{upduserid}
+		 where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR}) and version= #{version, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiPolicyVO"> 
+		<![CDATA[ 
+		select 
+			   policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, regdate, upddate, reguserid, upduserid
+		from ( 
+				select 
+					 ROWNUM rn, policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, regdate, upddate, reguserid, upduserid 
+				from (
+						select policy_id, policy_name, version, phase, status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piipolicy a 
+						 where 1=1 
+						   and version in (select max(to_number(version)) from cotdl.tbl_piipolicy where policy_id = a.policy_id)
+						 order by policy_id 
+					 ) f
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							upper(policy_id) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and policy_name = #{search2}
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by policy_id
+			  ) k
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by policy_id
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piipolicy a 
+						 where 1=1 
+						   and version in (select max(to_number(version)) from cotdl.tbl_piipolicy where policy_id = a.policy_id)
+		
+		<include refid="criteria_piipolicy"></include> 
+			
+	</select>
+	
+	<insert id="checkout">
+		insert into cotdl.tbl_piipolicy 
+		select policy_id, policy_name, TO_NUMBER(version)+1, 'CHECKOUT', status, del_deadline, del_deadline_unit, archive_flag, arc_del_deadline, arc_del_deadline_unit, related_law, comments, regdate, SYSDATE as upddate, reguserid, upduserid
+		  from cotdl.tbl_piipolicy 
+		 where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR}) and version= #{version, jdbcType=VARCHAR}
+	</insert>
+	<update id="checkin">
+		update cotdl.tbl_piipolicy
+		   set
+			   phase= 'APPROVING',
+			   upddate= SYSDATE
+		 where upper(policy_id) = upper(#{policy_id, jdbcType=VARCHAR}) and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piipolicy
+		   set phase= 'CHECKOUT',
+			   upddate= SYSDATE
+		 where policy_id= #{id} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piipolicy
+		   set 
+			   phase= 'CHECKIN',
+			   upddate= SYSDATE
+		 where policy_id= #{id} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="setold">
+		update cotdl.tbl_piipolicy
+		   set 
+			   status= 'OLD',
+			   phase= 'CHECKIN',
+			   upddate= SYSDATE
+		 where policy_id= #{id} and version != #{version, jdbcType=VARCHAR}
+	</update>
+</mapper>

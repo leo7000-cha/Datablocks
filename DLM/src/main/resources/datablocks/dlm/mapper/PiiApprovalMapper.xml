@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalMapper">
+
+ 	<sql id="criteria_piiapproval">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and approvalid = #{search1}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		<![CDATA[
+		select approvalid, approvalname
+		 from cotdl.tbl_piiapproval order by approvalid
+		]]>
+	</select>
+	<select id="getListbyApprovalid" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		<![CDATA[
+		select approvalid, approvalname
+		 from cotdl.tbl_piiapproval
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		order by approvalid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiapproval (approvalid, approvalname)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiapproval (approvalid, approvalname)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		select approvalid, approvalname
+		  from cotdl.tbl_piiapproval 
+		 where approvalid= #{approvalid, jdbcType=VARCHAR}  
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiapproval where approvalid= #{approvalid} 
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiapproval
+		set
+			approvalname= #{approvalname, jdbcType=VARCHAR}
+			where approvalid= #{approvalid, jdbcType=VARCHAR}  
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalVO"> 
+		<![CDATA[
+		select approvalid, approvalname
+		  from cotdl.tbl_piiapproval
+		]]>
+		<include refid="criteria_piiapproval"></include>
+	    <![CDATA[
+		order by approvalid
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapproval 
+		
+		<include refid="criteria_piiapproval"></include> 
+			
+	</select>
+
+
+</mapper>

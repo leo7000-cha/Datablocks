@@ -1,0 +1,951 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.DiscoveryMapper">
+
+    <!-- ========== SQL Fragments ========== -->
+    <sql id="criteria_scanJob">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null and search1 != ''">
+                AND j.target_db LIKE CONCAT('%', #{search1}, '%')
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND j.target_schema LIKE CONCAT('%', #{search2}, '%')
+            </if>
+            <if test="search3 != null and search3 != ''">
+                AND j.is_active = #{search3}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND j.job_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </trim>
+    </sql>
+
+    <sql id="criteria_execution">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null and search1 != ''">
+                AND e.job_id = #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND e.status = #{search2}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND j.job_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </trim>
+    </sql>
+
+    <!--
+        검색 필드에서 사용자가 직접 %를 입력하여 와일드카드 검색 가능
+        예: "ACTEUR" = 정확히 일치, "%ACTEUR%" = 포함, "ACTEUR%" = 시작
+    -->
+    <sql id="criteria_scanResult">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null and search1 != ''">
+                AND r.db_name LIKE #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND r.schema_name LIKE #{search2}
+            </if>
+            <if test="search3 != null and search3 != ''">
+                AND r.pii_type_code = #{search3}
+            </if>
+            <if test="search4 != null and search4 != ''">
+                AND r.confirm_status = #{search4}
+            </if>
+            <if test="search5 != null and search5 != ''">
+                <choose>
+                    <when test="search5 == 'high'">AND r.score >= 80</when>
+                    <when test="search5 == 'medium'">AND r.score >= 50 AND r.score &lt; 80</when>
+                    <when test="search5 == 'low'">AND r.score &lt; 50</when>
+                </choose>
+            </if>
+            <if test="search6 != null and search6 != ''">
+                AND r.job_id = #{search6}
+            </if>
+            <if test="executionId != null and executionId != ''">
+                AND r.execution_id = #{executionId}
+            </if>
+            <if test="filterTable != null and filterTable != ''">
+                AND r.table_name LIKE #{filterTable}
+            </if>
+            <if test="filterColumn != null and filterColumn != ''">
+                AND r.column_name LIKE #{filterColumn}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (r.table_name LIKE #{keyword} OR r.column_name LIKE #{keyword})
+            </if>
+        </trim>
+    </sql>
+
+    <sql id="criteria_rule">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null and search1 != ''">
+                AND category = #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND rule_type = #{search2}
+            </if>
+            <if test="search3 != null and search3 != ''">
+                AND status = #{search3}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND rule_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </trim>
+    </sql>
+
+    <!-- ========== Dashboard ========== -->
+    <!--
+        통계는 중복 없이 유니크한 값으로 계산:
+        - totalTablesScanned: 유니크 테이블 수 (DB+Schema+Table 기준)
+        - piiColumnsDetected: 유니크 PII 컬럼 수 (DB+Schema+Table+Column 기준)
+        - pendingReview: Registry에 없는 PENDING 컬럼 (유니크)
+    -->
+    <select id="getDashboardStats" resultType="datablocks.dlm.domain.DiscoveryStatVO">
+        SELECT
+            (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 WHERE is_active = 'Y') AS totalScans,
+            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name))
+             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT) AS totalTablesScanned,
+            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name, '.', column_name))
+             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT) AS totalColumnsScanned,
+            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name, '.', column_name))
+             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE score > 0) AS piiColumnsDetected,
+            (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_PII_REGISTRY WHERE status = 'CONFIRMED') AS confirmedPii,
+            (SELECT COUNT(DISTINCT CONCAT(COALESCE(r.db_name,''), '.', COALESCE(r.schema_name,''), '.', r.table_name, '.', r.column_name))
+             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+             WHERE r.score > 0
+               AND NOT EXISTS (
+                   SELECT 1 FROM COTDL.TBL_DISCOVERY_PII_REGISTRY p
+                   WHERE p.db_name = r.db_name
+                     AND COALESCE(p.schema_name,'') = COALESCE(r.schema_name,'')
+                     AND p.table_name = r.table_name
+                     AND p.column_name = r.column_name
+               )) AS pendingReview,
+            (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_PII_REGISTRY WHERE status = 'EXCLUDED') AS excludedCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION WHERE status = 'RUNNING') AS runningJobs,
+            (SELECT MAX(DATE_FORMAT(start_time, '%Y-%m-%d %H:%i:%s')) FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION) AS lastScanDate
+    </select>
+
+    <!-- Dashboard chart: PII 유형별 분포 -->
+    <select id="selectPiiTypeDistribution" resultType="map">
+        SELECT r.pii_type_code AS piiTypeCode,
+               COALESCE(t.pii_type_name, r.pii_type_code) AS piiTypeName,
+               COUNT(*) AS cnt
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+        LEFT JOIN COTDL.TBL_DISCOVERY_PII_TYPE t ON r.pii_type_code = t.pii_type_code
+        WHERE r.score > 0
+        GROUP BY r.pii_type_code, t.pii_type_name
+        ORDER BY cnt DESC
+        LIMIT 10
+    </select>
+
+    <!-- Dashboard chart: 신뢰도 점수 분포 -->
+    <select id="selectScoreDistribution" resultType="map">
+        SELECT
+            SUM(CASE WHEN score >= 80 THEN 1 ELSE 0 END) AS highCount,
+            SUM(CASE WHEN score >= 50 AND score <![CDATA[<]]> 80 THEN 1 ELSE 0 END) AS mediumCount,
+            SUM(CASE WHEN score > 0 AND score <![CDATA[<]]> 50 THEN 1 ELSE 0 END) AS lowCount
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT
+        WHERE score > 0
+    </select>
+
+    <!-- Dashboard chart: PII 많은 테이블 TOP 10 -->
+    <select id="selectTopPiiTables" resultType="map">
+        SELECT db_name AS dbName, schema_name AS schemaName, table_name AS tableName,
+               COUNT(DISTINCT column_name) AS piiColumnCount,
+               COUNT(DISTINCT pii_type_code) AS piiTypeCount,
+               MAX(score) AS maxScore
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT
+        WHERE score > 0
+        GROUP BY db_name, schema_name, table_name
+        ORDER BY piiColumnCount DESC
+        LIMIT 10
+    </select>
+
+    <!-- ========== Scan Jobs (템플릿) ========== -->
+    <insert id="insertScanJob">
+        INSERT INTO COTDL.TBL_DISCOVERY_SCAN_JOB_V2 (
+            job_id, job_name, description, target_db, target_schema, target_tables,
+            scan_mode, sample_size, thread_count,
+            enable_meta, enable_pattern, enable_ai,
+            exclude_data_types, min_column_length, exclude_patterns, skip_confirmed_pii,
+            is_active, execution_count,
+            reg_user_id, reg_date
+        ) VALUES (
+            #{jobId}, #{jobName}, #{description}, #{targetDb}, #{targetSchema}, #{targetTables},
+            COALESCE(#{scanMode}, 'FULL'), COALESCE(#{sampleSize}, 1000), COALESCE(#{threadCount}, 5),
+            COALESCE(#{enableMeta}, 'Y'), COALESCE(#{enablePattern}, 'Y'), COALESCE(#{enableAi}, 'N'),
+            #{excludeDataTypes}, COALESCE(#{minColumnLength}, 2), #{excludePatterns}, COALESCE(#{skipConfirmedPii}, 'Y'),
+            COALESCE(#{isActive}, 'Y'), 0,
+            #{regUserId}, NOW()
+        )
+    </insert>
+
+    <select id="selectScanJob" resultType="datablocks.dlm.domain.DiscoveryScanJobVO">
+        SELECT
+            j.job_id AS jobId, j.job_name AS jobName, j.description, j.target_db AS targetDb,
+            j.target_schema AS targetSchema, j.target_tables AS targetTables,
+            j.scan_mode AS scanMode, j.sample_size AS sampleSize, j.thread_count AS threadCount,
+            j.enable_meta AS enableMeta, j.enable_pattern AS enablePattern, j.enable_ai AS enableAi,
+            j.exclude_data_types AS excludeDataTypes, j.min_column_length AS minColumnLength,
+            j.exclude_patterns AS excludePatterns, j.skip_confirmed_pii AS skipConfirmedPii,
+            j.is_active AS isActive, j.last_execution_id AS lastExecutionId, j.execution_count AS executionCount,
+            e.status AS lastExecutionStatus, DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i:%s') AS lastExecutionDate,
+            j.reg_user_id AS regUserId, DATE_FORMAT(j.reg_date, '%Y-%m-%d %H:%i:%s') AS regDate,
+            j.upd_user_id AS updUserId, DATE_FORMAT(j.upd_date, '%Y-%m-%d %H:%i:%s') AS updDate
+        FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_EXECUTION e ON j.last_execution_id = e.execution_id
+        WHERE j.job_id = #{jobId}
+    </select>
+
+    <select id="selectScanJobList" resultType="datablocks.dlm.domain.DiscoveryScanJobVO">
+        SELECT
+            j.job_id AS jobId, j.job_name AS jobName, j.description, j.target_db AS targetDb,
+            j.target_schema AS targetSchema, j.scan_mode AS scanMode, j.thread_count AS threadCount,
+            j.is_active AS isActive, j.execution_count AS executionCount,
+            e.status AS lastExecutionStatus, DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i:%s') AS lastExecutionDate,
+            j.reg_user_id AS regUserId
+        FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_EXECUTION e ON j.last_execution_id = e.execution_id
+        <include refid="criteria_scanJob"/>
+        ORDER BY j.reg_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectScanJobTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j
+        <include refid="criteria_scanJob"/>
+    </select>
+
+    <update id="updateScanJob">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_JOB_V2
+        SET job_name = #{jobName},
+            description = #{description},
+            target_db = #{targetDb},
+            target_schema = #{targetSchema},
+            target_tables = #{targetTables},
+            scan_mode = #{scanMode},
+            sample_size = #{sampleSize},
+            thread_count = #{threadCount},
+            enable_meta = #{enableMeta},
+            enable_pattern = #{enablePattern},
+            enable_ai = #{enableAi},
+            exclude_data_types = #{excludeDataTypes},
+            min_column_length = #{minColumnLength},
+            exclude_patterns = #{excludePatterns},
+            skip_confirmed_pii = #{skipConfirmedPii},
+            is_active = #{isActive},
+            upd_user_id = #{updUserId},
+            upd_date = NOW()
+        WHERE job_id = #{jobId}
+    </update>
+
+    <delete id="deleteScanJob">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 WHERE job_id = #{jobId}
+    </delete>
+
+    <update id="updateJobLastExecution">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_JOB_V2
+        SET last_execution_id = #{executionId},
+            execution_count = execution_count + 1,
+            upd_date = NOW()
+        WHERE job_id = #{jobId}
+    </update>
+
+    <!-- ========== Scan Executions (실행 이력) ========== -->
+    <insert id="insertExecution">
+        INSERT INTO COTDL.TBL_DISCOVERY_SCAN_EXECUTION (
+            execution_id, job_id, status, progress, thread_count,
+            total_tables, scanned_tables, skipped_tables,
+            total_columns, scanned_columns, excluded_columns, pii_count,
+            reg_user_id, reg_date
+        ) VALUES (
+            #{executionId}, #{jobId}, COALESCE(#{status}, 'PENDING'), COALESCE(#{progress}, 0), #{threadCount},
+            0, 0, 0, 0, 0, 0, 0,
+            #{regUserId}, NOW()
+        )
+    </insert>
+
+    <select id="selectExecution" resultType="datablocks.dlm.domain.DiscoveryScanExecutionVO">
+        SELECT
+            e.execution_id AS executionId, e.job_id AS jobId, j.job_name AS jobName,
+            e.status, e.progress, e.thread_count AS threadCount,
+            e.total_tables AS totalTables, e.scanned_tables AS scannedTables, e.skipped_tables AS skippedTables,
+            e.total_columns AS totalColumns, e.scanned_columns AS scannedColumns, e.excluded_columns AS excludedColumns,
+            e.pii_count AS piiCount,
+            DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i:%s') AS startTime,
+            DATE_FORMAT(e.end_time, '%Y-%m-%d %H:%i:%s') AS endTime,
+            e.duration_ms AS durationMs, e.error_msg AS errorMsg,
+            e.reg_user_id AS regUserId, DATE_FORMAT(e.reg_date, '%Y-%m-%d %H:%i:%s') AS regDate
+        FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION e
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j ON e.job_id = j.job_id
+        WHERE e.execution_id = #{executionId}
+    </select>
+
+    <select id="selectExecutionList" resultType="datablocks.dlm.domain.DiscoveryScanExecutionVO">
+        SELECT
+            e.execution_id AS executionId, e.job_id AS jobId, j.job_name AS jobName,
+            e.status, e.progress, e.thread_count AS threadCount,
+            e.total_tables AS totalTables, e.scanned_tables AS scannedTables, e.pii_count AS piiCount,
+            DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i:%s') AS startTime,
+            e.duration_ms AS durationMs, e.error_msg AS errorMsg,
+            e.reg_user_id AS regUserId
+        FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION e
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j ON e.job_id = j.job_id
+        <include refid="criteria_execution"/>
+        ORDER BY e.reg_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectExecutionListByJobId" resultType="datablocks.dlm.domain.DiscoveryScanExecutionVO">
+        SELECT
+            e.execution_id AS executionId, e.job_id AS jobId,
+            e.status, e.progress, e.thread_count AS threadCount,
+            e.total_tables AS totalTables, e.scanned_tables AS scannedTables, e.pii_count AS piiCount,
+            DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i:%s') AS startTime,
+            DATE_FORMAT(e.end_time, '%Y-%m-%d %H:%i:%s') AS endTime,
+            e.duration_ms AS durationMs, e.error_msg AS errorMsg
+        FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION e
+        WHERE e.job_id = #{jobId}
+        ORDER BY e.reg_date DESC
+    </select>
+
+    <select id="selectExecutionTotal" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION e
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j ON e.job_id = j.job_id
+        <include refid="criteria_execution"/>
+    </select>
+
+    <update id="updateExecutionStatus">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+        SET status = #{status},
+            <if test="progress != null">progress = #{progress},</if>
+            <if test="status == 'RUNNING'">start_time = NOW(),</if>
+            <if test="status == 'COMPLETED' or status == 'FAILED' or status == 'CANCELLED'">
+                end_time = NOW(),
+                duration_ms = TIMESTAMPDIFF(SECOND, start_time, NOW()) * 1000,
+            </if>
+            reg_date = reg_date
+        WHERE execution_id = #{executionId}
+    </update>
+
+    <update id="updateExecutionFailed">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+        SET status = 'FAILED',
+            error_msg = #{errorMsg},
+            end_time = NOW(),
+            duration_ms = TIMESTAMPDIFF(SECOND, start_time, NOW()) * 1000
+        WHERE execution_id = #{executionId}
+    </update>
+
+    <update id="updateExecutionComplete">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+        SET status = 'COMPLETED',
+            progress = 100,
+            total_tables = #{totalTables},
+            scanned_tables = #{scannedTables},
+            skipped_tables = #{skippedTables},
+            total_columns = #{totalColumns},
+            scanned_columns = #{scannedColumns},
+            excluded_columns = #{excludedColumns},
+            pii_count = #{piiCount},
+            end_time = NOW(),
+            duration_ms = TIMESTAMPDIFF(SECOND, start_time, NOW()) * 1000
+        WHERE execution_id = #{executionId}
+    </update>
+
+    <delete id="deleteExecutionsByJobId">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION WHERE job_id = #{jobId}
+    </delete>
+
+    <!-- ========== Scan Results ========== -->
+    <insert id="insertScanResult">
+        INSERT INTO COTDL.TBL_DISCOVERY_SCAN_RESULT (
+            result_id, job_id, execution_id, db_name, schema_name, table_name, column_name,
+            data_type, column_comment, pii_type_code, pii_type_name,
+            score, meta_score, pattern_score, ai_score,
+            meta_match, pattern_match, ai_match,
+            matched_rule, matched_pattern, sample_data,
+            confirm_status, reg_date
+        ) VALUES (
+            #{resultId}, #{jobId}, #{executionId}, #{dbName}, #{schemaName}, #{tableName}, #{columnName},
+            #{dataType}, #{columnComment}, #{piiTypeCode}, #{piiTypeName},
+            #{score}, #{metaScore}, #{patternScore}, #{aiScore},
+            #{metaMatch}, #{patternMatch}, #{aiMatch},
+            #{matchedRule}, #{matchedPattern}, #{sampleData},
+            #{confirmStatus}, NOW()
+        )
+    </insert>
+
+    <select id="selectScanResult" resultType="datablocks.dlm.domain.DiscoveryScanResultVO">
+        SELECT
+            r.result_id AS resultId, r.job_id AS jobId, r.execution_id AS executionId, r.db_name AS dbName,
+            r.schema_name AS schemaName, r.table_name AS tableName, r.column_name AS columnName,
+            r.data_type AS dataType, r.column_comment AS columnComment,
+            r.pii_type_code AS piiTypeCode,
+            COALESCE(r.pii_type_name, t.pii_type_name, r.pii_type_code) AS piiTypeName,
+            r.score, r.meta_score AS metaScore, r.pattern_score AS patternScore, r.ai_score AS aiScore,
+            r.meta_match AS metaMatch, r.pattern_match AS patternMatch, r.ai_match AS aiMatch,
+            r.matched_rule AS matchedRule, r.matched_pattern AS matchedPattern, r.sample_data AS sampleData,
+            r.confirm_status AS confirmStatus, r.confirmed_by AS confirmedBy,
+            DATE_FORMAT(r.confirmed_date, '%Y-%m-%d %H:%i:%s') AS confirmedDate,
+            DATE_FORMAT(r.reg_date, '%Y-%m-%d %H:%i:%s') AS regDate,
+            DATE_FORMAT(r.upd_date, '%Y-%m-%d %H:%i:%s') AS updDate
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+        LEFT JOIN COTDL.TBL_DISCOVERY_PII_TYPE t ON r.pii_type_code = t.pii_type_code
+        WHERE r.result_id = #{resultId}
+    </select>
+
+    <select id="selectScanResultList" resultType="datablocks.dlm.domain.DiscoveryScanResultVO">
+        SELECT
+            r.result_id AS resultId, r.job_id AS jobId, r.execution_id AS executionId,
+            r.db_name AS dbName, r.schema_name AS schemaName, r.table_name AS tableName, r.column_name AS columnName,
+            r.data_type AS dataType, r.pii_type_code AS piiTypeCode, r.pii_type_name AS piiTypeName,
+            r.score, r.meta_match AS metaMatch, r.pattern_match AS patternMatch, r.ai_match AS aiMatch,
+            r.sample_data AS sampleData, r.confirm_status AS confirmStatus,
+            r.confirmed_by AS confirmedBy,
+            DATE_FORMAT(r.confirmed_date, '%Y-%m-%d %H:%i') AS confirmedDate,
+            DATE_FORMAT(r.reg_date, '%Y-%m-%d') AS regDate,
+            DATE_FORMAT(e.start_time, '%Y-%m-%d %H:%i') AS scanDate,
+            j.job_name AS jobName
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_EXECUTION e ON r.execution_id = e.execution_id
+        LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j ON r.job_id = j.job_id
+        <include refid="criteria_scanResult"/>
+        ORDER BY r.score DESC, r.reg_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectScanResultTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+        <include refid="criteria_scanResult"/>
+    </select>
+
+    <update id="updateScanResultConfirm">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT
+        SET confirm_status = #{confirmStatus},
+            confirmed_by = #{userId},
+            confirmed_date = NOW(),
+            upd_date = NOW()
+        WHERE result_id = #{resultId}
+    </update>
+
+    <delete id="deleteScanResult">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE result_id = #{resultId}
+    </delete>
+
+    <delete id="deleteScanResultByJobId">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE job_id = #{jobId}
+    </delete>
+
+    <!-- ========== 오래된 스캔 결과 정리 (최근 N회 유지) ========== -->
+
+    <!-- Job별 최근 N회 이전 Execution ID 목록 조회 -->
+    <select id="selectOldExecutionIds" resultType="string">
+        SELECT execution_id
+        FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+        WHERE job_id = #{jobId}
+          AND status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+        ORDER BY start_time DESC
+        LIMIT 999999 OFFSET #{keepCount}
+    </select>
+
+    <!-- 특정 Execution의 스캔 결과 삭제 -->
+    <delete id="deleteScanResultByExecutionId">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE execution_id = #{executionId}
+    </delete>
+
+    <!-- 특정 Execution 삭제 -->
+    <delete id="deleteExecution">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION WHERE execution_id = #{executionId}
+    </delete>
+
+    <!-- Job별 오래된 스캔 결과 일괄 정리 (최근 N회만 유지, 서브쿼리 사용) -->
+    <delete id="deleteOldScanResultsByJob">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_RESULT
+        WHERE execution_id IN (
+            SELECT execution_id FROM (
+                SELECT execution_id
+                FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+                WHERE job_id = #{jobId}
+                  AND status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+                ORDER BY start_time DESC
+                LIMIT 999999 OFFSET #{keepCount}
+            ) AS old_executions
+        )
+    </delete>
+
+    <!-- Job별 오래된 Execution 일괄 정리 -->
+    <delete id="deleteOldExecutionsByJob">
+        DELETE FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+        WHERE execution_id IN (
+            SELECT execution_id FROM (
+                SELECT execution_id
+                FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION
+                WHERE job_id = #{jobId}
+                  AND status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+                ORDER BY start_time DESC
+                LIMIT 999999 OFFSET #{keepCount}
+            ) AS old_executions
+        )
+    </delete>
+
+    <!-- 전체 Job에 대해 오래된 스캔 결과 정리 (배치용) -->
+    <delete id="deleteOldScanResultsAll">
+        DELETE r FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+        INNER JOIN COTDL.TBL_DISCOVERY_SCAN_EXECUTION e ON r.execution_id = e.execution_id
+        WHERE e.status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+          AND e.execution_id NOT IN (
+              SELECT execution_id FROM (
+                  SELECT e2.execution_id
+                  FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION e2
+                  WHERE e2.job_id = e.job_id
+                    AND e2.status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+                  ORDER BY e2.start_time DESC
+                  LIMIT #{keepCount}
+              ) AS keep_list
+          )
+    </delete>
+
+    <select id="selectConfirmedPiiColumns" resultType="datablocks.dlm.domain.DiscoveryScanResultVO">
+        SELECT
+            result_id AS resultId, db_name AS dbName, schema_name AS schemaName,
+            table_name AS tableName, column_name AS columnName,
+            pii_type_code AS piiTypeCode, pii_type_name AS piiTypeName, score
+        FROM COTDL.TBL_DISCOVERY_SCAN_RESULT
+        WHERE confirm_status = 'CONFIRMED'
+        ORDER BY db_name, schema_name, table_name, column_name
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <!-- ========== Rules ========== -->
+    <insert id="insertRule">
+        INSERT INTO COTDL.TBL_DISCOVERY_RULE (
+            rule_id, rule_name, rule_type, pii_type_code, category,
+            pattern, description, weight, priority, status,
+            reg_user_id, reg_date
+        ) VALUES (
+            #{ruleId}, #{ruleName}, #{ruleType}, #{piiTypeCode}, #{category},
+            #{pattern}, #{description}, #{weight}, #{priority}, #{status},
+            #{regUserId}, NOW()
+        )
+    </insert>
+
+    <select id="selectRule" resultType="datablocks.dlm.domain.DiscoveryRuleVO">
+        SELECT
+            rule_id AS ruleId, rule_name AS ruleName, rule_type AS ruleType,
+            pii_type_code AS piiTypeCode, category, pattern, description,
+            weight, priority, status,
+            reg_user_id AS regUserId, DATE_FORMAT(reg_date, '%Y-%m-%d') AS regDate,
+            upd_user_id AS updUserId, DATE_FORMAT(upd_date, '%Y-%m-%d') AS updDate
+        FROM COTDL.TBL_DISCOVERY_RULE
+        WHERE rule_id = #{ruleId}
+    </select>
+
+    <select id="selectRuleList" resultType="datablocks.dlm.domain.DiscoveryRuleVO">
+        SELECT
+            rule_id AS ruleId, rule_name AS ruleName, rule_type AS ruleType,
+            pii_type_code AS piiTypeCode, category, pattern, weight, status
+        FROM COTDL.TBL_DISCOVERY_RULE
+        <include refid="criteria_rule"/>
+        ORDER BY category, priority
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectRuleListByCategory" resultType="datablocks.dlm.domain.DiscoveryRuleVO">
+        SELECT
+            rule_id AS ruleId, rule_name AS ruleName, rule_type AS ruleType,
+            pii_type_code AS piiTypeCode, category, pattern, weight, status
+        FROM COTDL.TBL_DISCOVERY_RULE
+        WHERE category = #{category}
+        ORDER BY priority
+    </select>
+
+    <select id="selectRuleTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_RULE
+        <include refid="criteria_rule"/>
+    </select>
+
+    <update id="updateRule">
+        UPDATE COTDL.TBL_DISCOVERY_RULE
+        SET rule_name = #{ruleName},
+            rule_type = #{ruleType},
+            pii_type_code = #{piiTypeCode},
+            category = #{category},
+            pattern = #{pattern},
+            description = #{description},
+            weight = #{weight},
+            priority = #{priority},
+            status = #{status},
+            upd_user_id = #{updUserId},
+            upd_date = NOW()
+        WHERE rule_id = #{ruleId}
+    </update>
+
+    <delete id="deleteRule">
+        DELETE FROM COTDL.TBL_DISCOVERY_RULE WHERE rule_id = #{ruleId}
+    </delete>
+
+    <!-- ========== PII Types ========== -->
+    <select id="selectPiiTypeList" resultType="datablocks.dlm.domain.DiscoveryPiiTypeVO">
+        SELECT
+            pii_type_code AS piiTypeCode, pii_type_name AS piiTypeName,
+            pii_type_name_en AS piiTypeNameEn, category, description,
+            scramble_type AS scrambleType, sort_order AS sortOrder, status
+        FROM COTDL.TBL_DISCOVERY_PII_TYPE
+        WHERE status = 'ACTIVE'
+        ORDER BY sort_order
+    </select>
+
+    <select id="selectPiiType" resultType="datablocks.dlm.domain.DiscoveryPiiTypeVO">
+        SELECT
+            pii_type_code AS piiTypeCode, pii_type_name AS piiTypeName,
+            pii_type_name_en AS piiTypeNameEn, category, description,
+            scramble_type AS scrambleType, sort_order AS sortOrder, status
+        FROM COTDL.TBL_DISCOVERY_PII_TYPE
+        WHERE pii_type_code = #{piiTypeCode}
+    </select>
+
+    <!-- ========== Config (설정 관리) ========== -->
+    <insert id="insertConfig">
+        INSERT INTO COTDL.TBL_DISCOVERY_CONFIG (
+            config_id, config_key, config_value, config_type, description,
+            is_active, sort_order, reg_user_id, reg_date
+        ) VALUES (
+            #{configId}, #{configKey}, #{configValue}, #{configType}, #{description},
+            COALESCE(#{isActive}, 'Y'), COALESCE(#{sortOrder}, 0), #{regUserId}, NOW()
+        )
+    </insert>
+
+    <select id="selectConfig" resultType="datablocks.dlm.domain.DiscoveryConfigVO">
+        SELECT
+            config_id AS configId, config_key AS configKey, config_value AS configValue,
+            config_type AS configType, description, is_active AS isActive, sort_order AS sortOrder,
+            reg_user_id AS regUserId, DATE_FORMAT(reg_date, '%Y-%m-%d %H:%i:%s') AS regDate,
+            upd_user_id AS updUserId, DATE_FORMAT(upd_date, '%Y-%m-%d %H:%i:%s') AS updDate
+        FROM COTDL.TBL_DISCOVERY_CONFIG
+        WHERE config_id = #{configId}
+    </select>
+
+    <select id="selectConfigByKey" resultType="datablocks.dlm.domain.DiscoveryConfigVO">
+        SELECT
+            config_id AS configId, config_key AS configKey, config_value AS configValue,
+            config_type AS configType, description, is_active AS isActive, sort_order AS sortOrder
+        FROM COTDL.TBL_DISCOVERY_CONFIG
+        WHERE config_key = #{configKey}
+    </select>
+
+    <select id="selectConfigList" resultType="datablocks.dlm.domain.DiscoveryConfigVO">
+        SELECT
+            config_id AS configId, config_key AS configKey, config_value AS configValue,
+            config_type AS configType, description, is_active AS isActive, sort_order AS sortOrder
+        FROM COTDL.TBL_DISCOVERY_CONFIG
+        ORDER BY config_type, sort_order
+    </select>
+
+    <select id="selectConfigListByType" resultType="datablocks.dlm.domain.DiscoveryConfigVO">
+        SELECT
+            config_id AS configId, config_key AS configKey, config_value AS configValue,
+            config_type AS configType, description, is_active AS isActive, sort_order AS sortOrder
+        FROM COTDL.TBL_DISCOVERY_CONFIG
+        WHERE config_type = #{configType}
+        ORDER BY sort_order
+    </select>
+
+    <update id="updateConfig">
+        UPDATE COTDL.TBL_DISCOVERY_CONFIG
+        SET config_value = #{configValue},
+            description = #{description},
+            is_active = #{isActive},
+            sort_order = #{sortOrder},
+            upd_user_id = #{updUserId},
+            upd_date = NOW()
+        WHERE config_id = #{configId}
+    </update>
+
+    <delete id="deleteConfig">
+        DELETE FROM COTDL.TBL_DISCOVERY_CONFIG WHERE config_id = #{configId}
+    </delete>
+
+    <!-- ========== PII Registry (확정된 PII 컬럼 레지스트리) ========== -->
+    <!-- Scan Result와 분리하여 PII 컬럼 상태를 독립적으로 관리 -->
+
+    <!--
+        검색 필드에서 사용자가 직접 %를 입력하여 와일드카드 검색 가능
+        예: "ACTEUR" = 정확히 일치, "%ACTEUR%" = 포함, "ACTEUR%" = 시작
+    -->
+    <sql id="criteria_piiRegistry">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null and search1 != ''">
+                AND r.db_name = #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND r.schema_name LIKE #{search2}
+            </if>
+            <if test="search3 != null and search3 != ''">
+                AND r.pii_type_code = #{search3}
+            </if>
+            <if test="search4 != null and search4 != ''">
+                AND r.status = #{search4}
+            </if>
+            <if test="filterTable != null and filterTable != ''">
+                AND r.table_name LIKE #{filterTable}
+            </if>
+            <if test="filterColumn != null and filterColumn != ''">
+                AND r.column_name LIKE #{filterColumn}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (r.table_name LIKE #{keyword} OR r.column_name LIKE #{keyword})
+            </if>
+        </trim>
+    </sql>
+
+    <!-- Registry 등록/업데이트 (UPSERT) -->
+    <insert id="insertPiiRegistry">
+        INSERT INTO COTDL.TBL_DISCOVERY_PII_REGISTRY (
+            registry_id, db_name, schema_name, table_name, column_name,
+            data_type, column_comment,
+            pii_type_code, pii_type_name, detection_method, confidence_score, sample_data,
+            first_detected_date, first_detected_execution_id, first_detected_result_id,
+            status, registered_by, registered_date, remarks, created_date
+        ) VALUES (
+            #{registryId}, #{dbName}, #{schemaName}, #{tableName}, #{columnName},
+            #{dataType}, #{columnComment},
+            #{piiTypeCode}, #{piiTypeName}, #{detectionMethod}, #{confidenceScore}, #{sampleData},
+            #{firstDetectedDate}, #{firstDetectedExecutionId}, #{firstDetectedResultId},
+            COALESCE(#{status}, 'CONFIRMED'), #{registeredBy}, NOW(), #{remarks}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            pii_type_code = VALUES(pii_type_code),
+            pii_type_name = VALUES(pii_type_name),
+            status = VALUES(status),
+            updated_by = VALUES(registered_by),
+            updated_date = NOW(),
+            remarks = VALUES(remarks)
+    </insert>
+
+    <!-- Registry 상세 조회 -->
+    <select id="selectPiiRegistry" resultType="datablocks.dlm.domain.DiscoveryPiiRegistryVO">
+        SELECT
+            r.registry_id AS registryId,
+            r.db_name AS dbName, r.schema_name AS schemaName,
+            r.table_name AS tableName, r.column_name AS columnName,
+            r.data_type AS dataType, r.column_comment AS columnComment,
+            r.pii_type_code AS piiTypeCode, COALESCE(p.pii_type_name, r.pii_type_name) AS piiTypeName,
+            r.detection_method AS detectionMethod, r.confidence_score AS confidenceScore,
+            r.sample_data AS sampleData,
+            DATE_FORMAT(r.first_detected_date, '%Y-%m-%d %H:%i') AS firstDetectedDate,
+            r.first_detected_execution_id AS firstDetectedExecutionId,
+            r.first_detected_result_id AS firstDetectedResultId,
+            r.status,
+            r.registered_by AS registeredBy,
+            DATE_FORMAT(r.registered_date, '%Y-%m-%d %H:%i') AS registeredDate,
+            r.updated_by AS updatedBy,
+            DATE_FORMAT(r.updated_date, '%Y-%m-%d %H:%i') AS updatedDate,
+            r.remarks,
+            DATE_FORMAT(r.created_date, '%Y-%m-%d %H:%i') AS createdDate
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY r
+        LEFT JOIN COTDL.TBL_DISCOVERY_PII_TYPE p ON r.pii_type_code = p.pii_type_code
+        WHERE r.registry_id = #{registryId}
+    </select>
+
+    <!-- Registry 목록 조회 (PII Columns 페이지용) -->
+    <select id="selectPiiRegistryList" resultType="datablocks.dlm.domain.DiscoveryPiiRegistryVO">
+        SELECT
+            r.registry_id AS registryId,
+            r.db_name AS dbName, r.schema_name AS schemaName,
+            r.table_name AS tableName, r.column_name AS columnName,
+            r.data_type AS dataType,
+            r.pii_type_code AS piiTypeCode, COALESCE(p.pii_type_name, r.pii_type_name) AS piiTypeName,
+            r.detection_method AS detectionMethod, r.confidence_score AS confidenceScore,
+            r.sample_data AS sampleData,
+            r.status,
+            r.registered_by AS registeredBy,
+            DATE_FORMAT(r.registered_date, '%Y-%m-%d %H:%i') AS registeredDate,
+            r.updated_by AS updatedBy,
+            DATE_FORMAT(r.updated_date, '%Y-%m-%d %H:%i') AS updatedDate
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY r
+        LEFT JOIN COTDL.TBL_DISCOVERY_PII_TYPE p ON r.pii_type_code = p.pii_type_code
+        <include refid="criteria_piiRegistry"/>
+        ORDER BY r.db_name, r.schema_name, r.table_name, r.column_name
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <!-- Registry 총 개수 -->
+    <select id="selectPiiRegistryTotal" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY r
+        <include refid="criteria_piiRegistry"/>
+    </select>
+
+    <!-- Registry 상태별 개수 -->
+    <select id="selectPiiRegistryCountByStatus" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY r
+        WHERE r.status = #{search4}
+        <if test="search1 != null and search1 != ''">
+            AND r.db_name = #{search1}
+        </if>
+        <if test="search2 != null and search2 != ''">
+            AND r.schema_name LIKE #{search2}
+        </if>
+    </select>
+
+    <!-- 컬럼으로 Registry 조회 (중복 체크용) -->
+    <select id="selectPiiRegistryByColumn" resultType="datablocks.dlm.domain.DiscoveryPiiRegistryVO">
+        SELECT
+            registry_id AS registryId, db_name AS dbName, schema_name AS schemaName,
+            table_name AS tableName, column_name AS columnName,
+            pii_type_code AS piiTypeCode, status,
+            registered_by AS registeredBy,
+            DATE_FORMAT(registered_date, '%Y-%m-%d %H:%i') AS registeredDate
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
+        WHERE db_name = #{dbName}
+          AND (schema_name = #{schemaName} OR (schema_name IS NULL AND #{schemaName} IS NULL))
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </select>
+
+    <!-- Registry 상태 업데이트 -->
+    <update id="updatePiiRegistryStatus">
+        UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY
+        SET status = #{status},
+            updated_by = #{updatedBy},
+            updated_date = NOW()
+        WHERE registry_id = #{registryId}
+    </update>
+
+    <!-- Registry 삭제 (Reset 시 사용) -->
+    <delete id="deletePiiRegistry">
+        DELETE FROM COTDL.TBL_DISCOVERY_PII_REGISTRY WHERE registry_id = #{registryId}
+    </delete>
+
+    <!-- 스캔 엔진용: 확정된 PII 컬럼 키 목록 (CONFIRMED + EXCLUDED만 스킵, PENDING은 재스캔 대상) -->
+    <select id="selectRegisteredPiiColumnKeys" resultType="string">
+        SELECT CONCAT(UPPER(db_name), '.', UPPER(COALESCE(schema_name, '')), '.', UPPER(table_name), '.', UPPER(column_name))
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
+        WHERE db_name = #{dbName}
+          AND status IN ('CONFIRMED', 'EXCLUDED')
+    </select>
+
+    <!-- 스캔 엔진용: 등록된 PII 컬럼 상세 목록 -->
+    <select id="selectRegisteredPiiColumns" resultType="datablocks.dlm.domain.DiscoveryPiiRegistryVO">
+        SELECT
+            registry_id AS registryId, db_name AS dbName, schema_name AS schemaName,
+            table_name AS tableName, column_name AS columnName,
+            pii_type_code AS piiTypeCode, status
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
+        WHERE db_name = #{dbName}
+        ORDER BY schema_name, table_name, column_name
+    </select>
+
+    <!-- 스캔 엔진용: TBL_METATABLE에서 DB/OWNER별 테이블 목록 조회 (원천DB 카탈로그 직접 조회 대체) -->
+    <select id="selectMetaTableNames" resultType="string">
+        SELECT DISTINCT table_name
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{db}
+          AND owner = #{owner}
+        <if test='tablePattern != null and tablePattern != "" and !tablePattern.equals("%")'>
+          AND table_name LIKE #{tablePattern}
+        </if>
+        ORDER BY table_name
+    </select>
+
+    <!-- 스캔 엔진용: TBL_METATABLE에서 DB/OWNER별 전체 컬럼 정보 한 번에 로드 (원천DB metaData.getColumns() 대체) -->
+    <select id="selectMetaColumnsByDbOwner" resultType="datablocks.dlm.domain.MetaTableVO">
+        SELECT db, owner, table_name, column_name, column_id,
+               data_type, data_length, column_comment
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{db}
+          AND owner = #{owner}
+        ORDER BY table_name, column_id
+    </select>
+
+    <!-- Dashboard용: Registry 통계 -->
+    <select id="selectRegistryStats" resultType="map">
+        SELECT
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END) AS confirmedCount,
+            SUM(CASE WHEN status = 'EXCLUDED' THEN 1 ELSE 0 END) AS excludedCount
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
+    </select>
+
+    <!-- ========== Meta Table Sync (VAL2 컬럼 업데이트 - PII 탐지정보) ========== -->
+
+    <!-- CONFIRMED된 PII Registry 정보를 Meta Table의 VAL2 컬럼에 동기화 -->
+    <!-- 포맷: "PII_TYPE|SCORE" (예: "주민등록번호|85.5") -->
+    <update id="syncPiiRegistryToMetaDomain">
+        UPDATE COTDL.TBL_METATABLE
+        SET val2 = CONCAT(#{piiTypeName}, '|', #{score}),
+            upddate = NOW()
+        WHERE db = #{dbName}
+          AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </update>
+
+    <!-- Registry 목록 일괄 동기화 (CONFIRMED 상태만) -->
+    <update id="syncAllConfirmedToMeta">
+        UPDATE COTDL.TBL_METATABLE m
+        INNER JOIN COTDL.TBL_DISCOVERY_PII_REGISTRY r
+            ON m.db = r.db_name
+            AND COALESCE(m.owner, '') = COALESCE(r.schema_name, '')
+            AND m.table_name = r.table_name
+            AND m.column_name = r.column_name
+        SET m.val2 = CONCAT(r.pii_type_name, '|', r.confidence_score),
+            m.upddate = NOW()
+        WHERE r.status = 'CONFIRMED'
+        <if test="dbName != null and dbName != ''">
+            AND r.db_name = #{dbName}
+        </if>
+    </update>
+
+    <!-- Registry 정보로 Meta VAL2 조회 (동기화 여부 확인용) -->
+    <select id="selectMetaDomainByColumn" resultType="string">
+        SELECT val2
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{dbName}
+          AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </select>
+
+    <!-- Meta Table VAL2 초기화 (EXCLUDED 또는 RESET 시) -->
+    <update id="clearMetaVal2">
+        UPDATE COTDL.TBL_METATABLE
+        SET val2 = NULL,
+            upddate = NOW()
+        WHERE db = #{dbName}
+          AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </update>
+
+    <!-- ========== Execution 테이블 단위 완료 추적 (재시작 시 스킵용) ========== -->
+
+    <!-- 테이블 스캔 완료 기록 -->
+    <insert id="insertTableScanComplete">
+        INSERT INTO COTDL.TBL_DISCOVERY_TABLE_SCAN_STATUS
+            (execution_id, schema_name, table_name, column_count, pii_count, scan_time_ms, completed_time)
+        VALUES
+            (#{executionId}, #{schemaName}, #{tableName}, #{columnCount}, #{piiCount}, #{scanTimeMs}, NOW())
+    </insert>
+
+    <!-- 특정 Execution에서 완료된 테이블 목록 조회 -->
+    <select id="selectCompletedTables" resultType="string">
+        SELECT CONCAT(COALESCE(schema_name, ''), '.', table_name)
+        FROM COTDL.TBL_DISCOVERY_TABLE_SCAN_STATUS
+        WHERE execution_id = #{executionId}
+    </select>
+
+    <!-- 특정 Execution의 테이블 완료 기록 삭제 -->
+    <delete id="deleteTableScanComplete">
+        DELETE FROM COTDL.TBL_DISCOVERY_TABLE_SCAN_STATUS
+        WHERE execution_id = #{executionId}
+    </delete>
+
+</mapper>

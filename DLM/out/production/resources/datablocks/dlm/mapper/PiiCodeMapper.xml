@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiCodeMapper">
+
+ 	<sql id="criteria_piicode">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and code_id = #{search1}
+						</if>
+						<if test="search2 != null">
+							and item_val = #{search2}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiCodeVO">
+		<![CDATA[
+		select code_id, item_val, item_name, use_flag
+		 from cotdl.tbl_piicode order by code_id
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piicode (code_id, item_val, item_name, use_flag)
+		values (#{code_id, jdbcType=VARCHAR}, #{item_val, jdbcType=VARCHAR}, #{item_name, jdbcType=VARCHAR}, #{use_flag, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piicode (code_id, item_val, item_name, use_flag)
+		values (#{code_id, jdbcType=VARCHAR}, #{item_val, jdbcType=VARCHAR}, #{item_name, jdbcType=VARCHAR}, #{use_flag, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiCodeVO">
+		select code_id, item_val, item_name, use_flag
+		  from cotdl.tbl_piicode 
+		 where code_id= #{code_id, jdbcType=VARCHAR}  and item_val= #{item_val} 
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piicode where code_id= #{code_id} and item_val= #{item_val} 
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piicode
+		set 
+			item_val= #{item_val, jdbcType=VARCHAR},
+			item_name= #{item_name, jdbcType=VARCHAR},
+			use_flag= #{use_flag, jdbcType=VARCHAR}
+		where code_id= #{code_id, jdbcType=VARCHAR}  and item_val= #{item_val} 
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiCodeVO"> 
+		<![CDATA[ 
+		select 
+			code_id, item_val, item_name, use_flag 
+		from ( 
+				select 
+					 ROWNUM rn, code_id, item_val, item_name, use_flag 
+				from (
+						select code_id, item_val, item_name, use_flag 
+						  from cotdl.tbl_piicode 
+						 order by code_id
+					 ) r
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and code_id like '%'||#{search1}||'%'
+						</if>
+						<if test="search2 != null">
+							and item_val like '%'||#{search2}||'%'
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by code_id
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by code_id
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piicode 
+		
+		<include refid="criteria_piicode"></include> 
+			
+	</select>
+
+
+</mapper>

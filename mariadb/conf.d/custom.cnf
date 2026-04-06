@@ -1,0 +1,73 @@
+# ==============================================================================
+# MariaDB Custom Configuration - DEV
+# Optimized for 4GB container memory (32GB server)
+# ==============================================================================
+
+[mysqld]
+# --- Character Set (기존 DLM 설정 유지: general_ci) ---
+character-set-server = utf8mb4
+collation-server = utf8mb4_general_ci
+
+# --- SQL Mode (ANSI_QUOTES 필수: DLM MyBatis 쿼리가 ""를 식별자로 사용) ---
+sql_mode = "ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+
+# --- Table Names (대소문자 무시 - DLM 필수) ---
+lower_case_table_names = 1
+
+# --- InnoDB Engine (DEV: 4GB container) ---
+innodb_buffer_pool_size = 2G
+# innodb_buffer_pool_instances removed in MariaDB 10.11+
+innodb_log_file_size = 256M
+innodb_log_buffer_size = 32M
+innodb_flush_log_at_trx_commit = 1
+innodb_flush_method = O_DIRECT
+innodb_file_per_table = ON
+innodb_io_capacity = 2000
+innodb_io_capacity_max = 4000
+innodb_read_io_threads = 4
+innodb_write_io_threads = 4
+
+# --- Connections (기존 DLM: 500) ---
+max_connections = 500
+max_connect_errors = 999999
+wait_timeout = 600
+interactive_timeout = 600
+connect_timeout = 10
+
+# --- Query Cache (disabled for write-heavy workloads) ---
+query_cache_type = 0
+query_cache_size = 0
+
+# --- Temp Tables & Sort ---
+tmp_table_size = 128M
+max_heap_table_size = 128M
+sort_buffer_size = 2M
+join_buffer_size = 2M
+read_buffer_size = 1M
+read_rnd_buffer_size = 2M
+
+# --- Thread Pool ---
+thread_cache_size = 64
+
+# --- Binary Logging ---
+log_bin = mysql-bin
+binlog_format = ROW
+expire_logs_days = 7
+max_binlog_size = 256M
+
+# --- Slow Query Log ---
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/slow-query.log
+long_query_time = 2
+
+# --- Network ---
+max_allowed_packet = 64M
+
+# --- Timezone (Named TZ - init 스크립트에서 tzinfo 로드) ---
+default_time_zone = 'Asia/Seoul'
+
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4

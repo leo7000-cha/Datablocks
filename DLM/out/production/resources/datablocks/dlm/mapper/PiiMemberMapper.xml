@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiMemberMapper">
+
+ 	<sql id="criteria_piimember">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and upper(userid) like '%'||upper(#{search1})||'%'
+						</if>
+						<if test="search2 != null">
+							and username like '%'||#{search2}||'%'
+						</if>
+						<!-- <if test="search3 != null">
+							and userid= #{search3}
+						</if> -->
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiMemberVO">
+		<![CDATA[
+		select userid, null as userpw, username, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(updatedate,'yyyy/mm/dd') as updatedate, enabled
+		  from cotdl.tbl_member where userid != 'admin'
+		 order by regdate desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{enabled, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{enabled, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiMemberVO">
+		select userid, userpw, username, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(updatedate,'yyyy/mm/dd') as updatedate, enabled
+		  from cotdl.tbl_member where userid= #{userid}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_member where userid= #{userid} and userid != 'admin'
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_member
+		set 
+			userpw= #{userpw, jdbcType=VARCHAR},
+			username= #{username, jdbcType=VARCHAR},
+			regdate= to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+			updatedate= to_date(#{updatedate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+			enabled= #{enabled, jdbcType=VARCHAR}
+		where userid= #{userid} and userid != 'admin'
+	</update>
+	<update id="updateWithoutPw">
+		update cotdl.tbl_member
+		set 
+			username= #{username, jdbcType=VARCHAR},
+			regdate= to_date(#{regdate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+			updatedate= to_date(#{updatedate, jdbcType=VARCHAR},'yyyy/mm/dd'),
+			enabled= #{enabled, jdbcType=VARCHAR}
+		where userid= #{userid} and userid != 'admin'
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiMemberVO"> 
+		<![CDATA[ 
+		select 
+			userid, userpw, username, regdate, updatedate, enabled
+		from ( 
+				select 
+					 ROWNUM rn, userid, userpw, username, regdate, updatedate, enabled
+				from (
+						select userid, null as userpw, username, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(updatedate,'yyyy/mm/dd') as updatedate, enabled
+						  from cotdl.tbl_member order by regdate desc
+					 ) f
+				where userid != 'admin' and
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and upper(userid) like '%'||upper(#{search1})||'%'
+						</if>
+						<if test="search2 != null">
+							and username like '%'||#{search2}||'%'
+						</if>
+						<!-- <if test="search3 != null">
+							and userid= #{search3}
+						</if> -->
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by regdate desc
+			  ) d
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by regdate desc
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_member where userid != 'admin'
+		
+		<include refid="criteria_piimember"></include> 
+			
+	</select>
+
+
+</mapper>

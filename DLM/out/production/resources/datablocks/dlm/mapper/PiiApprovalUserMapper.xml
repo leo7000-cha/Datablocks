@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalUserMapper">
+
+ 	<sql id="criteria_piiapprovaluser">
+		<trim prefix="1=1" suffix="and" >
+						<if test="search1 != null">
+							and approvalid like '%'||#{search1}||'%'
+						</if>
+
+		</trim>
+	</sql> 
+ 	<sql id="criteria_piiapprovaluser_total">
+		<trim prefix="where 1=1 " suffix="" >
+						<if test="search1 != null">
+							and approvalid like '%'||#{search1}||'%'
+						</if>
+
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		<![CDATA[
+		select approvalid, approvalname, seq, approverid, approvername
+		 from cotdl.tbl_piiapprovaluser 
+		 order by approvalid, approverid
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiapprovaluser (approvalid, approvalname, seq, approverid, approvername)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piiapprovaluser (approvalid, approvalname, seq, approverid, approvername)
+		values (#{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		select approvalid, approvalname, seq, approverid, approvername
+		  from cotdl.tbl_piiapprovaluser 
+		 where approvalid= #{approvalid, jdbcType=VARCHAR}
+		   and approverid= #{approverid, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovaluser 
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		  and approverid= #{approverid, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiapprovaluser
+		set 
+			seq= #{seq, jdbcType=VARCHAR},
+			approvername= #{approvername, jdbcType=VARCHAR}
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+          and approverid= #{approverid, jdbcType=VARCHAR}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalUserVO"> 
+		<![CDATA[ 
+		select 
+			approvalid, approvalname, seq, approverid, approvername
+		from ( 
+				select 
+					 ROWNUM rn, approvalid, approvalname, seq, approverid, approvername
+				from (
+						select approvalid, approvalname, seq, approverid, approvername
+						  from cotdl.tbl_piiapprovaluser 
+						 order by approvalid , approverid
+					 ) a
+				where
+		]]>
+	    
+		<include refid="criteria_piiapprovaluser"></include> 
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by approvalid , approverid
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by approvalid , approverid
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovaluser 
+		
+		<include refid="criteria_piiapprovaluser_total"></include> 
+			
+	</select>
+
+	<select id="getListApproval" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		<![CDATA[
+		select approvalid, approvalname, seq, phase
+		from cotdl.tbl_piiapproval
+		order by approvalid
+		]]>
+	</select>
+
+	<select id="getCount" resultType="int">
+		select  count(1)
+		from cotdl.tbl_piiapprovaluser
+		where approvalid= #{approvalid, jdbcType=VARCHAR}
+		  and approverid= #{approverid, jdbcType=VARCHAR}
+	</select>
+</mapper>

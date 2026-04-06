@@ -1,0 +1,21 @@
+-- ==========================================================
+-- cotdl 사용자 계정 생성 및 권한 부여
+-- 생성일: 자동 생성됨
+-- 주의: [비밀번호] 부분을 실제 비밀번호로 교체하세요!
+-- ==========================================================
+
+-- 'cotdl'@'%' 계정
+GRANT ALL PRIVILEGES ON *.* TO "cotdl"@"%" IDENTIFIED BY PASSWORD '*D7B2436A7EAA8BA3D911BB309830D0353CACD254';
+GRANT ALL PRIVILEGES ON "piibank".* TO "cotdl"@"%";
+
+-- 'cotdl'@'localhost' 계정
+GRANT ALL PRIVILEGES ON *.* TO "cotdl"@"localhost" IDENTIFIED BY PASSWORD '*D7B2436A7EAA8BA3D911BB309830D0353CACD254';
+GRANT ALL PRIVILEGES ON "piibank".* TO "cotdl"@"localhost";
+
+-- 'cotdl'@'127.0.0.1' 계정
+GRANT ALL PRIVILEGES ON *.* TO "cotdl"@"127.0.0.1" IDENTIFIED BY PASSWORD '*D7B2436A7EAA8BA3D911BB309830D0353CACD254';
+
+-- 'cotdlbk'@'%' 계정
+GRANT ALL PRIVILEGES ON *.* TO "cotdlbk"@"%" IDENTIFIED BY PASSWORD '*D7B2436A7EAA8BA3D911BB309830D0353CACD254';
+
+FLUSH PRIVILEGES;

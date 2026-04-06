@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiJobMapper">
+
+ 	<sql id="criteria_piijob">
+		<trim prefix=" and 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and jobtype = #{search2, jdbcType=VARCHAR}
+						</if>
+						<if test="search3 != null">
+							and (job_owner_name1 like '%'||#{search3}||'%' or job_owner_name2 like '%'||#{search3}||'%' or job_owner_name3 like '%'||#{search3}||'%' or
+							     job_owner_id1 like '%'||#{search3}||'%' or job_owner_id2 like '%'||#{search3}||'%' or job_owner_id3 like '%'||#{search3}||'%'
+							)
+						</if>
+						<if test="search4 != null">
+							and system = #{search4, jdbcType=VARCHAR}
+						</if>
+						<if test="search5 != null">
+							and policy_id = #{search5, jdbcType=VARCHAR}
+						</if>
+						<if test="search6 != null">
+							and keymap_id = #{search6, jdbcType=VARCHAR}
+						</if>
+						<if test="search7 != null">
+							and status = #{search7, jdbcType=VARCHAR}
+						</if>
+						<if test="search8 != null">
+							and runtype = #{search8, jdbcType=VARCHAR}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getExeJobList" resultType="datablocks.dlm.domain.PiiJobVO">
+		<![CDATA[
+		select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid 
+		  from cotdl.tbl_piijob a 
+		 where 1=1 
+		   and phase= 'CHECKIN'
+		   and status= 'ACTIVE'
+		   and runtype in( 'REGULAR', 'DLM_BATCH')
+		   and version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid and phase= 'CHECKIN' and status= 'ACTIVE') 
+		   and not exists(select 1 
+                            from cotdl.tbl_piiorder 
+                           where jobid = a.jobid 
+                             and status != 'Recovered'
+                             and trunc(basedate) = trunc(to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'))
+                        ) 
+		 order by jobid
+		]]>
+	</select>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiJobVO">
+		<![CDATA[
+		select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piijob a 
+		 where 1=1 
+		   and version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+		 order by jobid desc
+		]]>
+	</select>
+	<select id="getAllVersionList" resultType="datablocks.dlm.domain.PiiJobVO">
+		<![CDATA[
+		select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piijob a 
+		 where 1=1 
+		   and jobid= #{jobid}
+		 order by to_number(version) desc
+		]]>
+	</select>
+	<select id="getMaxVersionByJob" resultType="int">
+		select max(to_number(version)) from cotdl.tbl_piijob a
+				where jobid= #{jobid}
+	</select>
+	<select id="getKeymapList" resultType="datablocks.dlm.domain.PiiKeymapPkVO">
+		<![CDATA[
+		select distinct keymap_id
+		  from cotdl.tbl_piijob a 
+		 where 1=1 
+		   and version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+		 order by keymap_id
+		]]>
+	</select>
+	<select id="getActiveList" resultType="datablocks.dlm.domain.PiiJobVO">
+		<![CDATA[
+		select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piijob a 
+		 where 1=1 
+		   and status in ( 'ACTIVE', 'NEW')
+		   and version = (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+		]]>
+	    
+		<include refid="criteria_piijob"></include> 
+	    
+	    <![CDATA[ 
+		 order by jobid desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piijob (jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, enddate, regdate, upddate, reguserid, upduserid)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{jobname, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{policy_id, jdbcType=VARCHAR}, #{keymap_id, jdbcType=VARCHAR}, #{jobtype, jdbcType=VARCHAR}, #{runtype, jdbcType=VARCHAR}, #{calendar, jdbcType=VARCHAR}, #{time, jdbcType=VARCHAR}, #{cronval, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, 'ACTIVE', #{phase, jdbcType=VARCHAR}, #{job_owner_id1, jdbcType=VARCHAR}, #{job_owner_name1, jdbcType=VARCHAR}, #{job_owner_id2, jdbcType=VARCHAR}, #{job_owner_name2, jdbcType=VARCHAR}, #{job_owner_id3, jdbcType=VARCHAR}, #{job_owner_name3, jdbcType=VARCHAR}, null, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piijob (jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, enddate, regdate, upddate, reguserid, upduserid)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{jobname, jdbcType=VARCHAR}, #{system, jdbcType=VARCHAR}, #{policy_id, jdbcType=VARCHAR}, #{keymap_id, jdbcType=VARCHAR}, #{jobtype, jdbcType=VARCHAR}, #{runtype, jdbcType=VARCHAR}, #{calendar, jdbcType=VARCHAR}, #{time, jdbcType=VARCHAR}, #{cronval, jdbcType=VARCHAR}, #{confirmflag, jdbcType=VARCHAR}, 'ACTIVE', #{phase, jdbcType=VARCHAR}, #{job_owner_id1, jdbcType=VARCHAR}, #{job_owner_name1, jdbcType=VARCHAR}, #{job_owner_id2, jdbcType=VARCHAR}, #{job_owner_name2, jdbcType=VARCHAR}, #{job_owner_id3, jdbcType=VARCHAR}, #{job_owner_name3, jdbcType=VARCHAR}, null, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+	<insert id="checkout">
+		insert into cotdl.tbl_piijob 
+		select jobid, TO_NUMBER(version)+1, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, 'CHECKOUT' as phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, enddate, regdate, SYSDATE as upddate, reguserid, upduserid
+		 from cotdl.tbl_piijob where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</insert>
+	<update id="checkin">
+		update cotdl.tbl_piijob
+		   set
+			  phase= 'APPROVING',
+			  upddate= SYSDATE
+		where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piijob
+		   set phase= 'CHECKOUT',
+			   upddate= SYSDATE
+		 where jobid= #{id} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piijob
+		   set 
+			   phase= 'CHECKIN',
+			   upddate= SYSDATE
+		 where jobid= #{id} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="setold">
+		update cotdl.tbl_piijob
+		   set 
+			   status= 'OLD',
+			   phase= 'CHECKIN',
+			   upddate= SYSDATE
+		 where jobid= #{id} and version != #{version, jdbcType=VARCHAR}
+	</update>
+	<select id="read" resultType="datablocks.dlm.domain.PiiJobVO">
+		select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		 from cotdl.tbl_piijob where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piijob where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piijob
+			set 
+				jobname= #{jobname, jdbcType=VARCHAR},
+				system= #{system, jdbcType=VARCHAR},
+				policy_id= #{policy_id, jdbcType=VARCHAR},
+				keymap_id= #{keymap_id, jdbcType=VARCHAR},
+				jobtype= #{jobtype, jdbcType=VARCHAR},
+				runtype= #{runtype, jdbcType=VARCHAR},
+				calendar= #{calendar, jdbcType=VARCHAR},
+				time= #{time, jdbcType=VARCHAR},
+				cronval= #{cronval, jdbcType=VARCHAR},
+				confirmflag= #{confirmflag, jdbcType=VARCHAR},
+				status= #{status, jdbcType=VARCHAR},
+				phase= #{phase, jdbcType=VARCHAR},
+				job_owner_id1= #{job_owner_id1, jdbcType=VARCHAR},
+				job_owner_name1= #{job_owner_name1, jdbcType=VARCHAR},
+				job_owner_id2= #{job_owner_id2, jdbcType=VARCHAR},
+				job_owner_name2= #{job_owner_name2, jdbcType=VARCHAR},
+				job_owner_id3= #{job_owner_id3, jdbcType=VARCHAR},
+				job_owner_name3= #{job_owner_name3, jdbcType=VARCHAR},
+				upddate= SYSDATE,
+				upduserid= #{upduserid}
+		where jobid= #{jobid} and version= #{version, jdbcType=VARCHAR}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiJobVO"> 
+		<![CDATA[ 
+		select 
+			jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, enddate, regdate, upddate, reguserid, upduserid
+		from ( 
+				select 
+					 ROWNUM rn, jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, enddate, regdate, upddate, reguserid, upduserid
+				from (
+						select jobid, version, jobname, system, policy_id, keymap_id, jobtype, runtype, calendar, time, cronval, confirmflag, status, phase, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(enddate,'yyyy/mm/dd') as enddate, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piijob a
+						 where version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+						   and status != 'OLD' 
+						 order by jobtype desc, system, policy_id, keymap_id
+					 ) a
+				where 
+		]]>
+	    
+		<trim prefix=" (1=1" suffix=") AND" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and jobtype =#{search2, jdbcType=VARCHAR}
+						</if>
+						<if test="search3 != null">
+							and (job_owner_name1 like '%'||#{search3}||'%' or job_owner_name2 like '%'||#{search3}||'%' or job_owner_name3 like '%'||#{search3}||'%' or
+							     job_owner_id1 like '%'||#{search3}||'%' or job_owner_id2 like '%'||#{search3}||'%' or job_owner_id3 like '%'||#{search3}||'%'
+							)
+						</if>
+						<if test="search4 != null">
+							and system = #{search4, jdbcType=VARCHAR}
+						</if>
+						<if test="search5 != null">
+							and policy_id = #{search5, jdbcType=VARCHAR}
+						</if>
+						<if test="search6 != null">
+							and keymap_id like = #{search6, jdbcType=VARCHAR}
+						</if>
+						<if test="search7 != null">
+							and status = #{search7, jdbcType=VARCHAR}
+						</if>
+						<if test="search8 != null">
+							and runtype = #{search8, jdbcType=VARCHAR}
+						</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by jobtype desc, system, policy_id, keymap_id
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by jobtype desc, system, policy_id, keymap_id
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piijob a
+				where version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+		
+		<include refid="criteria_piijob"></include> 
+			
+	</select>
+	<select id="getPiiTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piijob a
+		where version in (select max(to_number(version)) from cotdl.tbl_piijob where jobid = a.jobid)
+		  and a.status = 'ACTIVE'
+		  and a.jobtype = 'PII'
+
+	</select>
+
+</mapper>

@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiRecoveryMapper">
+
+ 	<sql id="criteria_piirecovery">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and upper(old_jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and trunc(basedate) = (to_date(#{search2, jdbcType=VARCHAR},'yyyy/mm/dd'))
+						</if>
+		</trim>
+	</sql> 
+ 	<sql id="criteria_order">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and upper(b.jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+						<if test="search2 != null">
+							and trunc(b.basedate) = (to_date(#{search2, jdbcType=VARCHAR},'yyyy/mm/dd'))
+						</if>
+		</trim>
+	</sql> 
+ 	<sql id="criteria_job">
+		<trim prefix=" " suffix="" >
+						<if test="search1 != null">
+							and upper(jobid) = upper(#{search1, jdbcType=VARCHAR})
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiRecoveryVO">
+		<![CDATA[
+		select recoveryid, phase, old_orderid, new_orderid, keymap_id, to_char(basedate,'yyyy/mm/dd') as basedate, old_jobid, old_version, new_jobid, status, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid 
+		  from cotdl.tbl_piirecovery a 
+		 where 1=1
+		 order by recoveryid desc
+		]]>
+	</select>
+
+	<select id="getOrderList" resultType="datablocks.dlm.domain.PiiOrderVO">
+		<![CDATA[
+		select b.orderid, to_char(b.basedate,'yyyy/mm/dd') as basedate, b.runcnt, b.jobid, b.version, b.jobname, b.system, b.policy_id, b.keymap_id, b.jobtype, b.runtype, b.calendar, b.time, b.status, b.confirmflag, b.holdflag, b.forceokflag, b.killflag, to_char(b.eststarttime,'yyyy/mm/dd hh24:mi:ss') as eststarttime, b.runningtime, to_char(b.realstarttime,'yyyy/mm/dd hh24:mi:ss') as realstarttime, to_char(b.realendtime,'yyyy/mm/dd hh24:mi:ss') as realendtime, job_owner_id1, job_owner_name1, job_owner_id2, job_owner_name2, job_owner_id3, job_owner_name3, to_char(b.orderdate,'yyyy/mm/dd hh24:mi:ss') as orderdate, b.orderuserid
+		  from cotdl.tbl_piiorder b, cotdl.tbl_piiorderstep c
+		 where 1=1
+		   and b.orderid = c.orderid
+           and c.steptype = 'EXE_ARCHIVE'
+           and b.status = 'Ended OK'
+		  ]]>
+	    
+		<include refid="criteria_order"></include> 
+	    
+	    <![CDATA[
+		order by b.orderid desc
+		]]>
+	</select>
+	
+	<select id="getOrderJobList" resultType="datablocks.dlm.domain.PiiOrderJobVO">
+		<![CDATA[
+		select jobid, max(version) as version, max(jobtype) as jobtype, max(runtype) as runtype, max(system) as system, max(calendar) as calendar, max(time) as time, max(job_owner_name1) as job_owner_name1
+		, max(policy_id) as policy_id, max(keymap_id) as keymap_id, count(jobid) as runcnt, min(basedate) as basedate_min, max(basedate) as basedate_max
+		, max(realstarttime) as lastexedatetime
+		from cotdl.tbl_piiorder
+		where status = 'Ended OK'
+		and jobtype='PII'
+		and runtype not in ('DLM_BATCH','RECOVERY','RESTORE')
+		group by jobid
+		order by jobid
+		  ]]>
+	</select>
+
+	<select id="getOrderJobListWithPaging" resultType="datablocks.dlm.domain.PiiOrderJobVO">
+		<![CDATA[
+		select jobid, max(version) as version, max(jobtype) as jobtype, max(runtype) as runtype, max(system) as system, max(calendar) as calendar, max(time) as time, max(job_owner_name1) as job_owner_name1
+		, max(policy_id) as policy_id, max(keymap_id) as keymap_id, count(jobid) as runcnt, min(basedate) as basedate_min, max(basedate) as basedate_max
+		, max(realstarttime) as lastexedatetime
+		from cotdl.tbl_piiorder
+		where status = 'Ended OK'
+		and jobtype='PII'
+		and runtype not in ('DLM_BATCH','RECOVERY','RESTORE')
+		]]>
+
+		<include refid="criteria_job"></include>
+
+		<![CDATA[
+		group by jobid
+		order by jobid
+
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piirecovery (recoveryid, phase, old_orderid, new_orderid, keymap_id, basedate, old_jobid, old_version, new_jobid, status, regdate, upddate, reguserid, upduserid)
+		values (#{recoveryid}, #{phase, jdbcType=VARCHAR}, #{old_orderid}, #{new_orderid}, #{keymap_id, jdbcType=VARCHAR}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{old_jobid, jdbcType=VARCHAR}, #{old_version, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		<selectKey resultType="int" keyProperty="recoveryid" order="BEFORE">
+	        select COALESCE(max(recoveryid),10000)+1 from cotdl.tbl_piirecovery        
+	    </selectKey>
+	    insert into COTDL.tbl_piirecovery (recoveryid, phase, old_orderid, new_orderid, keymap_id, basedate, old_jobid, old_version, new_jobid, status, regdate, upddate, reguserid, upduserid)
+		values (#{recoveryid}, #{phase, jdbcType=VARCHAR}, #{old_orderid, jdbcType=VARCHAR}, #{new_orderid, jdbcType=VARCHAR}, #{keymap_id, jdbcType=VARCHAR}, to_date(#{basedate, jdbcType=VARCHAR},'yyyy/mm/dd'), #{old_jobid, jdbcType=VARCHAR}, #{old_version, jdbcType=VARCHAR}, #{new_jobid, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, SYSDATE, SYSDATE, #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="requestapproval">
+		update cotdl.tbl_piirecovery
+		   set
+			   phase= 'APPROVING',
+			   status= 'APPLY',
+			   upddate= SYSDATE
+		where recoveryid= #{recoveryid}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piirecovery
+		   set phase= 'REJECTED',
+			   upddate= SYSDATE
+		 where recoveryid= #{recoveryid}
+	</update>
+	<update id="approve">
+		update cotdl.tbl_piirecovery
+		   set 
+			   phase= 'APPROVED',
+			   status= 'ORDERED',
+			   upddate= SYSDATE
+		 where recoveryid= #{recoveryid}
+	</update>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiRecoveryVO">
+		select 
+			   recoveryid, phase, old_orderid, new_orderid, keymap_id, to_char(basedate,'yyyy/mm/dd') as basedate, old_jobid, old_version, new_jobid, status, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piirecovery 
+		 where recoveryid= #{recoveryid}
+	</select>
+	<select id="readByOldOrderid" resultType="datablocks.dlm.domain.PiiRecoveryVO">
+		select 
+			   recoveryid, phase, old_orderid, new_orderid, keymap_id, to_char(basedate,'yyyy/mm/dd') as basedate, old_jobid, old_version, new_jobid, status, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piirecovery 
+		 where old_orderid= #{old_orderid}
+	</select>
+	<select id="readByNewOrderid" resultType="datablocks.dlm.domain.PiiRecoveryVO">
+		select 
+			   recoveryid, phase, old_orderid, new_orderid, keymap_id, to_char(basedate,'yyyy/mm/dd') as basedate, old_jobid, old_version, new_jobid, status, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piirecovery 
+		 where new_orderid= #{new_orderid}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piirecovery where recoveryid= #{recoveryid}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piirecovery
+		   set 
+				new_orderid= #{new_orderid},
+				status= #{status, jdbcType=VARCHAR},
+				upddate= SYSDATE,
+				upduserid= #{upduserid, jdbcType=VARCHAR}
+		 where recoveryid= #{recoveryid}
+	</update>
+
+    <update id="updateStatus">
+		update cotdl.tbl_piirecovery
+		   set 
+			   status= (select status from cotdl.tbl_piiorder where orderid= #{new_orderid})
+		 where new_orderid= #{new_orderid}
+	</update>	
+	
+	<select id="getRecoveryJobList" resultType="datablocks.dlm.domain.PiiJobOrderVO">
+		<![CDATA[
+		select old_jobid as jobid, null as version, null as basedate
+		  from cotdl.tbl_piirecovery
+		group by old_jobid
+		order by old_jobid
+		]]>
+
+	</select>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiRecoveryVO">
+		<![CDATA[
+		select
+			recoveryid, phase, old_orderid, new_orderid, keymap_id, basedate, old_jobid, old_version, new_jobid, status, regdate, upddate, reguserid, upduserid
+		from (
+				select
+					 ROWNUM rn, recoveryid, phase, old_orderid, new_orderid, keymap_id, basedate, old_jobid, old_version, new_jobid, status, regdate, upddate, reguserid, upduserid
+				from (
+						select recoveryid, phase, old_orderid, new_orderid, keymap_id, to_char(basedate,'yyyy/mm/dd') as basedate, old_jobid, old_version, new_jobid, status, to_char(regdate,'yyyy/mm/dd hh24:mi:ss') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piirecovery order by recoveryid desc
+					 ) a
+				where 1=1
+		]]>
+
+		<include refid="criteria_piirecovery"></include>
+
+	    <![CDATA[
+				  and  ROWNUM <= #{pagenum} * #{amount}
+				order by recoveryid
+			  ) k
+		where rn > (#{pagenum} -1) * #{amount}
+		order by recoveryid desc
+		]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piirecovery a
+				where 1=1 
+		
+		<include refid="criteria_piirecovery"></include> 
+			
+	</select>
+
+	<select id="getMaxRecoveryid" resultType="int">
+		select COALESCE(max(recoveryid),10000) from cotdl.tbl_piirecovery
+	</select>
+	<update id="checkin">
+		update cotdl.tbl_piirecovery
+		set
+			phase= 'APPROVING',
+			upddate= SYSDATE
+		where restoreid= #{restoreid, jdbcType=VARCHAR}
+	</update>
+</mapper>

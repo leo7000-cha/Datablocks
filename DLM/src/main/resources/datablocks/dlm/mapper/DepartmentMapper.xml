@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.DepartmentMapper">
+
+ 	<sql id="criteria_department">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and deptcode like concat('%',#{search1},'%')
+						</if>
+						<if test="search2 != null">
+							and deptname = #{search2}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.DepartmentVO">
+		<![CDATA[
+		select deptcode, deptname, status
+		 from cotdl.tbl_department 
+		 order by deptcode
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_department (deptcode, deptname, status)
+		values (#{deptcode, jdbcType=VARCHAR}, #{deptname, jdbcType=VARCHAR}, #{item_name, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_department (deptcode, deptname, status)
+		values (#{deptcode, jdbcType=VARCHAR}, #{deptname, jdbcType=VARCHAR}, #{item_name, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.DepartmentVO">
+		select deptcode, deptname, status
+		  from cotdl.tbl_department 
+		 where deptcode= #{deptcode, jdbcType=VARCHAR} 
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_department where deptcode= #{deptcode} 
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_department
+		set
+			deptcode= #{deptcode, jdbcType=VARCHAR},
+			deptname= #{deptname, jdbcType=VARCHAR},
+			status= #{status, jdbcType=VARCHAR}
+		where deptcode= #{deptcode, jdbcType=VARCHAR}  
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.DepartmentVO"> 
+		<![CDATA[
+		select deptcode, deptname, status
+		  from cotdl.tbl_department
+		]]>
+		<include refid="criteria_department"></include>
+	    <![CDATA[
+		order by deptcode
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_department 
+		
+		<include refid="criteria_department"></include> 
+			
+	</select>
+
+
+</mapper>

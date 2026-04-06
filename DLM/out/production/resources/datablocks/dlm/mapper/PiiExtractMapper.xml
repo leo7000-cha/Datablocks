@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiExtractMapper">
+
+	<select id="readextractrunresultstat" resultType="datablocks.dlm.domain.PiiExtractRunRusultStatVO">
+		<![CDATA[
+		select 
+		     to_char(SYSDATE-7, 'mm/dd') as md_7
+		    ,to_char(SYSDATE-6, 'mm/dd') as md_6
+		    ,to_char(SYSDATE-5, 'mm/dd') as md_5
+		    ,to_char(SYSDATE-4, 'mm/dd') as md_4
+		    ,to_char(SYSDATE-3, 'mm/dd') as md_3
+		    ,to_char(SYSDATE-2, 'mm/dd') as md_2
+		    ,to_char(SYSDATE-1, 'mm/dd') as md_1
+		    ,sum(case when basedate = trunc(SYSDATE-7) then cnt else 0 end ) as cnt_7
+		    ,sum(case when basedate = trunc(SYSDATE-6) then cnt else 0 end ) as cnt_6
+		    ,sum(case when basedate = trunc(SYSDATE-5) then cnt else 0 end ) as cnt_5
+		    ,sum(case when basedate = trunc(SYSDATE-4) then cnt else 0 end ) as cnt_4
+		    ,sum(case when basedate = trunc(SYSDATE-3) then cnt else 0 end ) as cnt_3
+		    ,sum(case when basedate = trunc(SYSDATE-2) then cnt else 0 end ) as cnt_2
+		    ,sum(case when basedate = trunc(SYSDATE-1) then cnt else 0 end ) as cnt_1
+		from (
+			select 
+			       trunc(basedate) basedate, count(1) cnt
+			  from cotdl.tbl_piiextract a 
+			 where basedate >= SYSDATE - 7 and RESTORE_DATE is null
+			 group by basedate
+		 ) f
+		 ]]>
+	</select>
+	
+	<select id="readextractrunresultyearstat" resultType="datablocks.dlm.domain.PiiExtractRunRusultYearStatVO">
+		<![CDATA[
+		select 
+		     to_char(add_months(SYSDATE, -11),'yy/mm') ym_11
+		    ,to_char(add_months(SYSDATE, -10),'yy/mm') ym_10
+		    ,to_char(add_months(SYSDATE, -9),'yy/mm') ym_9
+		    ,to_char(add_months(SYSDATE, -8),'yy/mm') ym_8
+		    ,to_char(add_months(SYSDATE, -7),'yy/mm') ym_7
+		    ,to_char(add_months(SYSDATE, -6),'yy/mm') ym_6
+		    ,to_char(add_months(SYSDATE, -5),'yy/mm') ym_5
+		    ,to_char(add_months(SYSDATE, -4),'yy/mm') ym_4
+		    ,to_char(add_months(SYSDATE, -3),'yy/mm') ym_3
+		    ,to_char(add_months(SYSDATE, -2),'yy/mm') ym_2
+		    ,to_char(add_months(SYSDATE, -1),'yy/mm') ym_1
+		    ,to_char(add_months(SYSDATE, -1),'yy/mm') ym_1
+		    ,to_char(add_months(SYSDATE, -0),'yy/mm') ym_0
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -11),'yymm') then cnt else 0 end ) as cnt_11
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -10),'yymm') then cnt else 0 end ) as cnt_10
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -9),'yymm') then cnt else 0 end ) as cnt_9
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -8),'yymm') then cnt else 0 end ) as cnt_8
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -7),'yymm') then cnt else 0 end ) as cnt_7
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -6),'yymm') then cnt else 0 end ) as cnt_6
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -5),'yymm') then cnt else 0 end ) as cnt_5
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -4),'yymm') then cnt else 0 end ) as cnt_4
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -3),'yymm') then cnt else 0 end ) as cnt_3
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -2),'yymm') then cnt else 0 end ) as cnt_2
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -1),'yymm') then cnt else 0 end ) as cnt_1
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -1),'yymm') then cnt else 0 end ) as cnt_1
+		    ,sum(case when basedate = to_char(add_months(SYSDATE, -0),'yymm') then cnt else 0 end ) as cnt_0
+		from (
+			select 
+			       to_char(basedate,'yymm') basedate, count(1) cnt
+			  from cotdl.tbl_piiextract a 
+			 where basedate >= add_months(SYSDATE, -12) and RESTORE_DATE is null
+			 group by to_char(basedate,'yymm')
+		 ) f
+		 ]]>
+	</select>
+	<select id="readextractrunresultsumstat" resultType="datablocks.dlm.domain.PiiExtractRunRusultYearStatVO">
+		<![CDATA[
+		select 
+		     to_char(add_months(SYSDATE, -11),'yy/mm') ym_11
+		    ,to_char(add_months(SYSDATE, -10),'yy/mm') ym_10
+		    ,to_char(add_months(SYSDATE, -9),'yy/mm') ym_9
+		    ,to_char(add_months(SYSDATE, -8),'yy/mm') ym_8
+		    ,to_char(add_months(SYSDATE, -7),'yy/mm') ym_7
+		    ,to_char(add_months(SYSDATE, -6),'yy/mm') ym_6
+		    ,to_char(add_months(SYSDATE, -5),'yy/mm') ym_5
+		    ,to_char(add_months(SYSDATE, -4),'yy/mm') ym_4
+		    ,to_char(add_months(SYSDATE, -3),'yy/mm') ym_3
+		    ,to_char(add_months(SYSDATE, -2),'yy/mm') ym_2
+		    ,to_char(add_months(SYSDATE, -1),'yy/mm') ym_1
+		    ,to_char(add_months(SYSDATE, -1),'yy/mm') ym_1
+		    ,to_char(add_months(SYSDATE, -0),'yy/mm') ym_0
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -11),'yymm') then cnt else 0 end ) as cnt_11
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -10),'yymm') then cnt else 0 end ) as cnt_10
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -9),'yymm') then cnt else 0 end ) as cnt_9
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -8),'yymm') then cnt else 0 end ) as cnt_8
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -7),'yymm') then cnt else 0 end ) as cnt_7
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -6),'yymm') then cnt else 0 end ) as cnt_6
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -5),'yymm') then cnt else 0 end ) as cnt_5
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -4),'yymm') then cnt else 0 end ) as cnt_4
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -3),'yymm') then cnt else 0 end ) as cnt_3
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -2),'yymm') then cnt else 0 end ) as cnt_2
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -1),'yymm') then cnt else 0 end ) as cnt_1
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -1),'yymm') then cnt else 0 end ) as cnt_1
+		    ,sum(case when basedate <= to_char(add_months(SYSDATE, -0),'yymm') then cnt else 0 end ) as cnt_0
+		from (
+			select 
+			       to_char(basedate,'yymm') basedate, count(1) cnt
+			  from cotdl.tbl_piiextract a 
+			 where basedate >= add_months(SYSDATE, -12) and RESTORE_DATE is null
+			 group by to_char(basedate,'yymm')
+		 ) f
+		 ]]>
+	</select>
+	
+	 <sql id="criteria_piiextract">
+		<trim prefix=" " suffix=" " >
+			<if test="search1 != null">
+				and custid = #{search1}
+			</if>
+			<if test="search2 != null">
+				and cust_nm = #{search2}
+			</if>
+			<if test="search3 != null">
+				and birth_dt = #{search3}
+			</if>
+			<if test="search4 != null">
+				and rsdnt_altrntv_id = #{search4}
+			</if>
+			<if test="search5 != null">
+				and cust_pin = #{search5}
+			</if>
+			<if test="search6 != null">
+				and orderid = #{search6}
+			</if>
+			<if test="search7 != null">
+				and basedate = to_date(#{search7, jdbcType=VARCHAR},'yyyy/mm/dd')
+			</if>
+			<if test="search8 != null">
+				and upper(jobid) = upper(#{search8, jdbcType=VARCHAR})
+			</if>
+		</trim>
+	</sql>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiExtractVO"> 
+		<![CDATA[ 
+		select 
+			orderid, jobid, actid, custid, basedate, exclude_reason, actrole_end_date, archive_date, delete_date, restore_date, arc_del_date, cust_nm, birth_dt, address, pd_cd, pd_nm, contract_opn_dt, cb_dt, rsdnt_altrntv_id, cust_pin, inst_cd, regdate, upddate, reguserid, upduserid
+		from ( 
+				select  
+					 ROWNUM rn, orderid, jobid, actid, custid, basedate, exclude_reason, actrole_end_date, archive_date, delete_date, restore_date, arc_del_date, cust_nm, birth_dt, address, pd_cd, pd_nm, contract_opn_dt, cb_dt, rsdnt_altrntv_id, cust_pin, inst_cd, regdate, upddate, reguserid, upduserid
+				from (
+						select orderid, jobid, actid, custid, to_char(basedate,'yyyy/mm/dd') as basedate, exclude_reason, to_char(actrole_end_date,'yyyy/mm/dd') as actrole_end_date, to_char(archive_date,'yyyy/mm/dd') as archive_date, to_char(delete_date,'yyyy/mm/dd') as delete_date, to_char(restore_date,'yyyy/mm/dd') as restore_date, to_char(arc_del_date,'yyyy/mm/dd') as arc_del_date, cust_nm, birth_dt, address, pd_cd, pd_nm, contract_opn_dt, cb_dt, rsdnt_altrntv_id, cust_pin, inst_cd, to_char(regdate,'yyyy/mm/dd') as regdate, to_char(upddate,'yyyy/mm/dd') as upddate, reguserid, upduserid
+						  from cotdl.tbl_piiextract
+						  where 1 = 1
+		]]>
+							<include refid="criteria_piiextract"></include>
+		<![CDATA[
+						  order by orderid desc, custid, jobid
+					 ) a
+				where 1 = 1
+
+				 and ROWNUM <= #{pagenum} * #{amount}
+				order by actid, custid, basedate desc, jobid
+			  ) q 
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by basedate desc, actid, custid, jobid
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiextract a
+				where 1=1 
+		
+		<include refid="criteria_piiextract"></include> 
+			
+	</select>
+
+	<sql id="criteria_piiextract_custstat">
+		 <trim prefix=" " suffix=" " >
+			 <if test="search1 != null">
+				 and b.system like '%'||#{search1}||'%'
+			 </if>
+			 <if test="search2 != null">
+				 and b.policy_id like '%'||#{search2}||'%'
+			 </if>
+			 <if test="search3 != null">
+				 and upper(a.jobid) = upper(#{search3, jdbcType=VARCHAR})
+			 </if>
+			 <if test="search4 != null">
+				 <![CDATA[
+					and TRUNC(b.basedate) >= TRUNC(TO_DATE(#{search4},'yyyymmdd'))
+				]]>
+			 </if>
+			 <if test="search5 != null">
+				 <![CDATA[
+					and TRUNC(b.basedate) <= TRUNC(TO_DATE(#{search5},'yyyymmdd'))
+				]]>
+			 </if>
+		 </trim>
+	</sql>
+	<select id="getCustStatListWithPaging" resultType="datablocks.dlm.domain.PiiCustStatVO"> 
+		<![CDATA[ 
+		select 
+			system, policy_id, jobid, delete_cnt, archive_cnt, restore_cnt, arc_del_cnt
+		from ( 
+				select  
+					 ROWNUM rn, system, policy_id, jobid, delete_cnt, archive_cnt, restore_cnt, arc_del_cnt
+				from (
+						select b.system, b.policy_id, a.jobid
+							, count(delete_date) as delete_cnt
+							, count(archive_date) as archive_cnt
+							, count(restore_date) as restore_cnt
+							, sum(case when a.arc_del_date < SYSDATE then 1 else 0 end) as arc_del_cnt
+						  from cotdl.tbl_piiextract a, cotdl.tbl_piiorder b
+						 where a.orderid = b.orderid
+						 ]]>
+
+							<include refid="criteria_piiextract_custstat"></include>
+	    
+	   					 <![CDATA[
+						 group by b.system, b.policy_id, a.jobid
+						 order by b.system, b.policy_id, a.jobid
+					 ) a
+				where 
+		]]>
+
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by system, policy_id, jobid
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by system, policy_id, jobid
+		]]> 
+	</select>	
+
+	<select id="getCustStatTotalCount" resultType="int">
+		<![CDATA[ 
+		select 
+			count(1)
+		from ( 
+						select b.system, b.policy_id, a.jobid
+						  from cotdl.tbl_piiextract a, cotdl.tbl_piiorder b
+						 where a.orderid = b.orderid
+
+		]]>
+
+		<include refid="criteria_piiextract_custstat"></include>
+	    
+	    <![CDATA[
+						 group by b.system, b.policy_id, a.jobid
+			) f
+		]]> 	
+	</select>
+</mapper>

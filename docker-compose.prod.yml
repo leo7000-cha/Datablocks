@@ -1,0 +1,59 @@
+# ==============================================================================
+# DLM Docker Compose - PRODUCTION Override (8 Core / 64GB)
+#
+# 사용법:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Resource Allocation (64GB):
+#   MariaDB         : 2 CPU / 10GB  (InnoDB buffer pool ~6GB)
+#   DLM (Spring)    : 3 CPU / 24GB  (JVM heap ~16GB)
+#   DLM-Privacy-AI  : 2 CPU / 20GB  (AI model + inference)
+#   OS/Docker 예약   : 1 CPU / 10GB
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  dlm-mariadb:
+    volumes:
+      - ./mariadb/conf.d/custom-prod.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 10G
+        reservations:
+          cpus: "1.0"
+          memory: 4G
+
+  dlm:
+    environment:
+      JAVA_OPTS: >-
+        -Xms8g -Xmx16g
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:+HeapDumpOnOutOfMemoryError
+        -XX:HeapDumpPath=/app/logs/heapdump.hprof
+        -Djava.security.egd=file:/dev/./urandom
+        -Dfile.encoding=UTF-8
+        -Duser.timezone=Asia/Seoul
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 24G
+        reservations:
+          cpus: "1.5"
+          memory: 8G
+
+  dlm-privacy-ai:
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 20G
+        reservations:
+          cpus: "1.0"
+          memory: 4G

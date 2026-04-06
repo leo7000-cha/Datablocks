@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiOrderStepTableMapper">
+
+ 	<sql id="criteria_piiordersteptable">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search1 != null">
+				and jobid = #{search1, jdbcType=VARCHAR}
+			</if>
+			<if test="search2 != null">
+				and basedate = #{search2}
+			</if>
+			<if test="search3 != null">
+				and stepid = #{search3}
+			</if>
+			<if test="search4 != null">
+				and status = #{search4}
+			</if>
+		</trim>
+	</sql> 
+ 	<sql id="criteria_piiorderreport">
+		<trim prefix="" suffix="" >
+			<if test="search1 != null">
+				and a.system = #{search1, jdbcType=VARCHAR}
+			</if>
+			<if test="search2 != null">
+				and a.jobid = #{search2, jdbcType=VARCHAR}
+			</if>
+			<if test="search3 != null">
+				<![CDATA[
+					and a.basedate >= STR_TO_DATE(#{search3, jdbcType=VARCHAR}, '%Y/%m/%d')
+				]]>
+			</if>
+			<if test="search4 != null">
+				<![CDATA[
+					and a.basedate <= STR_TO_DATE(#{search4, jdbcType=VARCHAR}, '%Y/%m/%d')
+				]]>
+			</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable order by orderid, jobid, version, stepseq, seq1 desc, seq2 desc, seq3 desc
+		]]>
+	</select>
+
+	<select id="getStepTableList" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+		 where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR}
+		 order by orderid, jobid, version, stepseq, seq1 desc, seq2 desc, seq3 desc
+		]]>
+	</select>
+	<select id="getStepTableListasc" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+		 where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR}
+		 order by orderid, jobid, version, stepseq, seq1 , seq2 , seq3 
+		]]>
+	</select>
+	<select id="getStepTableList_keymap" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+		 where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR}
+		 order by orderid, jobid, version, stepseq, seq1, seq2, seq3
+		]]>
+	</select>
+	<select id="getRunnableStepTableList" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+		 where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR}
+		   and status not in ('Ended OK', 'Running') and forceokflag = 'N'
+		 order by orderid, jobid, version, stepseq, seq1 desc, seq2 desc, seq3 desc
+		]]>
+	</select>
+	<select id="getOrderReportList" resultType="datablocks.dlm.domain.PiiOrderReportVO">
+		<![CDATA[
+
+				select  c.* from (
+					 select a.system, b.jobid, b.db, b.owner, b.table_name, b.seq1, b.seq2, b.seq3
+		             , sum(CASE WHEN b.steptype in ('EXE_DELETE', 'EXE_UPDATE') THEN b.execnt ELSE 0 END) as delcnt
+					 , sum(CASE WHEN b.steptype='EXE_ARCHIVE' THEN b.execnt ELSE 0 END) as arccnt
+		             , sum(CASE WHEN b.steptype in ('EXE_ARC_DELETE') THEN b.execnt ELSE 0 END) as delarccnt
+					   from cotdl.tbl_piiorder a, cotdl.tbl_piiordersteptable b
+					  where a.status = 'Ended OK'
+					    and a.orderid = b.orderid
+			            and b.steptype in ('EXE_ARCHIVE', 'EXE_DELETE', 'EXE_UPDATE')
+			     ]]>
+			            <include refid="criteria_piiorderreport"></include> 
+			     <![CDATA[
+			          group by b.db, b.owner, b.table_name, a.system, b.jobid, b.seq1, b.seq2, b.seq3
+			     ) as c
+
+
+		order by db, owner, table_name, jobid
+        limit #{offset}, #{amount}
+		]]>
+	</select>
+	
+
+	<select id="getTotalReportCount" resultType="int">
+		<![CDATA[
+		select count(1) from (
+ 				select a.system, b.jobid, b.db, b.owner, b.table_name, b.seq1, b.seq2, b.seq3
+		             , sum(CASE WHEN b.steptype in ('EXE_DELETE', 'EXE_UPDATE') THEN b.execnt ELSE 0 END) as delcnt
+					 , sum(CASE WHEN b.steptype='EXE_ARCHIVE' THEN b.execnt ELSE 0 END) as arccnt
+		             , sum(CASE WHEN b.steptype in ('EXE_ARC_DELETE') THEN b.execnt ELSE 0 END) as delarccnt
+					   from cotdl.tbl_piiorder a, cotdl.tbl_piiordersteptable b
+					  where a.status = 'Ended OK'
+					    and a.orderid = b.orderid
+			            and b.steptype in ('EXE_ARCHIVE', 'EXE_DELETE', 'EXE_UPDATE')
+			     ]]>
+			            <include refid="criteria_piiorderreport"></include> 
+			     <![CDATA[
+			          group by b.db, b.owner, b.table_name, a.system, b.jobid, b.seq1, b.seq2, b.seq3
+          ) c
+		]]>
+	</select>
+	<select id="getWaitTableList" resultType="int">
+		<![CDATA[
+		select count(1) 
+		  from cotdl.tbl_piiordersteptable a
+		     , cotdl.tbl_piiordersteptablewait b
+		 where a.orderid = b.orderid and a.jobid = b.jobid and a.version = b.version and type='PRE' and a.stepid= b.stepid
+		   and a.db= b.db_w and a.owner= b.owner_w and a.table_name= b.table_name_w
+		   and b.db= #{db, jdbcType=VARCHAR} and b.owner= #{owner, jdbcType=VARCHAR} and b.table_name= #{table_name, jdbcType=VARCHAR}
+		   and a.status != 'Ended OK'
+		   and a.orderid = #{orderid} 
+		   and a.stepid = #{stepid, jdbcType=VARCHAR}
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiordersteptable (orderid, status, forceokflag, basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime, arcstart, arcend, execnt, exetime, exestart, exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5)
+		values (#{orderid}, #{status, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{pagitype, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR}, #{exetype, jdbcType=VARCHAR}, #{archiveflag, jdbcType=VARCHAR}, #{preceding, jdbcType=VARCHAR}, #{succedding, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{pipeline, jdbcType=VARCHAR}, #{pk_col, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{wherestr, jdbcType=CLOB}, #{sqlstr, jdbcType=CLOB}, #{arccnt, jdbcType=VARCHAR}, #{arctime, jdbcType=VARCHAR}, str_to_date(#{arcstart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), str_to_date(#{arcend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), #{execnt, jdbcType=VARCHAR}, #{exetime, jdbcType=VARCHAR}, str_to_date(#{exestart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), str_to_date(#{exeend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), #{sqlmsg, jdbcType=VARCHAR}, #{hintselect, jdbcType=VARCHAR}, #{hintinsert, jdbcType=VARCHAR}, #{uval1, jdbcType=VARCHAR}, #{uval2, jdbcType=VARCHAR}, #{uval3, jdbcType=VARCHAR}, #{uval4, jdbcType=VARCHAR}, #{uval5, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiordersteptable (orderid, status, forceokflag, basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime, arcstart, arcend, execnt, exetime, exestart, exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5)
+		values (#{orderid}, #{status, jdbcType=VARCHAR}, #{forceokflag, jdbcType=VARCHAR}, str_to_date(#{basedate, jdbcType=VARCHAR},'%Y/%m/%d'), #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{steptype, jdbcType=VARCHAR}, #{stepseq, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{pagitype, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR}, #{exetype, jdbcType=VARCHAR}, #{archiveflag, jdbcType=VARCHAR}, #{preceding, jdbcType=VARCHAR}, #{succedding, jdbcType=VARCHAR}, #{seq1}, #{seq2}, #{seq3}, #{pipeline, jdbcType=VARCHAR}, #{pk_col, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt, jdbcType=VARCHAR}, #{commitcnt, jdbcType=VARCHAR}, #{wherestr, jdbcType=CLOB}, #{sqlstr, jdbcType=CLOB}, #{arccnt, jdbcType=VARCHAR}, #{arctime, jdbcType=VARCHAR}, str_to_date(#{arcstart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), str_to_date(#{arcend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), #{execnt, jdbcType=VARCHAR}, #{exetime, jdbcType=VARCHAR}, str_to_date(#{exestart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), str_to_date(#{exeend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'), #{sqlmsg, jdbcType=VARCHAR}, #{hintselect, jdbcType=VARCHAR}, #{hintinsert, jdbcType=VARCHAR}, #{uval1, jdbcType=VARCHAR}, #{uval2, jdbcType=VARCHAR}, #{uval3, jdbcType=VARCHAR}, #{uval4, jdbcType=VARCHAR}, #{uval5, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} and db= #{db, jdbcType=VARCHAR} and owner= #{owner, jdbcType=VARCHAR} and table_name= #{table_name, jdbcType=VARCHAR}
+	</select>
+	<select id="readWithSeq" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend,  sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR} and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</select>
+	<select id="readWithSeqExetype" resultType="int">
+		select count(1)
+		from cotdl.tbl_piiordersteptable
+		where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and exetype= #{exetype}
+		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</select>
+	<select id="readArchiveCntWithSeq" resultType="int">
+		select execnt
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and exetype= #{exetype, jdbcType=VARCHAR} and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</select>
+	
+	<select id="readArchiveRowCntWithSeq" resultType="int">
+		select count(1)
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and exetype= #{exetype, jdbcType=VARCHAR} and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
+	</select>
+	
+	<select id="readCntBeforeAsc" resultType="int">
+		<![CDATA[
+		select count(1)
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+           and status = 'Ended not OK'
+           and (seq1 < #{seq1} 
+            	or (seq1 = #{seq1} and seq2 < #{seq2})
+            	or (seq1 = #{seq1} and seq2 = #{seq2} and seq3 <  #{seq3})
+            )
+     	]]>
+	</select>
+	<select id="readCntBeforeDesc" resultType="int">
+		<![CDATA[
+		select count(1)
+		  from cotdl.tbl_piiordersteptable 
+         where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+           and status = 'Ended not OK'
+           and (seq1 > #{seq1} 
+              	or (seq1 = #{seq1} and seq2 > #{seq2})
+            	or (seq1 = #{seq1} and seq2 = #{seq2} and seq3 >  #{seq3})
+            )
+     	]]>
+	</select>
+	<delete id="deletebyorderid">
+		delete from cotdl.tbl_piiordersteptable where orderid= #{orderid}
+	</delete>
+	<delete id="delete">
+		delete from cotdl.tbl_piiordersteptable
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</delete>
+	
+	<update id="updatebefore">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				status= 'Running',
+				exestart= NOW(),
+				exetime= null<!-- ,
+				execnt= null -->
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>	
+	<update id="updateend">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				status= #{status, jdbcType=VARCHAR},
+				exetime= TIME_FORMAT(TIMEDIFF(now(),exestart),'%H : %i : %s'),
+				exeend= NOW(),
+				execnt= #{execnt, jdbcType=VARCHAR},
+				sqlmsg= #{sqlmsg, jdbcType=VARCHAR}
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="updateendBySteptype">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				status= #{status, jdbcType=VARCHAR},
+				exetime= TIME_FORMAT(TIMEDIFF(now(),exestart),'%H : %i : %s'),
+				exeend= NOW(),
+				<!-- execnt= #{execnt, jdbcType=VARCHAR}, -->
+				sqlmsg= #{sqlmsg, jdbcType=VARCHAR}
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} 
+		   and steptype in ('EXE_DELETE', 'EXE_UPDATE') 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="updatecnt">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				execnt= #{execnt, jdbcType=VARCHAR}
+		where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR} 
+		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	
+	<update id="updateOrderDetail">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				status= #{status, jdbcType=VARCHAR},
+				db= #{db, jdbcType=VARCHAR},
+				owner= #{owner, jdbcType=VARCHAR},
+				table_name= #{table_name, jdbcType=VARCHAR},
+				where_col= #{where_col, jdbcType=VARCHAR},
+				where_key_name= #{where_key_name, jdbcType=VARCHAR},
+				pagitypedetail= #{pagitypedetail, jdbcType=VARCHAR},
+				parallelcnt= #{parallelcnt, jdbcType=VARCHAR},
+				commitcnt= #{commitcnt, jdbcType=VARCHAR},
+				wherestr= #{wherestr, jdbcType=VARCHAR},
+				sqlstr= #{sqlstr, jdbcType=VARCHAR},
+				preceding= #{preceding, jdbcType=VARCHAR},
+				succedding= #{succedding, jdbcType=VARCHAR},
+				pagitype= #{pagitype, jdbcType=VARCHAR},
+				pipeline= #{pipeline},
+				pk_col= #{pk_col, jdbcType=VARCHAR},
+				hintselect= #{hintselect, jdbcType=VARCHAR},
+				hintinsert= #{hintinsert, jdbcType=VARCHAR},
+				uval1= #{uval1, jdbcType=VARCHAR},
+				uval2= #{uval2, jdbcType=VARCHAR},
+				uval3= #{uval3, jdbcType=VARCHAR},
+				uval4= #{uval4, jdbcType=VARCHAR},
+				uval5= #{uval5, jdbcType=VARCHAR}
+		where orderid= #{orderid} and stepid= #{stepid, jdbcType=VARCHAR}
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="update">
+		 update cotdl.tbl_piiordersteptable
+		    set 
+				status= #{status, jdbcType=VARCHAR},
+			 	forceokflag= #{forceokflag, jdbcType=VARCHAR},
+				arccnt= #{arccnt, jdbcType=VARCHAR},
+				arctime= #{arctime, jdbcType=VARCHAR},
+				arcstart= str_to_date(#{arcstart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+				arcend= str_to_date(#{arcend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+				execnt= #{execnt, jdbcType=VARCHAR},
+				exetime= #{exetime, jdbcType=VARCHAR},
+				exestart= str_to_date(#{exestart, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
+				exeend= str_to_date(#{exeend, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s')
+		  where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR} 
+		    and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="updateactionflag">
+		update cotdl.tbl_piiordersteptable
+		   set 
+			   forceokflag= #{forceokflag, jdbcType=VARCHAR}
+		 where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR, jdbcType=VARCHAR} 
+		   and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3}
+	</update>
+	<update id="rerun">
+		update cotdl.tbl_piiordersteptable
+		   set 
+				status='Wait condition',
+				forceokflag= null,
+				<!-- arccnt= null, -->
+				arctime= null,
+				arcstart= null,
+				arcend= null,
+				<!-- execnt= null, -->
+				exetime= null,
+				exestart= null,
+				exeend= null
+		 where orderid= #{orderid} 
+		   and status not in ('Ended OK', 'Wait condition') 
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiOrderStepTableVO"> 
+		<![CDATA[
+		 select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		   from cotdl.tbl_piiordersteptable
+		]]>
+		<include refid="criteria_piiordersteptable"></include>
+	    <![CDATA[
+		order by orderid, jobid, version, stepseq, seq1 desc, seq2 desc, seq3 desc
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiordersteptable 
+		
+		<include refid="criteria_piiordersteptable"></include> 
+			
+	</select>
+
+	<select id="getArcTableList" resultType="datablocks.dlm.domain.PiiArcTableVO">
+		select db, owner, table_name
+		  from cotdl.tbl_piiordersteptable
+		 where exetype = 'ARCHIVE'
+		 group by db, owner, table_name
+		 order by db, owner, table_name
+	</select>
+
+	<select id="getRestoreTableNotCompleteCount" resultType="int">
+		select count(1)
+		from (
+				 select orderid, status
+				   from cotdl.tbl_piiordersteptable
+				  where orderid = #{orderid}
+					and steptype= 'EXE_RESTORE'
+				  order by orderid, jobid, version, stepseq, seq1 , seq2 , seq3
+				 limit 10
+			 ) t
+		where status != 'Ended OK'
+	</select>
+
+	<select id="getListInMigrateStep" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
+		<![CDATA[
+		 select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y%m%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y%m%d%H%i%s') as arcstart,  DATE_FORMAT(arcend,'%Y%m%d%H%i%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y%m%d%H%i%s') as exestart,  DATE_FORMAT(exeend,'%Y%m%d%H%i%s') as exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		   from cotdl.tbl_piiordersteptable
+		  where orderid = #{orderid}
+			and steptype= 'EXE_MIGRATE'
+		order by orderid, jobid, version, stepseq, seq1 desc, seq2 desc, seq3 desc
+		]]>
+	</select>
+</mapper>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiUploadTemplateMapper">
+	
+	<sql id="criteria_piiuploadtemplate">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search1 != null">
+				and jobid = #{search1, jdbcType=VARCHAR}
+			</if>
+			<if test="search2 != null">
+				and version = #{search2, jdbcType=VARCHAR}
+			</if>
+			<if test="search3 != null">
+				and stepid = #{search3, jdbcType=VARCHAR}
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiUploadTemplateVO">
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, exetype, seq, pk_col, where_col, where_key_name, parallelcnt, commitcnt, pre_owner, pre_table_name, update_cols, pagitypedetail
+		from cotdl.tbl_piiupload_template
+	    order by jobid, version, stepid, seq
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiupload_template (jobid, version, stepid, db, owner, table_name, exetype, seq, pk_col, where_col, where_key_name, parallelcnt, commitcnt, pre_owner, pre_table_name, update_cols, pagitypedetail)
+		values (#{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{exetype, jdbcType=VARCHAR}, #{seq}, #{pk_col, jdbcType=VARCHAR}, #{where_col, jdbcType=VARCHAR}, #{where_key_name, jdbcType=VARCHAR}, #{parallelcnt}, #{commitcnt}, #{pre_owner, jdbcType=VARCHAR}, #{pre_table_name, jdbcType=VARCHAR}, #{update_cols, jdbcType=VARCHAR}, #{pagitypedetail, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiUploadTemplateVO">
+		select jobid, version, stepid, db, owner, table_name, exetype, seq, pk_col, where_col, where_key_name, parallelcnt, commitcnt, pre_owner, pre_table_name, update_cols, pagitypedetail
+		  from cotdl.tbl_piiupload_template
+		  where jobid= #{jobid, jdbcType=VARCHAR}
+            and version= #{version, jdbcType=VARCHAR}
+			and stepid= #{stepid, jdbcType=VARCHAR}
+			and seq= #{jobid, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piiupload_template
+		where jobid= #{jobid, jdbcType=VARCHAR}
+		  and version= #{version, jdbcType=VARCHAR}
+		  and stepid= #{stepid, jdbcType=VARCHAR}
+		  and seq= #{jobid, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piiupload_template
+		set
+
+			db= #{db, jdbcType=VARCHAR},
+			owner= #{owner, jdbcType=VARCHAR},
+			table_name= #{table_name, jdbcType=VARCHAR},
+			exetype= #{exetype, jdbcType=VARCHAR},
+			pk_col= #{pk_col, jdbcType=VARCHAR},
+			where_col= #{where_col, jdbcType=VARCHAR},
+			where_key_name= #{where_key_name, jdbcType=VARCHAR},
+			parallelcnt= #{parallelcnt, jdbcType=VARCHAR},
+			commitcnt= #{commitcnt, jdbcType=VARCHAR},
+			pre_owner= #{pre_owner, jdbcType=VARCHAR},
+			pre_table_name= #{pre_table_name, jdbcType=VARCHAR},
+			update_cols= #{update_cols, jdbcType=VARCHAR},
+			pagitypedetail= #{pagitypedetail, jdbcType=VARCHAR},
+		where jobid= #{jobid, jdbcType=VARCHAR}
+		  and version= #{version, jdbcType=VARCHAR}
+		  and stepid= #{stepid, jdbcType=VARCHAR}
+		  and seq= #{jobid, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiUploadTemplateVO"> 
+		<![CDATA[
+		select jobid, version, stepid, db, owner, table_name, exetype, seq, pk_col, where_col, where_key_name, parallelcnt, commitcnt, pre_owner, pre_table_name, update_cols, pagitypedetail
+		  from cotdl.tbl_piiupload_template
+		]]>
+		<include refid="criteria_piiuploadtemplate"></include>
+		<![CDATA[
+		order by jobid, version, stepid, seq
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiupload_template 
+		
+		<include refid="criteria_piiuploadtemplate"></include> 
+			
+	</select>
+
+
+</mapper>

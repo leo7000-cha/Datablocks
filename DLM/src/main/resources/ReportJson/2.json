@@ -1,0 +1,56 @@
+{
+  "form_name": "현장보고서",
+  "sections": [
+    {
+      "title": "1. 총괄표222",
+      "columns": 6,
+      "colwidths": [ "15%", "17%", "17%", "17%", "17%", "16%" ],
+      "rows": [
+        { "fields": [ { "label": "구 분", "type": "label", "colspan": 1, "tag": "th", "align": "center" }, { "label": "대인 보상한도액", "type": "label", "colspan": 1, "tag": "th", "align": "center" }, { "label": "대인 배상청구액", "type": "label", "colspan": 1, "tag": "th", "align": "center" }, { "label": "대인 추정손해액", "type": "label", "colspan": 1, "tag": "th", "align": "center" }, { "label": "대인 자기부담금", "type": "label", "colspan": 1, "tag": "th", "align": "center" }, { "label": "대인 추정보험금", "type": "label", "colspan": 1, "tag": "th", "align": "center" } ] },
+        { "fields": [ { "label": "대  인", "type": "label", "colspan": 1, "tag": "td" }, { "name": "liability_limit", "type": "amt", "value": "", "colspan": 1, "tag": "td" }, { "name": "claim_amount", "type": "amt", "value": "", "colspan": 1, "tag": "td" }, { "name": "estimated_damage", "type": "amt", "value": "", "colspan": 1, "tag": "td" }, { "name": "deductible", "type": "amt", "value": "", "colspan": 1, "tag": "td" }, { "name": "estimated_insurance_payment", "type": "amt", "value": "", "colspan": 1, "tag": "td" } ] },
+        { "fields": [ { "label": "※ 추정손해액은 피해자의 입증에 따라 변동가능함.", "type": "label", "colspan": 6 } ] }
+      ]
+    },
+    {
+      "title": "2. 보험 계약 사항",
+      "columns": 4,
+      "colwidths": [ "15%", "35%", "35%", "15%" ],
+      "rows": [
+        { "fields": [ { "label": "계약자/피보험자", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "계약자", "name": "contractor", "type": "text", "value": "", "colspan": 1, "tag": "td" }, { "label": "피보험자", "name": "insured", "type": "text", "value": "", "colspan": 1, "tag": "td" }, { "label": "일치 여부", "name": "contract_match", "type": "select", "options": [ "일치", "불일치" ], "colspan": 1, "tag": "td" } ] },
+        { "fields": [ { "label": "소재지", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "계약자", "name": "location", "type": "text", "value": "", "colspan": 2 }, { "label": "일치 여부", "name": "contract_match", "type": "select", "options": [ "일치", "불일치" ], "colspan": 1, "tag": "td" } ] },
+        { "fields": [ { "label": "보험기간/ 특약", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "보험기간", "name": "period", "type": "text", "value": "", "colspan": 1, "tag": "td" }, { "label": "특약", "name": "terms", "type": "text", "value": "", "colspan": 1, "tag": "td" }, { "label": "체결일자", "name": "sign_date", "type": "text", "value": "", "colspan": 1, "tag": "td" } ] }
+      ]
+    },
+    {
+      "title": "3. 사고 사항",
+      "columns": 3,
+      "colwidths": [ "15%", "42%", "42%" ],
+      "rows": [
+        { "fields": [ { "label": "사고일자/ 장소", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "사고 일자", "name": "accident_date", "type": "text", "value": "", "colspan": 1 }, { "label": "사고 장소", "name": "accident_place", "type": "text", "value": "", "colspan": 1 } ] },
+        { "fields": [ { "label": "사고 원인", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "사고 원인", "name": "accident_reason", "type": "textarea", "rows": 2, "value": "", "colspan": 2 } ] },
+        { "fields": [ { "label": "사고 내용", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "사고 내용", "name": "accident_detail", "type": "textarea", "rows": 2, "value": "", "colspan": 2 } ] },
+        { "fields": [ { "label": "조사 내용", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "조사 내용", "name": "investigation_detail", "type": "textarea", "rows": 2, "value": "", "colspan": 2 } ] }
+      ]
+    },
+    {
+      "title": "4. 담보 사항",
+      "columns": 2,
+      "colwidths": [ "15%", "84%" ],
+      "rows": [
+        { "fields": [ { "label": "피    보   험   자 손 해 배 상 책 임", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "피    보   험   자 손 해 배 상 책 임", "name": "Insured_Liability_Damages", "type": "text", "value": "", "colspan": 1 } ] },
+        { "fields": [ { "label": "피해자과실상계", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "피해자과실상계", "name": "Comparative_Negligence_Victim", "type": "textarea", "rows": 2, "value": "", "colspan": 1 } ] },
+        { "fields": [ { "label": "보   상   책   임", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "보   상   책   임", "name": "Compensation_Liability", "type": "textarea", "rows": 2, "value": "", "colspan": 2 } ] },
+        { "fields": [ { "label": "구      상      권", "type": "label", "colspan": 1, "tag": "th", "align": "left" }, { "label": "구      상      권", "name": "Right_Recourse", "type": "textarea", "rows": 2, "value": "", "colspan": 2 } ] }
+      ]
+    },
+    {
+      "title": "5. 문제점 및 향후진행계획",
+      "columns": 1,
+      "colwidths": [ "99%" ],
+      "rows": [
+        { "fields": [ { "label": "고지문구", "name": "problem_plan", "type": "textarea", "rows": 4, "value": "", "colspan": 1 } ] },
+        { "fields": [ { "label": "※ 본 보고서는 폐사의 양식과 최선의 노력으로 이해당사자 어느 일방에도 편중됨이 없이 작성되었음을 명백히 합니다.", "type": "label", "colspan": 1, "tag": "td" } ] }
+      ]
+    }
+  ]
+}

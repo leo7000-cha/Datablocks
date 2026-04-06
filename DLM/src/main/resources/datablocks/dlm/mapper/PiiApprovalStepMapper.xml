@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalStepMapper">
+
+ 	<sql id="criteria_piiapprovalstep">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and aprvlineid = #{search1, jdbcType=VARCHAR}
+						</if>
+						<if test="search2 != null">
+							and seq = #{search2}
+						</if>
+						<if test="search3 != null">
+							and stepname = #{search3, jdbcType=VARCHAR}
+						</if>
+						<if test="search4 != null">
+							and approvalid = #{search4, jdbcType=VARCHAR}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalStepVO">
+		<![CDATA[
+		select aprvlineid, seq, stepname, approvalid, approvalname
+		 from cotdl.tbl_piiapprovalstep order by aprvlineid, seq
+		]]>
+	</select>
+	<select id="getListByaAprvlineid" resultType="datablocks.dlm.domain.PiiApprovalStepVO">
+		<![CDATA[
+		select aprvlineid, seq, stepname, approvalid, approvalname
+		from cotdl.tbl_piiapprovalstep
+		where aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+		order by aprvlineid, seq
+		]]>
+	</select>
+	<select id="getStepUserListByaAprvlineid" resultType="datablocks.dlm.domain.PiiApprovalStepUserVO">
+		<![CDATA[
+		select s.aprvlineid, s.seq, s.stepname, s.approvalid, s.approvalname, u.APPROVERID, u.APPROVERNAME
+		from cotdl.tbl_piiapprovalstep s, cotdl.TBL_PIIAPPROVALUSER u
+		where s.aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+		  and s.aprvlineid = u.aprvlineid
+		  and s.seq = u.seq
+		order by aprvlineid, seq
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiapprovalstep (aprvlineid, seq, stepname, approvalid, approvalname)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiapprovalstep (aprvlineid, seq, stepname, approvalid, approvalname)
+		values (#{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalStepVO">
+		select aprvlineid, seq, stepname, approvalid, approvalname
+		  from cotdl.tbl_piiapprovalstep 
+		 where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</select>
+	<select id="readNextStep" resultType="datablocks.dlm.domain.PiiApprovalStepVO">
+		select aprvlineid, seq, stepname, approvalid, approvalname
+		from cotdl.tbl_piiapprovalstep
+		where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq > #{seq}
+	</select>
+	<select id="readNextStepCount" resultType="int">
+		select count(1)
+		from cotdl.tbl_piiapprovalstep
+		where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq > #{seq}
+	</select>
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovalstep where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</delete>
+	<delete id="deleteByLine">
+		delete from cotdl.tbl_piiapprovalstep where aprvlineid= #{aprvlineid, jdbcType=VARCHAR}
+	</delete>
+	<update id="update">
+		update cotdl.tbl_piiapprovalstep
+		set
+			stepname= #{stepname, jdbcType=VARCHAR},
+			approvalid= #{approvalid, jdbcType=VARCHAR},
+			approvalname= #{approvalname, jdbcType=VARCHAR}
+			where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and seq= #{seq}
+	</update>
+	<update id="updateSeq">
+		update cotdl.tbl_piiapprovalstep
+		set
+			seq= #{seq}
+		where aprvlineid= #{aprvlineid, jdbcType=VARCHAR} and stepname= #{stepname, jdbcType=VARCHAR}
+	</update>
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalStepVO"> 
+		<![CDATA[
+		select aprvlineid, seq, stepname, approvalid, approvalname
+		  from cotdl.tbl_piiapprovalstep
+		]]>
+		<include refid="criteria_piiapprovalstep"></include>
+	    <![CDATA[
+		order by aprvlineid, seq
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovalstep 
+		
+		<include refid="criteria_piiapprovalstep"></include> 
+			
+	</select>
+
+
+</mapper>

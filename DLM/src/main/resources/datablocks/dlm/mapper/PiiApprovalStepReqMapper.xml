@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalStepReqMapper">
+
+ 	<sql id="criteria_piiapprovalreq">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and reqid = #{search1}
+						</if>
+						<if test="search2 != null">
+							and aprvlineid = #{search2}
+						</if>
+						<if test="search3 != null">
+							and seq = #{search3}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalStepReqVO">
+		<![CDATA[
+		select  reqid, aprvlineid, seq, stepname, status, approverid, approvername, DATE_FORMAT(regdate,'%Y/%m/%d %H:%i:%s') as regdate, comment
+		from cotdl.tbl_piiapprovalstepreq a
+		  order by reqid desc, aprvlineid, seq
+		]]>
+	</select>
+
+
+	<insert id="insert">
+		insert into COTDL.tbl_piiapprovalstepreq (reqid, aprvlineid, seq, stepname, status, approverid, approvername, regdate, comment)
+		values (#{reqid, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR}, now(), #{comment, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piiapprovalstepreq (reqid, aprvlineid, seq, stepname, status, approverid, approvername, regdate, comment)
+		values (#{reqid, jdbcType=VARCHAR}, #{aprvlineid, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{stepname, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR}, now(), #{comment, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalStepReqVO">
+        select reqid, aprvlineid, seq, stepname, status, approverid, approvername, DATE_FORMAT(regdate,'%Y/%m/%d %H:%i:%s') as regdate, comment
+		  from cotdl.tbl_piiapprovalstepreq a
+          where reqid= #{reqid, jdbcType=VARCHAR}
+	</select>
+
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovalstepreq 
+		 where reqid = #{reqid, jdbcType=VARCHAR}
+           and aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+           and seq = #{seq, jdbcType=VARCHAR}
+	</delete>
+	<update id="approve">
+		update cotdl.tbl_piiapprovalstepreq
+		set 
+			phase= #{phase, jdbcType=VARCHAR},
+			upddate = NOW()
+		where reqid = #{reqid, jdbcType=VARCHAR}
+		  and aprvlineid = #{aprvlineid, jdbcType=VARCHAR}
+		  and seq = #{seq, jdbcType=VARCHAR}
+
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piiapprovalstepreq
+		set 
+			phase= 'REJECTED',
+			upddate = NOW()
+		where reqid= #{reqid}
+	</update>
+	<update id="update">
+		update cotdl.tbl_piiapprovalstepreq
+		set 
+			seq= #{seq, jdbcType=VARCHAR},
+			phase= #{phase, jdbcType=VARCHAR},
+			approvedate = NOW()
+		where reqid= #{reqid, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalStepReqVO"> 
+		<![CDATA[ 
+		select
+			reqid, aprvlineid, seq, stepname, status, approverid, approvername, regdate, comment
+		from (
+					 select a.reqid, a.aprvlineid, a.seq, a.stepname, a.status, a.approverid, a.approvername, DATE_FORMAT(a.regdate,'%Y/%m/%d %H:%i:%s') as regdate, a.comment
+					 from cotdl.tbl_piiapprovalstepreq a
+				) as f
+		]]>
+	    <![CDATA[
+		order by reqid desc, aprvlineid, seq
+			limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovalstepreq 
+		
+		<include refid="criteria_piiapprovalreq"></include> 
+			
+	</select>
+
+</mapper>

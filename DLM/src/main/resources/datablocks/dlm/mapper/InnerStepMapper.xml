@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.InnerStepMapper">
+
+    <sql id="criteria_innerstep">
+        <trim prefix="where 1=1" suffix="">
+            <if test="orderid != null">
+                and orderid = #{orderid}
+            </if>
+            <if test="stepid != null">
+                and stepid = #{stepid, jdbcType=VARCHAR}
+            </if>
+            <if test="seq1 != null">
+                and seq1 = #{seq1}
+            </if>
+            <if test="seq2 != null">
+                and seq2 = #{seq2}
+            </if>
+            <if test="seq3 != null">
+                and seq3 = #{seq3}
+            </if>
+            <if test="inner_step_seq != null and inner_step_seq != -1">
+                and inner_step_seq = #{inner_step_seq}
+            </if>
+        </trim>
+    </sql>
+    <sql id="criteria_innerstep_pt">
+        <trim prefix=" " suffix="">
+            <if test="orderid != null">
+                and orderid = #{orderid}
+            </if>
+            <if test="stepid != null">
+                and stepid = #{stepid, jdbcType=VARCHAR}
+            </if>
+            <if test="seq1 != null">
+                and seq1 = #{seq1}
+            </if>
+            <if test="seq2 != null">
+                and seq2 = #{seq2}
+            </if>
+            <if test="seq3 != null">
+                and seq3 = #{seq3}
+            </if>
+        </trim>
+    </sql>
+    <select id="getList" resultType="datablocks.dlm.domain.InnerStepVO">
+		<![CDATA[
+        select orderid,
+               stepid,
+               seq1,
+               seq2,
+               seq3,
+               inner_step_seq,
+               inner_step_name,
+               status,
+               execnt,
+               exetime,
+               DATE_FORMAT(exestart, '%Y/%m/%d %H:%i:%s') as exestart,
+               DATE_FORMAT(exeend, '%Y/%m/%d %H:%i:%s')   as exeend,
+               message,
+               result
+        from cotdl.tbl_innerstep
+        order by orderid
+               , stepid
+               , seq1
+               , seq2
+               , seq3
+               , inner_step_seq
+        ]]>
+	</select>
+
+    <insert id="insert">
+        insert into COTDL.tbl_innerstep (orderid, stepid, seq1, seq2, seq3, inner_step_seq, inner_step_name, status,
+                                         execnt, exetime, exestart, exeend, message, result)
+        values (#{orderid, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{seq1, jdbcType=VARCHAR},
+                #{seq2, jdbcType=VARCHAR}, #{seq3, jdbcType=VARCHAR}, #{inner_step_seq, jdbcType=VARCHAR},
+                #{inner_step_name, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR},#{execnt, jdbcType=VARCHAR},
+                null, NOW(),
+                null, #{message, jdbcType=VARCHAR}, #{result, jdbcType=VARCHAR})
+    </insert>
+
+    <insert id="insertSelectcfgkey">
+        insert into COTDL.tbl_innerstep (orderid, stepid, seq1, seq2, seq3, inner_step_seq, inner_step_name, status,
+                                         execnt, exetime, exestart, exeend, message, result)
+        values (#{orderid, jdbcType=VARCHAR}, #{stepid, jdbcType=VARCHAR}, #{seq1, jdbcType=VARCHAR},
+                #{seq2, jdbcType=VARCHAR}, #{seq3, jdbcType=VARCHAR}, #{inner_step_seq, jdbcType=VARCHAR},
+                #{inner_step_name, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR}, #{execnt, jdbcType=VARCHAR},
+                null, NOW(),
+                null, #{message, jdbcType=VARCHAR}, #{result, jdbcType=VARCHAR})
+    </insert>
+
+    <select id="read" resultType="datablocks.dlm.domain.InnerStepVO">
+        <![CDATA[
+        select orderid, stepid, seq1, seq2, seq3, inner_step_seq, inner_step_name, status, execnt, exetime, DATE_FORMAT(exestart,'%Y/%m/%d') as exestart, DATE_FORMAT(exeend,'%Y/%m/%d') as exeend, message, result
+        from cotdl.tbl_innerstep
+        ]]>
+        <include refid="criteria_innerstep"></include>
+    </select>
+
+    <delete id="delete">
+        <![CDATA[
+        delete
+        from cotdl.tbl_innerstep
+        ]]>
+        <include refid="criteria_innerstep"></include>
+    </delete>
+    <delete id="deletebyorderid">
+        delete from cotdl.tbl_innerstep where orderid= #{orderid}
+    </delete>
+    <update id="updateStart">
+        <![CDATA[
+        update cotdl.tbl_innerstep
+        set status= #{status, jdbcType=VARCHAR},
+            exestart= NOW(),
+            message= #{message, jdbcType=VARCHAR}
+        ]]>
+        <include refid="criteria_innerstep"></include>
+    </update>
+    <update id="updateResult">
+        <![CDATA[
+        UPDATE cotdl.tbl_innerstep
+        SET
+            result = CONCAT(COALESCE(result, ''), #{result, jdbcType=VARCHAR}),
+            execnt = COALESCE(execnt, 0) + COALESCE(#{execnt, jdbcType=INTEGER}, 0)
+        ]]>
+        <include refid="criteria_innerstep"></include>
+    </update>
+
+    <update id="updateEnd">
+        <![CDATA[
+        update cotdl.tbl_innerstep
+        set status= #{status, jdbcType=VARCHAR},
+            execnt= #{execnt, jdbcType=VARCHAR},
+            exetime= TIME_FORMAT(TIMEDIFF(now(),exestart),'%H : %i : %s'),
+            exeend= NOW(),
+            message= #{message, jdbcType=VARCHAR},
+            result= #{result, jdbcType=VARCHAR}
+        ]]>
+        <include refid="criteria_innerstep"></include>
+    </update>
+    <select id="getListWithPaging" resultType="datablocks.dlm.domain.InnerStepVO">
+        <![CDATA[
+		select orderid, stepid, seq1, seq2, seq3, inner_step_seq, inner_step_name, status, execnt, exetime,
+		       DATE_FORMAT(exestart, '%Y/%m/%d %H:%i:%s') as exestart,
+               DATE_FORMAT(exeend, '%Y/%m/%d %H:%i:%s')   as exeend,
+		       message, result
+        from cotdl.tbl_innerstep
+		]]>
+        <include refid="criteria_innerstep"></include>
+        <![CDATA[
+		order by orderid
+               , stepid
+               , seq1
+               , seq2
+               , seq3
+               , inner_step_seq
+		]]>
+    </select>
+
+    <select id="getTotalCount" resultType="int">
+        select count(1) from cotdl.tbl_innerstep
+        <include refid="criteria_innerstep"></include>
+
+    </select>
+
+    <select id="getListPartition" resultType="datablocks.dlm.domain.InnerStepVO">
+        select *
+        from cotdl.tbl_innerstep
+        where INNER_STEP_NAME like 'partition%'
+        <include refid="criteria_innerstep_pt"></include>
+    </select>
+
+    <select id="getTotalPartition" resultType="long">
+        select COALESCE(SUM(EXECNT), 0)
+        from cotdl.tbl_innerstep
+        where INNER_STEP_NAME like 'partition%'
+        <include refid="criteria_innerstep_pt"></include>
+    </select>
+
+    <select id="getOrphanedTmpSteps" resultType="datablocks.dlm.domain.InnerStepVO">
+        SELECT DISTINCT i.orderid, i.stepid, i.seq1, i.seq2, i.seq3
+        FROM cotdl.tbl_innerstep i
+        WHERE i.inner_step_seq = 10
+          AND NOT EXISTS (
+              SELECT 1 FROM cotdl.tbl_innerstep i2
+              WHERE i2.orderid = i.orderid AND i2.stepid = i.stepid
+                AND i2.seq1 = i.seq1 AND i2.seq2 = i.seq2 AND i2.seq3 = i.seq3
+                AND i2.inner_step_seq = 40 AND i2.status = 'Ended OK'
+          )
+    </select>
+
+</mapper>

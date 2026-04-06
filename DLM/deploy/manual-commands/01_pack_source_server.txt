@@ -1,0 +1,85 @@
+#=============================================================================
+# 01. DLM 배포 패키징 - 실명령어 버전 (현재 서버 - Rocky Linux)
+#
+# ※ .sh 실행 권한이 없는 경우 아래 명령어를 한 줄씩 복사하여 실행하세요.
+# ※ sudo 또는 root 권한으로 실행하세요.
+# ※ [변경필요] 표시된 부분은 환경에 맞게 수정 후 복사하세요.
+#=============================================================================
+
+
+#=============================================================================
+# STEP 1. 패키징 디렉토리 생성
+#=============================================================================
+
+mkdir -p /backup/dlm_deploy_20260327/db
+mkdir -p /backup/dlm_deploy_20260327/tomcat
+mkdir -p /backup/dlm_deploy_20260327/java
+mkdir -p /backup/dlm_deploy_20260327/scripts
+
+
+#=============================================================================
+# STEP 2. DB 백업
+#=============================================================================
+
+mysqldump -u root -p --databases cotdl --routines --triggers --events --single-transaction --quick --default-character-set=utf8mb4 > /backup/dlm_deploy_20260327/db/cotdl_dump.sql
+
+du -h /backup/dlm_deploy_20260327/db/cotdl_dump.sql
+
+
+#=============================================================================
+# STEP 3. 사용자 계정 GRANT 추출
+# ※ 각 줄 실행 시 비밀번호 입력 필요
+#=============================================================================
+
+mysql -u root -p -N -B -e "SHOW GRANTS FOR 'cotdl'@'%';"
+mysql -u root -p -N -B -e "SHOW GRANTS FOR 'cotdl'@'localhost';"
+mysql -u root -p -N -B -e "SHOW GRANTS FOR 'cotdl'@'127.0.0.1';"
+mysql -u root -p -N -B -e "SHOW GRANTS FOR 'cotdlbk'@'%';"
+
+# ※ 위 결과를 아래 파일에 수동 저장
+# vi /backup/dlm_deploy_20260327/db/cotdl_users.sql
+
+
+#=============================================================================
+# STEP 4. Tomcat 폴더 복사
+#=============================================================================
+
+# symlink 확인
+ls -la /opt/tomcat/latest
+
+# Tomcat 복사 (logs, temp, work 제외)
+rsync -a --progress --exclude='logs/*' --exclude='temp/*' --exclude='work/*' /opt/tomcat/ /backup/dlm_deploy_20260327/tomcat/
+
+# [변경필요] 아래 apache-tomcat-9.0.87 은 실제 톰캣 버전 폴더명으로 교체
+mkdir -p /backup/dlm_deploy_20260327/tomcat/apache-tomcat-9.0.87/logs
+mkdir -p /backup/dlm_deploy_20260327/tomcat/apache-tomcat-9.0.87/temp
+mkdir -p /backup/dlm_deploy_20260327/tomcat/apache-tomcat-9.0.87/work
+
+du -sh /backup/dlm_deploy_20260327/tomcat/
+
+
+#=============================================================================
+# STEP 5. Java Corretto 11 복사
+#=============================================================================
+
+rsync -a --progress /usr/lib/jvm/java-11-amazon-corretto/ /backup/dlm_deploy_20260327/java/amazon-corretto-11/
+
+du -sh /backup/dlm_deploy_20260327/java/
+
+
+#=============================================================================
+# STEP 6. systemd 서비스 파일 백업
+#=============================================================================
+
+cp /etc/systemd/system/tomcat.service /backup/dlm_deploy_20260327/scripts/tomcat.service.bak
+
+
+#=============================================================================
+# STEP 7. 아카이브 생성
+#=============================================================================
+
+cd /backup
+tar czf dlm_deploy_20260327.tar.gz dlm_deploy_20260327
+
+du -sh /backup/dlm_deploy_20260327
+ls -lh /backup/dlm_deploy_20260327.tar.gz

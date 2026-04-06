@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiBizDayMapper">
+
+ 	<sql id="criteria_piibizday">
+		<trim prefix="1=1" suffix="and" >
+						<if test="search1 != null">
+							and base_dt like concat('%',upper(#{search1}),'%')
+						</if>
+		</trim>
+	</sql> 
+ 	<sql id="criteria_piibizday_total">
+		<trim prefix="where 1=1 " suffix="" >
+						<if test="search1 != null">
+							and base_dt like concat('%',upper(#{search1}),'%')
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiBizDayVO">
+		<![CDATA[
+		select base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd
+		 from cotdl.tbl_piibizday 
+		 order by base_dt
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into COTDL.tbl_piibizday (base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd)
+		values (#{base_dt, jdbcType=VARCHAR}, #{bf_bf_biz_dt, jdbcType=VARCHAR}, #{bf_biz_dt, jdbcType=VARCHAR}, #{biz_dt, jdbcType=VARCHAR}, #{nxt_biz_dt, jdbcType=VARCHAR}, #{nxt_nxt_biz_dt, jdbcType=VARCHAR}, #{hldy_yn, jdbcType=VARCHAR}, #{inst_cd, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into COTDL.tbl_piibizday (base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd)
+		values (#{base_dt, jdbcType=VARCHAR}, #{bf_bf_biz_dt, jdbcType=VARCHAR}, #{bf_biz_dt, jdbcType=VARCHAR}, #{biz_dt, jdbcType=VARCHAR}, #{nxt_biz_dt, jdbcType=VARCHAR}, #{nxt_nxt_biz_dt, jdbcType=VARCHAR}, #{hldy_yn, jdbcType=VARCHAR}, #{inst_cd, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiBizDayVO">
+		select base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd
+		  from cotdl.tbl_piibizday 
+		  where base_dt= #{base_dt, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piibizday 
+		where base_dt= #{base_dt, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piibizday
+		set 
+			bf_bf_biz_dt= #{bf_bf_biz_dt, jdbcType=VARCHAR},
+			bf_biz_dt= #{bf_biz_dt, jdbcType=VARCHAR},
+			biz_dt= #{biz_dt, jdbcType=VARCHAR},
+			nxt_biz_dt= #{nxt_biz_dt, jdbcType=VARCHAR},
+			nxt_nxt_biz_dt= #{nxt_nxt_biz_dt, jdbcType=VARCHAR},
+			hldy_yn= #{hldy_yn, jdbcType=VARCHAR},
+			inst_cd= #{inst_cd, jdbcType=VARCHAR}
+		where base_dt= #{base_dt, jdbcType=VARCHAR}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiBizDayVO"> 
+		<![CDATA[ 
+		select 
+			base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd
+		from ( 
+				select 
+					 ROWNUM rn, base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd
+				from (
+						select base_dt, bf_bf_biz_dt, bf_biz_dt, biz_dt, nxt_biz_dt, nxt_nxt_biz_dt, hldy_yn, inst_cd
+						  from cotdl.tbl_piibizday 
+						 order by base_dt
+					 ) a 
+				where
+		]]>
+	    
+		<include refid="criteria_piibizday"></include> 
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by base_dt 
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by base_dt
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piibizday 
+		
+		<include refid="criteria_piibizday"></include> 
+			
+	</select>
+
+	<select id="getDeadline" resultType="String">
+	<![CDATA[
+		select concat('str_to_date(''',min(deadline),''',%Y%m%d)')
+		from (select base_dt as deadline
+			  from (
+					   select row_number() over(order by base_dt desc) as rn, base_dt
+					   from cotdl.tbl_piibizday
+					   where hldy_yn='N' and base_dt < #{basedate, jdbcType=VARCHAR}
+				   ) a
+			  where  rn = #{cnt}
+			  order by rn desc
+			 ) f
+		group by deadline
+		]]>
+	</select>
+	<select id="getArcDeadline" resultType="String">
+	<![CDATA[
+		select concat('str_to_date(''',max(deadline),''',%Y%m%d)')
+		from (select base_dt as deadline
+			  from (
+					   select  row_number() over(order by base_dt) as rn, base_dt
+					   from cotdl.tbl_piibizday
+					   where hldy_yn='N' and base_dt > #{basedate, jdbcType=VARCHAR}
+				   ) a
+			  where  rn = #{cnt}
+			  order by rn
+			 ) f
+		group by deadline
+		]]>
+	</select>
+
+</mapper>

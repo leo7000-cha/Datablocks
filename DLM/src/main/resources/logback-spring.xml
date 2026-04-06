@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+
+    <!-- 운영 로그 디렉토리 -->
+    <property name="LOGS_PATH" value="/app/logs"/>
+
+    <!-- 공통 패턴 -->
+    <property name="LOG_PATTERN"
+              value="[%d{yyyy-MM-dd HH:mm:ss.SSS}][%thread] %-5level %logger{36} - %msg%n"/>
+
+    <!-- 파일 롤링 Appender (용량+일자) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS_PATH}/app.log</file>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+
+        <!-- ✅ 최신 정책: SizeAndTimeBasedRollingPolicy -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 예: app.2025-09-26.0.gz, app.2025-09-26.1.gz ... -->
+            <fileNamePattern>${LOGS_PATH}/app.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <!-- 10GB 넘으면 오래된 로그부터 자동 정리 -->
+            <totalSizeCap>10GB</totalSizeCap>
+            <!-- 서버 재시작 시 오래된 히스토리 정리 -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 비동기 래핑: 디스크 I/O로 인한 지연 최소화 -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <!-- ✅ 운영: 콘솔로 내보내지 않음(중요) -->
+    <root level="WARN">
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+    <!-- 패키지별 레벨 조정(필요 시) -->
+    <logger name="datablocks.dlm" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <logger name="jdbc.sqlonly" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+    <logger name="jdbc.resultsettable" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+
+    <!-- 개발/로컬에서만 콘솔을 보고 싶다면 프로필로 분리 -->
+    <springProfile name="dev,local">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>

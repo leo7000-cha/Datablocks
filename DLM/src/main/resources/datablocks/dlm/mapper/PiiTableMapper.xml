@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiTableMapper">
+
+ 	<sql id="criteria_piitable">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search4 != null">
+				and db = #{search4}
+			</if>
+			<if test="search5 != null">
+				and owner like concat('%', #{search5}, '%')
+			</if>
+			<if test="search6 != null">
+				and table_name like concat('%', #{search6}, '%')
+			</if>
+
+		</trim>
+	</sql>
+
+	<sql id="criteria_piitable_exactsame">
+		<trim prefix="where 1=1" suffix="" >
+			<if test="search4 != null">
+				and db = #{search4}
+			</if>
+			<if test="search5 != null">
+				and owner = #{search5}
+			</if>
+			<if test="search6 != null">
+				and table_name = #{search6}
+			</if>
+		</trim>
+	</sql>
+	<sql id="criteria_piitable_newarctabcol">
+		<trim prefix=" " suffix="" >
+			<if test="search4 != null">
+				and s.db = #{search4}
+			</if>
+			<if test="search5 != null">
+				and s.owner = #{search5}
+			</if>
+			<if test="search6 != null">
+				and s.table_name = #{search6}
+			</if>
+		</trim>
+	</sql>
+	<select id="getList" resultType="datablocks.dlm.domain.PiiTableVO">
+		<![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piitable 
+		 order by db, owner, table_name, column_id
+		]]>
+	</select>
+	
+	<insert id="insert">
+		insert into cotdl.tbl_piitable (db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid
+									   )
+		values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR}, #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR}, #{data_length, jdbcType=VARCHAR}, #{nullable, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}
+			   )
+	</insert>
+
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piitable (db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid
+									   )
+		values (#{db, jdbcType=VARCHAR}, #{owner, jdbcType=VARCHAR}, #{table_name, jdbcType=VARCHAR}, #{column_name, jdbcType=VARCHAR}, #{column_id, jdbcType=VARCHAR}, #{pk_yn, jdbcType=VARCHAR}, #{pk_position, jdbcType=VARCHAR}, #{full_data_type, jdbcType=VARCHAR}, #{data_type, jdbcType=VARCHAR}, #{data_length, jdbcType=VARCHAR}, #{nullable, jdbcType=VARCHAR}, #{comments, jdbcType=VARCHAR}, NOW(), NOW(), #{reguserid, jdbcType=VARCHAR}, #{upduserid, jdbcType=VARCHAR}
+			   )
+	</insert>
+
+	<select id="readTable" resultType="datablocks.dlm.domain.PiiTableVO">
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		 order by db, owner, table_name, column_id
+	</select>
+	
+	<select id="read" resultType="datablocks.dlm.domain.PiiTableVO">
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="getTableCnt" resultType="int">
+		select count(1) 
+          from cotdl.tbl_piitable 
+         where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_piitable 
+		 where db= #{db, jdbcType=VARCHAR}
+		   and owner= #{owner, jdbcType=VARCHAR}
+		   and table_name= #{table_name, jdbcType=VARCHAR}
+		   and column_name= #{column_name, jdbcType=VARCHAR}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_piitable
+		   set 
+				column_id= #{column_id, jdbcType=VARCHAR},
+				pk_yn= #{pk_yn, jdbcType=VARCHAR},
+				pk_position= #{pk_position, jdbcType=VARCHAR},
+				full_data_type= #{full_data_type, jdbcType=VARCHAR},
+				data_type= #{data_type, jdbcType=VARCHAR},
+				data_length= #{data_length, jdbcType=VARCHAR},
+				nullable= #{nullable, jdbcType=VARCHAR},
+				comments= #{comments, jdbcType=VARCHAR},
+				regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d'),
+				upddate= NOW(),
+				reguserid= #{reguserid, jdbcType=VARCHAR},
+				upduserid= #{upduserid, jdbcType=VARCHAR}
+		where db= #{db, jdbcType=VARCHAR}
+		  and owner= #{owner, jdbcType=VARCHAR}
+		  and table_name= #{table_name, jdbcType=VARCHAR}
+		  and column_name= #{column_name, jdbcType=VARCHAR}
+	</update>
+	<sql id="criteria_piitable_newarctab">
+		<trim prefix=" " suffix="" >
+			<if test="search4 != null">
+				and s.db = 'DLMARC'
+			</if>
+			<if test="archiveOwner != null">
+				and s.owner = #{archiveOwner}
+			</if>
+			<if test="archiveOwner == null and search5 != null">
+				and (s.owner LIKE concat('PII%', #{search5}) OR s.owner LIKE concat('%', #{search5}, '%PII'))
+			</if>
+			<if test="search6 != null">
+				and s.table_name = #{search6}
+			</if>
+		</trim>
+	</sql>
+	<select id="getTotalCountNewArcTab" resultType="int">
+		<![CDATA[
+		select count(1)
+		from cotdl.tbl_piitable s
+		where 1=1
+		]]>
+		<include refid="criteria_piitable_newarctab"></include>
+	</select>
+
+	<select id="getListNewArcTabCols" resultType="datablocks.dlm.domain.PiiTableNewArcTabVO">
+		select s.db, s.owner, s.table_name, s.column_id, s.column_name, s.data_type , s.data_length
+		from cotdl.tbl_piitable s
+				 left outer join cotdl.tbl_piitable a
+								 on  a.db='DLMARC'
+									 <if test="archiveOwner != null">and a.owner = #{archiveOwner}</if>
+									 <if test="archiveOwner == null">and (a.owner LIKE concat('PII%', s.owner) OR a.owner LIKE concat('%', s.owner, '%PII'))</if>
+									 and a.table_name=s.table_name
+									 and a.column_id=s.column_id+5
+									 and a.column_name=s.column_name
+				left outer join (select db, owner, table_name from cotdl.tbl_piitable group by db, owner, table_name) b
+								 on  b.db='DLMARC'
+									 <if test="archiveOwner != null">and b.owner = #{archiveOwner}</if>
+									 <if test="archiveOwner == null">and (b.owner LIKE concat('PII%', s.owner) OR b.owner LIKE concat('%', s.owner, '%PII'))</if>
+									 and b.table_name=s.table_name
+		where 1=1
+		  and a.column_name is null
+		  and b.table_name is not null
+		<include refid="criteria_piitable_newarctabcol"></include>
+		order by s.db, s.owner, s.table_name, s.column_id
+	</select>
+	<select id="getTotalCountNewArcTabCols" resultType="int">
+		select count(1)
+		from cotdl.tbl_piitable s
+				 left outer join cotdl.tbl_piitable a
+								 on  a.db='DLMARC'
+									 <if test="archiveOwner != null">and a.owner = #{archiveOwner}</if>
+									 <if test="archiveOwner == null">and (a.owner LIKE concat('PII%', s.owner) OR a.owner LIKE concat('%', s.owner, '%PII'))</if>
+									 and a.table_name=s.table_name
+									 and a.column_id=s.column_id+5
+									 and a.column_name=s.column_name
+		where 1=1
+		  and a.column_name is null
+		<include refid="criteria_piitable_newarctabcol"></include>
+	</select>
+
+	<select id="getListExact" resultType="datablocks.dlm.domain.PiiTableVO">
+		<![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piitable
+		where db= #{db, jdbcType=VARCHAR}
+		  and owner= #{owner, jdbcType=VARCHAR}
+		  and table_name= #{table_name, jdbcType=VARCHAR}
+		order by db, owner, table_name, column_id
+		]]>
+	</select>
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiTableVO">
+		<![CDATA[
+		select db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid
+		  from cotdl.tbl_piitable
+		]]>
+		<include refid="criteria_piitable"></include>
+		<![CDATA[
+		order by db, owner, table_name, column_id
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+	<select id="getListWithMetaWithPaging" resultType="datablocks.dlm.domain.PiiTableWithMetaVO">
+		<![CDATA[
+
+		select
+			 db, owner, table_name, column_name, column_id, pk_yn, pk_position, full_data_type, data_type, data_length, nullable, comments, regdate, upddate, reguserid, upduserid
+		   , domain, piitype, piigrade, encript_flag, scramble_type
+		from (
+				select t.db, t.owner, t.table_name, t.column_name, t.column_id, t.pk_yn, t.pk_position, t.full_data_type, t.data_type, t.data_length, t.nullable, coalesce(t.comments, m.column_comment) as comments,  DATE_FORMAT(t.regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(t.upddate,'%Y/%m/%d') as upddate, t.reguserid, t.upduserid
+					  , m.domain, m.piitype, m.piigrade, m.encript_flag, m.scramble_type
+				  from cotdl.tbl_piitable t
+						left outer join cotdl.tbl_metatable m
+						on t.db = m.db
+						and t.owner = m.owner
+						and t.table_name = m.table_name
+						and t.column_name = m.column_name
+				  order by t.db, t.owner, t.table_name, t.column_id
+			 ) as b
+		]]>
+		<include refid="criteria_piitable_exactsame"></include>
+		<![CDATA[
+		order by db, owner, table_name, column_id
+		]]>
+	</select>
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piitable 
+		
+		<include refid="criteria_piitable"></include> 
+			
+	</select>
+
+	<select id="getTablePkListWithPaging" resultType="datablocks.dlm.domain.PiiTablePkVO">
+		<![CDATA[ 
+		select 
+			db, owner, table_name
+		from ( 
+
+				select db, owner, table_name
+				  from cotdl.tbl_piitable
+				  ]]>
+		<include refid="criteria_piitable"></include>
+
+		<![CDATA[
+				  group by db, owner, table_name
+			 ) c
+
+		order by db, owner, table_name
+		limit #{offset}, #{amount}
+		]]> 
+	</select>	
+
+	<select id="getTableTotalCount" resultType="int">
+		<![CDATA[ 
+		select count(1) from 
+			(
+			select  db, owner, table_name
+			  from cotdl.tbl_piitable
+		]]>
+		<include refid="criteria_piitable"></include>
+		<![CDATA[
+			 group by db, owner, table_name
+			) c
+		]]>
+	</select>
+	
+	<select id="getLayoutGapListWithPaging" resultType="datablocks.dlm.domain.PiiLayoutGapVO">
+		<![CDATA[
+		select
+			 owner_src, table_name_src, column_id_src, column_name_src, data_length_src, owner_arc, table_name_arc, column_id_arc, column_name_arc, data_length_arc, gapdate
+		from (
+			select
+					a.original_owner as owner_src,
+					a.table_name as table_name_src, a.column_id as column_id_src, a.column_name as column_name_src, a.data_length as data_length_src,
+					b.owner as owner_arc, b.table_name as table_name_arc, b.column_id - 5 as column_id_arc, b.column_name as column_name_arc, b.data_length as data_length_arc,
+					NOW() as gapdate
+			  from (
+						select distinct b.owner as original_owner, b.table_name, b.column_id, b.column_name, b.data_length
+						  from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+						 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name
+						   and NOT EXISTS (
+											select 1
+											  from cotdl.tbl_piisteptable a2, cotdl.tbl_piitable b2
+											 where a2.exetype='ARCHIVE'
+											   and (b2.owner LIKE concat('PII%', a2.owner) OR b2.owner LIKE concat('%', a2.owner, '%PII'))
+											   and a2.table_name = b2.table_name
+											   and b2.column_name not in ('PII_ORDER_ID','PII_BASE_DATE','PII_CUST_ID','PII_JOB_ID','PII_DESTRUCT_DATE')
+											   and (b2.owner LIKE concat('PII%', b.owner) OR b2.owner LIKE concat('%', b.owner, '%PII'))
+											   and b2.table_name = b.table_name
+											   and b2.column_id - 5 = b.column_id
+											   and b2.column_name = b.column_name
+											   and b2.data_length = b.data_length
+								)
+				   ) as a LEFT OUTER JOIN cotdl.tbl_piitable b
+					ON( (b.owner LIKE concat('PII%', a.original_owner) OR b.owner LIKE concat('%', a.original_owner, '%PII'))
+					    and a.table_name = b.table_name and a.column_name = b.column_name)
+					where a.table_name is null
+			) as c
+		order by owner_src, table_name_src, column_id_src
+		limit #{offset}, #{amount}
+		]]>
+	</select>	
+
+	<select id="getLayoutGapTotalCount" resultType="int">
+		<![CDATA[
+		select count(1)
+		from (
+				 select distinct b.owner as original_owner, b.table_name, b.column_id, b.column_name, b.data_length
+				 from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
+				 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name
+				   and NOT EXISTS (
+					 select 1
+					 from cotdl.tbl_piisteptable a2, cotdl.tbl_piitable b2
+					 where a2.exetype='ARCHIVE'
+					   and (b2.owner LIKE concat('PII%', a2.owner) OR b2.owner LIKE concat('%', a2.owner, '%PII'))
+					   and a2.table_name = b2.table_name
+					   and b2.column_name not in ('PII_ORDER_ID','PII_BASE_DATE','PII_CUST_ID','PII_JOB_ID','PII_DESTRUCT_DATE')
+					   and (b2.owner LIKE concat('PII%', b.owner) OR b2.owner LIKE concat('%', b.owner, '%PII'))
+					   and b2.table_name = b.table_name
+					   and b2.column_id - 5 = b.column_id
+					   and b2.column_name = b.column_name
+					   and b2.data_length = b.data_length
+				 )
+			 ) as a LEFT OUTER JOIN cotdl.tbl_piitable b
+								 ON( (b.owner LIKE concat('PII%', a.original_owner) OR b.owner LIKE concat('%', a.original_owner, '%PII'))
+								     and a.table_name = b.table_name and a.column_name = b.column_name)
+		where a.table_name is null
+		]]>
+	</select>
+
+	<select id="getArcTabExpectedLength" resultType="datablocks.dlm.domain.ArcTabExpectedLengthVO">
+		<![CDATA[
+		select db, owner, table_name
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 65,535 max
+			) as all_row_size
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' and DATA_LENGTH < 1000 then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 65,535 max
+			) as all_row_size_1000
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' and DATA_LENGTH < 500 then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 65,535 max
+			) as all_row_size_500
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' and DATA_LENGTH < 86 then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 8,126 max
+			) as page_row_size
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' and DATA_LENGTH < 40 then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 8,126 max
+			) as page_row_size_40
+			 , sum(
+				 (case
+					 when DATA_TYPE  = 'NUMBER' then 22
+					 when DATA_TYPE  = 'CHAR' then DATA_LENGTH * 3
+					 when DATA_TYPE  LIKE 'VARCHAR%' and DATA_LENGTH < 20 then DATA_LENGTH * 3
+					 when DATA_TYPE  = 'FLOAT' then 22
+					 when DATA_TYPE  = 'DATE' then 10
+					 when DATA_TYPE  LIKE 'TIMESTAMP%' then 10
+					 when DATA_TYPE  in ('LONGBLOB','BLOB') then 25
+					 when DATA_TYPE  in ('CLOB','NCLOB','LONG','NVARCHAR2') then 25
+					 else 50
+				 END ) -- 8,126 max
+			) as page_row_size_20
+		from cotdl.tbl_piitable s
+		where 1=1
+		]]>
+		<include refid="criteria_piitable_exactsame"></include>
+		group by db, owner, table_name
+	</select>
+</mapper>

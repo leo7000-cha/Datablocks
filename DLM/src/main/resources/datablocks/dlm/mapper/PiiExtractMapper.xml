@@ -1,0 +1,762 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiExtractMapper">
+
+
+	<delete id="delete_piicuststatyear">
+		delete from cotdl.TBL_PIICUSTSTATYEAR where 1 = 1
+	</delete>
+
+	<insert id="insertextractrunresultyearstat">
+  <![CDATA[
+		INSERT INTO COTDL.TBL_PIICUSTSTATYEAR
+		SELECT 'YEAR',
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 11 MONTH),'%Y/%m') ym_11,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 10 MONTH),'%Y/%m') ym_10,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 9 MONTH),'%Y/%m') ym_9,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 8 MONTH),'%Y/%m') ym_8,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 7 MONTH),'%Y/%m') ym_7,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 6 MONTH),'%Y/%m') ym_6,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 MONTH),'%Y/%m') ym_5,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 4 MONTH),'%Y/%m') ym_4,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 3 MONTH),'%Y/%m') ym_3,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 2 MONTH),'%Y/%m') ym_2,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 MONTH),'%Y/%m') ym_1,
+			   DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 0 MONTH),'%Y/%m') ym_0,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 11 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_11,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 10 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_10,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 9 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_9,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 8 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_8,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 7 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_7,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 6 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_6,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_5,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 4 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_4,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 3 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_3,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 2 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_2,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_1,
+			   SUM(CASE WHEN basedate = DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 0 MONTH),'%Y%m') THEN cnt ELSE 0 END) cnt_0
+		FROM (
+				 SELECT DATE_FORMAT(basedate, '%Y%m') AS basedate, COUNT(*) AS cnt
+				 FROM cotdl.tbl_piiextract
+				 WHERE basedate >= DATE_ADD(NOW(), INTERVAL - 12 MONTH)
+				   AND RESTORE_DATE IS NULL
+				 GROUP BY DATE_FORMAT(basedate, '%Y%m')
+
+				 UNION ALL
+				 -- 퍼지 통계 보정
+				 SELECT STAT_DATE AS basedate, SUM(CNT) AS cnt
+				 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT
+				 WHERE STAT_TYPE = 'BASEDATE'
+				   AND STAT_DATE >= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 12 MONTH), '%Y%m')
+				 GROUP BY STAT_DATE
+			 ) AS f
+		]]>
+</insert>
+
+	<select id="getRunExtractResultSumStat" resultType="datablocks.dlm.domain.PiiExtractRunRusultYearStatVO">
+		SELECT
+			chartname,
+			SUBSTR(ym_11, 3) AS ym_11,
+			SUBSTR(ym_10, 3) AS ym_10,
+			SUBSTR(ym_9, 3) AS ym_9,
+			SUBSTR(ym_8, 3) AS ym_8,
+			SUBSTR(ym_7, 3) AS ym_7,
+			SUBSTR(ym_6, 3) AS ym_6,
+			SUBSTR(ym_5, 3) AS ym_5,
+			SUBSTR(ym_4, 3) AS ym_4,
+			SUBSTR(ym_3, 3) AS ym_3,
+			SUBSTR(ym_2, 3) AS ym_2,
+			SUBSTR(ym_1, 3) AS ym_1,
+			SUBSTR(ym_0, 3) AS ym_0,
+			cnt_11, cnt_10, cnt_9, cnt_8, cnt_7, cnt_6, cnt_5, cnt_4, cnt_3, cnt_2, cnt_1, cnt_0
+		FROM COTDL.TBL_PIICUSTSTATYEAR
+		where chartname = 'YEARSUM'
+		limit 1
+	</select>
+	<insert id="insertextractrunresultsumstat" >
+		<![CDATA[
+		insert into COTDL.TBL_PIICUSTSTATYEAR
+		select 'YEARSUM',
+			 DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 11 MONTH),'%Y/%m') ym_11
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 10 MONTH),'%Y/%m') ym_10
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 9 MONTH),'%Y/%m') ym_9
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 8 MONTH),'%Y/%m') ym_8
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 7 MONTH),'%Y/%m') ym_7
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 6 MONTH),'%Y/%m') ym_6
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 MONTH),'%Y/%m') ym_5
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 4 MONTH),'%Y/%m') ym_4
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 3 MONTH),'%Y/%m') ym_3
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 2 MONTH),'%Y/%m') ym_2
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 MONTH),'%Y/%m') ym_1
+			 ,DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 0 MONTH),'%Y/%m') ym_0
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 11 MONTH),'%Y%m') then cnt else 0 end ) as cnt_11
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 10 MONTH),'%Y%m') then cnt else 0 end ) as cnt_10
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 9 MONTH),'%Y%m') then cnt else 0 end ) as cnt_9
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 8 MONTH),'%Y%m') then cnt else 0 end ) as cnt_8
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 7 MONTH),'%Y%m') then cnt else 0 end ) as cnt_7
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 6 MONTH),'%Y%m') then cnt else 0 end ) as cnt_6
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 5 MONTH),'%Y%m') then cnt else 0 end ) as cnt_5
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 4 MONTH),'%Y%m') then cnt else 0 end ) as cnt_4
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 3 MONTH),'%Y%m') then cnt else 0 end ) as cnt_3
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 2 MONTH),'%Y%m') then cnt else 0 end ) as cnt_2
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 1 MONTH),'%Y%m') then cnt else 0 end ) as cnt_1
+			 ,sum(case when basedate <= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 0 MONTH),'%Y%m') then cnt else 0 end ) as cnt_0
+		from (
+			select
+			        DATE_FORMAT(basedate,'%Y%m') basedate, count(1) cnt
+			  from cotdl.tbl_piiextract a
+			 where basedate >= DATE_ADD(NOW(), INTERVAL - 12 MONTH) and RESTORE_DATE is null
+			 group by  DATE_FORMAT(basedate,'%Y%m')
+
+			UNION ALL
+			-- 퍼지 통계 보정
+			SELECT STAT_DATE AS basedate, SUM(CNT) AS cnt
+			FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT
+			WHERE STAT_TYPE = 'BASEDATE'
+			  AND STAT_DATE >= DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - 12 MONTH), '%Y%m')
+			GROUP BY STAT_DATE
+		 ) as f
+		 ]]>
+	</insert>
+	
+	 <sql id="criteria_piiextract">
+		<trim prefix="where 1 = 1  " suffix=" " >
+			<if test="search1 != null">
+				and custid = #{search1}
+			</if>
+			<if test="search2 != null">
+				and cust_nm = #{search2, jdbcType=VARCHAR}
+			</if>
+			<if test="search3 != null">
+				and birth_dt = #{search3}
+			</if>
+			<if test='search4 != null and search9 == "ARC"'>
+				<![CDATA[ and DATE_FORMAT(delete_date , '%Y/%m') >= #{search4, jdbcType=VARCHAR}]]>
+			</if>
+			<if test='search5 != null and search9 == "ARC"'>
+				<![CDATA[ and DATE_FORMAT(delete_date, '%Y/%m') <= #{search5, jdbcType=VARCHAR}]]>
+			</if>
+			<if test='search4 != null and search9 == "ARCDEL"'>
+				<![CDATA[ and DATE_FORMAT(arc_del_date , '%Y/%m') >= #{search4, jdbcType=VARCHAR}]]>
+			</if>
+			<if test='search5 != null and search9 == "ARCDEL"'>
+				<![CDATA[ and DATE_FORMAT(arc_del_date, '%Y/%m') <= #{search5, jdbcType=VARCHAR}]]>
+			</if>
+			<if test="search6 != null">
+				and orderid = #{search6}
+			</if>
+			<if test="search7 != null">
+				and substr(jobid,1,11) = #{search7, jdbcType=VARCHAR}
+			</if>
+			<if test="search8 != null">
+				<choose>
+					<when test='search8 == "DELARC" or search8 == "RESTORE"'>
+						and exclude_reason = #{search8, jdbcType=VARCHAR}
+					</when>
+					<otherwise>
+						and (exclude_reason is null or exclude_reason not in ('DELARC','RESTORE'))
+					</otherwise>
+				</choose>
+			</if>
+		</trim>
+	</sql>
+	<!--보고서 >> 고객별 파기내역-->
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiExtractVO"> 
+		<![CDATA[
+		select * from (
+			select orderid, jobid, actid, custid,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, exclude_reason,  DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date,  DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date,  DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date,  DATE_FORMAT(restore_date,'%Y/%m/%d') as restore_date,  DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date
+				 ,  DATE_FORMAT(last_base_date,'%Y/%m/%d') as last_base_date,  DATE_FORMAT(expected_arc_del_date,'%Y/%m/%d') as expected_arc_del_date
+				 , cust_nm, birth_dt, address, rsdnt_altrntv_id, cust_pin, inst_cd,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, val1, val2, val3, val4, val5, val6, val7
+			  from cotdl.tbl_piiextract
+			]]>
+			<include refid="criteria_piiextract"></include>
+			<![CDATA[
+			limit #{offset}, #{amount}
+			]]>
+		) a
+		order by orderid desc , actid, custid, jobid
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiextract a
+		<include refid="criteria_piiextract"></include>
+	</select>
+
+	<sql id="criteria_piiextract_custstat_D">
+		 <trim prefix=" " suffix=" " >
+			 <if test="search4 != null">
+				 <![CDATA[
+					and DATE_FORMAT(mon, '%Y/%m')  >= #{search4, jdbcType=VARCHAR}
+				]]>
+			 </if>
+			 <if test="search5 != null">
+				 <![CDATA[
+					and DATE_FORMAT(mon, '%Y/%m')  <= #{search5, jdbcType=VARCHAR}
+				]]>
+			 </if>
+		 </trim>
+	</sql>
+	<sql id="criteria_piiextract_custstat_M">
+		<trim prefix=" " suffix=" " >
+			<if test="search4 != null">
+				<![CDATA[
+					and DATE_FORMAT(mon, '%Y/%m') >= #{search4, jdbcType=VARCHAR}
+				]]>
+			</if>
+			<if test="search5 != null">
+				<![CDATA[
+					and DATE_FORMAT(mon, '%Y/%m') <= #{search5, jdbcType=VARCHAR}
+				]]>
+			</if>
+		</trim>
+	</sql>
+	<sql id="criteria_piiextract_custstat_consent">
+		<trim prefix=" " suffix=" " >
+
+			<if test="search4 != null">
+				<![CDATA[
+					and b.exeend >= STR_TO_DATE(#{search4, jdbcType=VARCHAR}, '%Y/%m')
+				]]>
+			</if>
+			<if test="search5 != null">
+				<![CDATA[
+					and b.exeend < DATE_ADD(STR_TO_DATE(#{search5, jdbcType=VARCHAR}, '%Y/%m'), INTERVAL 1 MONTH)
+				]]>
+			</if>
+		</trim>
+	</sql>
+
+	<insert id="insertCustStatListAllDays">
+	insert into COTDL.TBL_PIICUSTSTAT
+	SELECT
+		'ALLDAYS',
+		exedate,
+		SUM(archive_cnt1) AS archive_cnt1,
+		SUM(restore_cnt1) AS restore_cnt1,
+		SUM(arc_del_cnt1) AS arc_del_cnt1,
+		SUM(archive_cnt2) AS archive_cnt2,
+		SUM(restore_cnt2) AS restore_cnt2,
+		SUM(arc_del_cnt2) AS arc_del_cnt2,
+		SUM(archive_cnt3) AS archive_cnt3,
+		SUM(restore_cnt3) AS restore_cnt3,
+		SUM(arc_del_cnt3) AS arc_del_cnt3
+	FROM (
+			 -- ✅ arc_del 전체 (tbl_piiextract)
+			 SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d') AS exedate,
+					0 AS archive_cnt1, 0 AS restore_cnt1, COUNT(*) AS arc_del_cnt1,
+					0 AS archive_cnt2, 0 AS restore_cnt2, 0 AS arc_del_cnt2,
+					0 AS archive_cnt3, 0 AS restore_cnt3, 0 AS arc_del_cnt3
+			 FROM cotdl.tbl_piiextract
+			 WHERE arc_del_date IS NOT NULL
+			 GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: ARC_DEL
+			 SELECT STAT_DATE AS exedate, 0, 0, CNT, 0, 0, 0, 0, 0, 0
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'ARC_DEL'
+
+			 UNION ALL
+			 -- ✅ archive by policy (tbl_piiextract)
+			 SELECT DATE_FORMAT(archive_date, '%Y/%m/%d') AS exedate,
+					0, 0, 0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY2' THEN 1 ELSE 0 END), 0, 0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY3' THEN 1 ELSE 0 END), 0, 0
+			 FROM cotdl.tbl_piiextract
+			 WHERE archive_date IS NOT NULL
+			 GROUP BY DATE_FORMAT(archive_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: ARCHIVE (POLICY2 → archive_cnt2, POLICY3 → archive_cnt3)
+			 SELECT STAT_DATE AS exedate, 0, 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY2' THEN CNT ELSE 0 END), 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY3' THEN CNT ELSE 0 END), 0, 0
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'ARCHIVE'
+			 GROUP BY STAT_DATE
+
+			 UNION ALL
+			 -- ✅ restore 전체 (tbl_piiextract)
+			 SELECT DATE_FORMAT(restore_date, '%Y/%m/%d') AS exedate,
+					0, COUNT(*) AS restore_cnt1, 0,
+					0, 0, 0,
+					0, 0, 0
+			 FROM cotdl.tbl_piiextract
+			 WHERE restore_date IS NOT NULL AND EXCLUDE_REASON = 'RESTORE'
+			 GROUP BY DATE_FORMAT(restore_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: RESTORE_ALL
+			 SELECT STAT_DATE AS exedate, 0, CNT, 0, 0, 0, 0, 0, 0, 0
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'RESTORE_ALL'
+
+			 UNION ALL
+			 -- ✅ restore by policy (tbl_piiextract)
+			 SELECT DATE_FORMAT(restore_date, '%Y/%m/%d') AS exedate,
+					0, 0, 0,
+					0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY2' AND EXCLUDE_REASON = 'RESTORE' THEN 1 ELSE 0 END), 0,
+					0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY3' AND EXCLUDE_REASON = 'RESTORE' THEN 1 ELSE 0 END), 0
+			 FROM cotdl.tbl_piiextract
+			 WHERE restore_date IS NOT NULL
+			 GROUP BY DATE_FORMAT(restore_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: RESTORE (POLICY2 → restore_cnt2, POLICY3 → restore_cnt3)
+			 SELECT STAT_DATE AS exedate, 0, 0, 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY2' THEN CNT ELSE 0 END), 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY3' THEN CNT ELSE 0 END), 0
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'RESTORE'
+			 GROUP BY STAT_DATE
+
+			 UNION ALL
+			 -- ✅ arc_del DELARC 전체 (tbl_piiextract)
+			 SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d') AS exedate,
+					0, 0, COUNT(*),
+					0, 0, 0,
+					0, 0, 0
+			 FROM cotdl.tbl_piiextract
+			 WHERE arc_del_date IS NOT NULL AND EXCLUDE_REASON = 'DELARC'
+			 GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: ARC_DEL_DELARC
+			 SELECT STAT_DATE AS exedate, 0, 0, CNT, 0, 0, 0, 0, 0, 0
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'ARC_DEL_DELARC'
+
+			 UNION ALL
+			 -- ✅ arc_del DELARC by policy (tbl_piiextract)
+			 SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d') AS exedate,
+					0, 0, 0,
+					0, 0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY2' AND EXCLUDE_REASON = 'DELARC' THEN 1 ELSE 0 END),
+					0, 0,
+					SUM(CASE WHEN SUBSTR(jobid,1,11) = 'PII_POLICY3' AND EXCLUDE_REASON = 'DELARC' THEN 1 ELSE 0 END)
+			 FROM cotdl.tbl_piiextract
+			 WHERE arc_del_date IS NOT NULL
+			 GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+
+			 UNION ALL
+			 -- 퍼지 보정: ARC_DEL_DELARC_P (POLICY2 → arc_del_cnt2, POLICY3 → arc_del_cnt3)
+			 SELECT STAT_DATE AS exedate, 0, 0, 0, 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY2' THEN CNT ELSE 0 END), 0, 0,
+					SUM(CASE WHEN JOBID_PREFIX = 'PII_POLICY3' THEN CNT ELSE 0 END)
+			 FROM cotdl.TBL_PIIEXTRACT_PURGE_STAT WHERE STAT_TYPE = 'ARC_DEL_DELARC_P'
+			 GROUP BY STAT_DATE
+		 ) a
+	GROUP BY exedate
+	ORDER BY exedate
+
+	</insert>
+	<insert id="insertCustStatListAllMonths">
+		insert into COTDL.TBL_PIICUSTSTAT
+		select 'ALLMONTHS',
+			STR_TO_DATE(concat( DATE_FORMAT(mon,'%Y/%m'), '/01'), '%Y/%m/%d') as mon , sum(archive_cnt1) as archive_cnt1, sum(restore_cnt1) as restore_cnt1, sum(arc_del_cnt1) as arc_del_cnt1
+			 , sum(archive_cnt2) as archive_cnt2, sum(restore_cnt2) as restore_cnt2, sum(arc_del_cnt2) as arc_del_cnt2
+			 , sum(archive_cnt3) as archive_cnt3, sum(restore_cnt3) as restore_cnt3, sum(arc_del_cnt3) as arc_del_cnt3
+		from COTDL.TBL_PIICUSTSTAT where chartname='ALLDAYS'
+		group by STR_TO_DATE(concat( DATE_FORMAT(mon,'%Y/%m'), '/01'), '%Y/%m/%d')
+		order by STR_TO_DATE(concat( DATE_FORMAT(mon,'%Y/%m'), '/01'), '%Y/%m/%d')
+	</insert>
+	<insert id="insertCustStatListNotExistDay">
+		<![CDATA[
+		INSERT INTO TBL_PIICUSTSTAT (MON, CHARTNAME, ARCHIVE_CNT1, RESTORE_CNT1, ARC_DEL_CNT1, ARCHIVE_CNT2, RESTORE_CNT2, ARC_DEL_CNT2, ARCHIVE_CNT3, RESTORE_CNT3, ARC_DEL_CNT3)
+		SELECT
+		date AS MON,
+		'ALLDAYS' AS CHARTNAME,  -- CHARTNAME의 기본값 또는 원하는 값을 지정하세요
+		0 AS ARCHIVE_CNT1,
+		0 AS RESTORE_CNT1,
+		0 AS ARC_DEL_CNT1,
+		0 AS ARCHIVE_CNT2,
+		0 AS RESTORE_CNT2,
+		0 AS ARC_DEL_CNT2,
+		0 AS ARCHIVE_CNT3,
+		0 AS RESTORE_CNT3,
+		0 AS ARC_DEL_CNT3
+		FROM
+		(
+		SELECT
+		DATE_FORMAT(DATE_ADD('2023-01-01', INTERVAL seq - 1 DAY), '%Y-%m-%d') AS date
+		FROM (
+		SELECT @num := @num + 1 AS seq
+		FROM information_schema.tables a
+		CROSS JOIN information_schema.tables b
+		CROSS JOIN (SELECT @num := 0) c
+		) T
+		WHERE seq <= DATEDIFF(CURRENT_DATE(), '2023-01-01') + 1
+		)date_range
+		LEFT JOIN
+		TBL_PIICUSTSTAT ON date_range.date = TBL_PIICUSTSTAT.MON and TBL_PIICUSTSTAT.chartname = 'ALLDAYS'
+		WHERE TBL_PIICUSTSTAT.MON IS NULL
+		]]>
+	</insert>
+	<select id="getCustStatListWithPaging" resultType="datablocks.dlm.domain.PiiCustStatVO">
+		<![CDATA[
+		select
+		       DATE_FORMAT(mon,'%Y/%m/%d') as mon, archive_cnt1, restore_cnt1, arc_del_cnt1, archive_cnt2, restore_cnt2, arc_del_cnt2, archive_cnt3, restore_cnt3, arc_del_cnt3
+          from COTDL.TBL_PIICUSTSTAT
+         where 1=1
+		]]>
+		<trim prefix=" " suffix=" " >
+			<if test='search6 == "MONTHLY"'>
+				and chartname='ALLDAYS'
+				<include refid="criteria_piiextract_custstat_D"></include>
+			</if>
+			<if test='search6 == "QUARTERLY"'>
+				and chartname='ALLMONTHS'
+				<include refid="criteria_piiextract_custstat_M"></include>
+			</if>
+		</trim>
+		order by mon
+		<![CDATA[
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+
+	<select id="getCustStatTotalCount" resultType="int">
+		<![CDATA[
+		select
+		     count(1)
+          from COTDL.TBL_PIICUSTSTAT
+         where 1=1
+		]]>
+		<trim prefix=" " suffix=" " >
+			<if test='search6 == "MONTHLY"'>
+				and chartname='ALLDAYS'
+				<include refid="criteria_piiextract_custstat_D"></include>
+			</if>
+			<if test='search6 == "QUARTERLY"'>
+				and chartname='ALLMONTHS'
+				<include refid="criteria_piiextract_custstat_M"></include>
+			</if>
+		</trim>
+
+	</select>
+
+	<select id="getCustStatListWithPaging_consent" resultType="datablocks.dlm.domain.PiiCustStatConsentVO">
+		<![CDATA[
+		select mon, sum(arccnt) arccnt, sum(delarccnt) delarccnt
+			from (
+				select DATE_FORMAT(b.exeend,'%Y/%m/%d') as mon, b.table_name, 0 arccnt , sum(b.execnt) delarccnt
+				from cotdl.tbl_piiordersteptable b
+				where b.jobid='ARC_DATA_DELETE'
+				and b.steptype='EXE_ARC_DELETE'
+				and b.db='DAON'
+				and b.owner='COOWNSER'
+				and b.table_name='DOSREG'
+				and b.exeend is not null
+				and b.status = 'Ended OK'
+				]]>
+					<include refid="criteria_piiextract_custstat_consent"></include>
+				<![CDATA[
+				group by mon, table_name
+
+				union all
+
+				select DATE_FORMAT(b.exeend,'%Y/%m/%d') as mon, b.table_name, sum(b.execnt) arccnt, 0 as delarccnt
+				from cotdl.tbl_piiorder a, cotdl.tbl_piiordersteptable b
+				where a.orderid = b.orderid
+				and b.steptype in ('EXE_DELETE', 'EXE_UPDATE')
+				and b.db='DAON'
+				and b.owner='COOWNSER'
+				and b.table_name='DOSREG'
+				and b.exeend is not null
+				and a.status = 'Ended OK'
+				and b.status = 'Ended OK'
+				]]>
+					<include refid="criteria_piiextract_custstat_consent"></include>
+				<![CDATA[
+				group by mon, table_name
+			) total
+			group by mon, table_name
+		order by mon desc
+		limit #{offset}, #{amount}
+		]]>
+	</select>
+	<select id="getCustStatTotalCount_consent" resultType="int">
+		<![CDATA[
+		select count(1) from (
+			select mon, sum(arccnt) arccnt, sum(delarccnt) delarccnt
+			from (
+			select DATE_FORMAT(b.exeend,'%Y/%m/%d') as mon, b.table_name, 0 arccnt , sum(b.execnt) delarccnt
+			from cotdl.tbl_piiordersteptable b
+			where b.jobid='ARC_DATA_DELETE'
+			and b.steptype='EXE_ARC_DELETE'
+			and b.db='DAON'
+			and b.owner='COOWNSER'
+			and b.table_name='DOSREG'
+			and b.exeend is not null
+			and b.status = 'Ended OK'
+			]]>
+			<include refid="criteria_piiextract_custstat_consent"></include>
+			<![CDATA[
+					group by mon, table_name
+
+					union all
+
+					select DATE_FORMAT(b.exeend,'%Y/%m/%d') as mon, b.table_name, sum(b.execnt) arccnt, 0 as delarccnt
+					from cotdl.tbl_piiorder a, cotdl.tbl_piiordersteptable b
+					where a.orderid = b.orderid
+					and b.steptype in ('EXE_DELETE', 'EXE_UPDATE')
+					and b.db='DAON'
+					and b.owner='COOWNSER'
+					and b.table_name='DOSREG'
+					and b.exeend is not null
+					and a.status = 'Ended OK'
+					and b.status = 'Ended OK'
+					]]>
+			<include refid="criteria_piiextract_custstat_consent"></include>
+			<![CDATA[
+					group by mon, table_name
+				) total
+				group by mon, table_name
+		) cnt
+		]]>
+	</select>
+	<select id="readCountBySsnToRestore" resultType="int">
+		select count(1)
+		from cotdl.tbl_piiextract
+		where 1=1
+		<trim prefix=" " suffix=" " >
+			<if test='valtype == "SSN"'>
+				and cust_pin = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "CUSTID"'>
+				and custid = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "DI"'>
+				and val1 = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "CI"'>
+				and val2 = #{ssn, jdbcType=VARCHAR}
+			</if>
+		</trim>
+		  and SUBSTRING( jobid, 1, 11 ) = 'PII_POLICY3'
+		  and ARCHIVE_DATE is not null and RESTORE_DATE is null and ARC_DEL_DATE is null
+	</select>
+	<select id="readBySsnToRestore" resultType="datablocks.dlm.domain.PiiExtractVO">
+		select orderid, jobid, actid, custid,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, exclude_reason,  DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date,  DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date,  DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date,  DATE_FORMAT(restore_date,'%Y/%m/%d') as restore_date,  DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date
+			 ,  DATE_FORMAT(last_base_date,'%Y/%m/%d') as last_base_date,  DATE_FORMAT(expected_arc_del_date,'%Y/%m/%d') as expected_arc_del_date
+			 , cust_nm, birth_dt, address, rsdnt_altrntv_id, cust_pin, inst_cd,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, val1, val2, val3, val4, val5, val6, val7
+		from cotdl.tbl_piiextract
+		where 1=1
+		<trim prefix=" " suffix=" " >
+			<if test='valtype == "SSN"'>
+				and cust_pin = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "CUSTID"'>
+				and custid = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "DI"'>
+				and val1 = #{ssn, jdbcType=VARCHAR}
+			</if>
+			<if test='valtype == "CI"'>
+				and val2 = #{ssn, jdbcType=VARCHAR}
+			</if>
+		</trim>
+		  and SUBSTRING( jobid, 1, 11 ) = 'PII_POLICY3'
+		  and ARCHIVE_DATE is not null and RESTORE_DATE is null and ARC_DEL_DATE is null
+		limit 1
+	</select>
+	<select id="readCountByCustidToRestore" resultType="int">
+		select count(1)
+		from cotdl.tbl_piiextract
+		where custid = #{ssn, jdbcType=VARCHAR}
+			and SUBSTRING( jobid, 1, 11 ) = 'PII_POLICY3'
+		  and ARCHIVE_DATE is not null and RESTORE_DATE is null and ARC_DEL_DATE is null
+	</select>
+	<select id="readByCustidToRestore" resultType="datablocks.dlm.domain.PiiExtractVO">
+		select orderid, jobid, actid, custid,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, exclude_reason,  DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date,  DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date,  DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date,  DATE_FORMAT(restore_date,'%Y/%m/%d') as restore_date,  DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date
+			 ,  DATE_FORMAT(last_base_date,'%Y/%m/%d') as last_base_date,  DATE_FORMAT(expected_arc_del_date,'%Y/%m/%d') as expected_arc_del_date
+			 , cust_nm, birth_dt, address, rsdnt_altrntv_id, cust_pin, inst_cd,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, val1, val2, val3, val4, val5, val6, val7
+		from cotdl.tbl_piiextract
+		where custid = #{ssn, jdbcType=VARCHAR}
+			and SUBSTRING( jobid, 1, 11 ) = 'PII_POLICY3'
+		  and ARCHIVE_DATE is not null and RESTORE_DATE is null and ARC_DEL_DATE is null
+			limit 1
+	</select>
+	<select id="readByCustidOrderid" resultType="datablocks.dlm.domain.PiiExtractVO">
+		select orderid, jobid, actid, custid,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, exclude_reason,  DATE_FORMAT(actrole_end_date,'%Y/%m/%d') as actrole_end_date,  DATE_FORMAT(archive_date,'%Y/%m/%d') as archive_date,  DATE_FORMAT(delete_date,'%Y/%m/%d') as delete_date,  DATE_FORMAT(restore_date,'%Y/%m/%d') as restore_date,  DATE_FORMAT(arc_del_date,'%Y/%m/%d') as arc_del_date
+			 ,  DATE_FORMAT(last_base_date,'%Y/%m/%d') as last_base_date,  DATE_FORMAT(expected_arc_del_date,'%Y/%m/%d') as expected_arc_del_date
+			 , cust_nm, birth_dt, address, rsdnt_altrntv_id, cust_pin, inst_cd,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, val1, val2, val3, val4, val5, val6, val7
+		from cotdl.tbl_piiextract
+		where 1=1
+			<trim prefix=" " suffix=" " >
+				<if test="custid != null">
+					and custid = #{custid}
+				</if>
+				<if test="orderid != null">
+					and orderid = #{orderid}
+				</if>
+			</trim>
+	</select>
+	<delete id="delete_piicuststat">
+		delete from cotdl.TBL_PIICUSTSTAT where 1 = 1
+	</delete>
+	<select id="getCustStatListDaily" resultType="datablocks.dlm.domain.PiiCustStatVO">
+		select DATE_FORMAT(mon,'%m/%d') mon , archive_cnt1, restore_cnt1, arc_del_cnt1, archive_cnt2, restore_cnt2, arc_del_cnt2, archive_cnt3, restore_cnt3, arc_del_cnt3
+		from (
+						  select *
+						  from COTDL.TBL_PIICUSTSTAT
+						  where chartname = 'ALLDAYS'
+						  order by mon desc
+						  limit 60
+					  ) a
+		order by DATE_FORMAT(mon,'%y/%m/%d')
+	</select>
+
+	<select id="getCustStatListMonthly" resultType="datablocks.dlm.domain.PiiCustStatVO">
+		select * from (
+		select DATE_FORMAT(mon, '%y/%m') as mon , archive_cnt1, restore_cnt1, arc_del_cnt1, archive_cnt2, restore_cnt2, arc_del_cnt2, archive_cnt3, restore_cnt3, arc_del_cnt3
+		from COTDL.TBL_PIICUSTSTAT
+		where chartname = 'ALLMONTHS'
+		order by mon desc
+		limit 36
+		) a
+		order by mon
+	</select>
+
+	<!-- ======================================================== -->
+	<!-- 퍼지 통계 적재: 삭제 대상 레코드의 카운트를 7가지 관점으로 보존 -->
+	<!-- ======================================================== -->
+	<insert id="insertPurgeStats">
+		<!-- 1) ARC_DEL: arc_del_date별 전체 arc_del 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d'), 'ARC_DEL', 'ALL', COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = #{excludeReason}
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND arc_del_date IS NOT NULL ]]>
+		  <choose>
+			<when test="excludeReason == 'DELARC'">
+				<![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+			</when>
+			<when test="excludeReason == 'RESTORE'">
+				<![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+			</when>
+		  </choose>
+		GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+
+		<!-- 2) ARCHIVE: archive_date별 policy별 archive 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(archive_date, '%Y/%m/%d'), 'ARCHIVE', #{policyPrefix}, COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = #{excludeReason}
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND archive_date IS NOT NULL ]]>
+		  <choose>
+			<when test="excludeReason == 'DELARC'">
+				<![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+			</when>
+			<when test="excludeReason == 'RESTORE'">
+				<![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+			</when>
+		  </choose>
+		GROUP BY DATE_FORMAT(archive_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+
+		<!-- 3,4) RESTORE 통계: RESTORE 퍼지 시에만 실행 -->
+		<if test="excludeReason == 'RESTORE'">
+		<!-- 3) RESTORE_ALL: restore_date별 전체 restore 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(restore_date, '%Y/%m/%d'), 'RESTORE_ALL', 'ALL', COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = 'RESTORE'
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND restore_date IS NOT NULL ]]>
+		  <![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+		GROUP BY DATE_FORMAT(restore_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+
+		<!-- 4) RESTORE: restore_date별 policy별 restore 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(restore_date, '%Y/%m/%d'), 'RESTORE', #{policyPrefix}, COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = 'RESTORE'
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND restore_date IS NOT NULL ]]>
+		  <![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+		GROUP BY DATE_FORMAT(restore_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+		</if>
+
+		<!-- 5,6) ARC_DEL_DELARC 통계: DELARC 퍼지 시에만 실행 -->
+		<if test="excludeReason == 'DELARC'">
+		<!-- 5) ARC_DEL_DELARC: arc_del_date별 DELARC 전체 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d'), 'ARC_DEL_DELARC', 'ALL', COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = 'DELARC'
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND arc_del_date IS NOT NULL ]]>
+		  <![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+		GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+
+		<!-- 6) ARC_DEL_DELARC_P: arc_del_date별 policy별 DELARC 카운트 -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(arc_del_date, '%Y/%m/%d'), 'ARC_DEL_DELARC_P', #{policyPrefix}, COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = 'DELARC'
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <![CDATA[ AND arc_del_date IS NOT NULL ]]>
+		  <![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+		GROUP BY DATE_FORMAT(arc_del_date, '%Y/%m/%d')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW();
+		</if>
+
+		<!-- 7) BASEDATE: basedate(YYYYMM)별 카운트 (RESTORE_DATE IS NULL인 경우만) -->
+		INSERT INTO cotdl.TBL_PIIEXTRACT_PURGE_STAT (STAT_DATE, STAT_TYPE, JOBID_PREFIX, CNT, PURGE_DATE)
+		SELECT DATE_FORMAT(basedate, '%Y%m'), 'BASEDATE', 'ALL', COUNT(*), NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = #{excludeReason}
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  AND RESTORE_DATE IS NULL
+		  <choose>
+			<when test="excludeReason == 'DELARC'">
+				<![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+			</when>
+			<when test="excludeReason == 'RESTORE'">
+				<![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+			</when>
+		  </choose>
+		GROUP BY DATE_FORMAT(basedate, '%Y%m')
+		ON DUPLICATE KEY UPDATE CNT = CNT + VALUES(CNT), PURGE_DATE = NOW()
+	</insert>
+
+	<!-- 퍼지 로그 적재: 삭제 전 고객별 파기 증적 보존 (개인정보 제외) -->
+	<insert id="insertPurgeLog">
+		INSERT IGNORE INTO cotdl.TBL_PIIEXTRACT_PURGE_LOG (CUSTID, JOBID, BASEDATE, ORDERID, ARC_DEL_DATE, RESTORE_DATE, EXCLUDE_REASON, PURGE_DATE)
+		SELECT CUSTID, JOBID, BASEDATE, ORDERID, ARC_DEL_DATE, RESTORE_DATE, EXCLUDE_REASON, NOW()
+		FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = #{excludeReason}
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <choose>
+			<when test="excludeReason == 'DELARC'">
+				<![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+			</when>
+			<when test="excludeReason == 'RESTORE'">
+				<![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+			</when>
+		  </choose>
+	</insert>
+
+	<!-- 퍼지 삭제: 보존 기간 경과 레코드 삭제 -->
+	<delete id="deletePurgedRecords">
+		DELETE FROM cotdl.tbl_piiextract
+		WHERE EXCLUDE_REASON = #{excludeReason}
+		  AND SUBSTR(jobid, 1, 11) = #{policyPrefix}
+		  <choose>
+			<when test="excludeReason == 'DELARC'">
+				<![CDATA[ AND arc_del_date <= #{cutoffDate} ]]>
+			</when>
+			<when test="excludeReason == 'RESTORE'">
+				<![CDATA[ AND restore_date <= #{cutoffDate} ]]>
+			</when>
+		  </choose>
+	</delete>
+
+</mapper>

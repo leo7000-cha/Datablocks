@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.ProgOrderHistMapper">
+
+ 	<sql id="criteria_ProgOrderHist">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and orderid = #{search1}
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getList" resultType="datablocks.dlm.domain.ProgOrderHistVO">
+		<![CDATA[
+		select orderid, prog_job_nm, bgnn_chng_dvcd, param_base_dt, db, update_query, insert_query, created_at, error_message
+		from cotdl.tbl_progorderhist order by orderid desc
+		]]>
+	</select>
+
+	<select id="getListEndedOK" resultType="datablocks.dlm.domain.ProgOrderHistOkVO">
+		<![CDATA[
+		SELECT
+			h.orderid,
+			h.prog_job_nm,
+			h.bgnn_chng_dvcd,
+			h.param_base_dt,
+			h.db,
+			h.update_query,
+			h.insert_query,
+			h.created_at,
+			h.error_message,
+			o.status
+		from cotdl.tbl_progorderhist as h
+				 join cotdl.tbl_piiorder     as o
+					  on o.orderid = h.orderid
+		where o.status = 'Ended OK'
+		order by orderid desc;
+		]]>
+	</select>
+
+	<insert id="insert" parameterType="datablocks.dlm.domain.ProgOrderHistVO" >
+		INSERT INTO cotdl.tbl_progorderhist (orderid, prog_job_nm, bgnn_chng_dvcd, param_base_dt, db, update_query, insert_query, error_message)
+		values (#{orderid}, #{prog_job_nm, jdbcType=VARCHAR}, #{bgnn_chng_dvcd, jdbcType=VARCHAR}, #{param_base_dt, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{update_query, jdbcType=VARCHAR}, #{insert_query, jdbcType=VARCHAR}, #{error_message, jdbcType=VARCHAR})
+	</insert>
+
+	<insert id="insertSelectKey" parameterType="datablocks.dlm.domain.ProgOrderHistVO" >
+		INSERT INTO cotdl.tbl_progorderhist (orderid, prog_job_nm, bgnn_chng_dvcd, param_base_dt, db, update_query, insert_query, error_message)
+		values (#{orderid}, #{prog_job_nm, jdbcType=VARCHAR}, #{bgnn_chng_dvcd, jdbcType=VARCHAR}, #{param_base_dt, jdbcType=VARCHAR}, #{db, jdbcType=VARCHAR}, #{update_query, jdbcType=VARCHAR}, #{insert_query, jdbcType=VARCHAR}, #{error_message, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.ProgOrderHistVO">
+		select orderid, prog_job_nm, bgnn_chng_dvcd, param_base_dt, db, update_query, insert_query, created_at, error_message
+		  from cotdl.tbl_progorderhist 
+		 where orderid= #{orderid}
+	</select>
+	
+	<delete id="delete">
+		delete from cotdl.tbl_progorderhist where orderid= #{orderid}
+	</delete>
+
+	<update id="update">
+		update cotdl.tbl_progorderhist
+		set
+			error_message= #{error_message, jdbcType=VARCHAR},
+		where orderid= #{orderid}
+	</update>
+
+	
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.ProgOrderHistVO"> 
+		<![CDATA[
+		select orderid, prog_job_nm, bgnn_chng_dvcd, param_base_dt, db, update_query, insert_query, created_at, error_message
+		  from cotdl.tbl_progorderhist
+		]]>
+		<include refid="criteria_ProgOrderHist"></include>
+	    <![CDATA[
+		order by orderid desc
+		limit #{offset}, #{amount}
+		]]> 
+	</select>
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_progorderhist
+		<include refid="criteria_ProgOrderHist"></include>
+	</select>
+
+
+</mapper>

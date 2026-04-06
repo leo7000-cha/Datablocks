@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="datablocks.dlm.mapper.PiiApprovalReqMapper">
+
+ 	<sql id="criteria_piiapprovalreq">
+		<trim prefix="where 1=1" suffix="" >
+						<if test="search1 != null">
+							and upper(requesterid) = upper(#{search1})
+						</if>
+						<if test="search2 != null">
+							and upper(approverid) = upper(#{search2})
+						</if>
+						<if test="search3 != null">
+							and upper(phase) = upper(#{search3})
+						</if>
+		</trim>
+	</sql> 
+
+	<select id="getLastApprover" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+		<![CDATA[
+		select a.reqid, a.approvalid, a.approvalname, a.seq, a.phase, a.jobid, a.version
+			 , a.approverid
+			 , a.approvername
+			 , a.requesterid, a.requestername, to_char(a.reqdate,'yyyy/mm/dd HH24:MI:SS') as reqdate, to_char(a.approvedate,'yyyy/mm/dd HH24:MI:SS') as approvedate, a.reqreason , null as custid
+		  from cotdl.tbl_piiapprovalreq a
+		 where a.reqid = (
+							select max(reqid)
+							  from cotdl.tbl_piiapprovalreq
+							 where approvalid  = #{approvalid, jdbcType=VARCHAR}
+							   and requesterid = #{requesterid, jdbcType=VARCHAR}
+						)
+		]]>
+	</select>
+
+	<select id="getList" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+		<![CDATA[
+		select a.reqid, a.approvalid, a.approvalname, a.seq, a.phase, a.jobid, a.version
+					  , a.approverid
+					  , a.approvername
+        		, a.requesterid, a.requestername, to_char(a.reqdate,'yyyy/mm/dd HH24:MI:SS') as reqdate, to_char(a.approvedate,'yyyy/mm/dd HH24:MI:SS') as approvedate, a.reqreason , null as custid
+		  from cotdl.tbl_piiapprovalreq a
+		  order by reqid desc
+		]]>
+	</select>
+
+	<insert id="insert">
+		insert into cotdl.tbl_piiapprovalreq (reqid, approvalid, approvalname, seq, phase, jobid, version, approverid, approvername, requesterid, requestername, reqdate, approvedate,reqreason)
+		values (#{reqid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR},#{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR}, #{requesterid, jdbcType=VARCHAR}, #{requestername, jdbcType=VARCHAR}, SYSDATE, null, #{reqreason, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		insert into cotdl.tbl_piiapprovalreq (reqid, approvalid, approvalname, seq, phase, jobid, version, approverid, approvername, requesterid, requestername, reqdate, approvedate, reqreason)
+		values (#{reqid, jdbcType=VARCHAR}, #{approvalid, jdbcType=VARCHAR}, #{approvalname, jdbcType=VARCHAR}, #{seq, jdbcType=VARCHAR}, #{phase, jdbcType=VARCHAR}, #{jobid, jdbcType=VARCHAR}, #{version, jdbcType=VARCHAR}, #{approverid, jdbcType=VARCHAR}, #{approvername, jdbcType=VARCHAR}, #{requesterid, jdbcType=VARCHAR}, #{requestername, jdbcType=VARCHAR}, SYSDATE, null, #{reqreason, jdbcType=VARCHAR})
+	</insert>
+
+	<select id="read" resultType="datablocks.dlm.domain.PiiApprovalReqVO">
+        select a.reqid, a.approvalid, a.approvalname, a.seq, a.phase, a.jobid, a.version
+       			, a.approverid
+                , a.approvername
+        		, a.requesterid, a.requestername, to_char(a.reqdate,'yyyy/mm/dd') as reqdate, to_char(a.approvedate,'yyyy/mm/dd') as approvedate, a.reqreason, null as custid
+		  from cotdl.tbl_piiapprovalreq a
+          where reqid= #{reqid, jdbcType=VARCHAR}
+	</select>
+
+	<select id="readapproval" resultType="datablocks.dlm.domain.PiiApprovalVO">
+		select approvalid, approvalname, seq, phase 
+          from cotdl.tbl_piiapproval
+          where approvalid= #{approvalid, jdbcType=VARCHAR}
+	</select>
+	<select id="readapprovaluser" resultType="datablocks.dlm.domain.PiiApprovalUserVO">
+		select approvalid, approvalname, seq, approverid, approvername 
+          from cotdl.tbl_piiapprovaluser
+          where approvalid= #{approvalid, jdbcType=VARCHAR}
+	</select>
+		
+	<delete id="delete">
+		delete from cotdl.tbl_piiapprovalreq 
+		 where reqid= #{reqid, jdbcType=VARCHAR}
+	</delete>
+	<update id="approve">
+		update cotdl.tbl_piiapprovalreq
+		set 
+			phase= 'APPROVED',
+			approvedate = SYSDATE
+		where reqid= #{reqid}
+	</update>
+	<update id="reject">
+		update cotdl.tbl_piiapprovalreq
+		set 
+			phase= 'REJECTED',
+			approvedate = SYSDATE
+		where reqid= #{reqid}
+	</update>
+	<update id="update">
+		update cotdl.tbl_piiapprovalreq
+		set 
+			seq= #{seq, jdbcType=VARCHAR},
+			phase= #{phase, jdbcType=VARCHAR},
+			approvedate = SYSDATE
+		where reqid= #{reqid, jdbcType=VARCHAR}
+	</update>
+	<update id="updateApprover">
+		update cotdl.tbl_piiapprovalreq
+		set
+			approverid= #{approverid, jdbcType=VARCHAR},
+			approvername= #{approvername, jdbcType=VARCHAR},
+			reqreason= #{reqreason, jdbcType=VARCHAR}
+		where reqid= #{reqid, jdbcType=VARCHAR}
+	</update>
+
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiApprovalReqVO"> 
+		<![CDATA[ 
+		select 
+			reqid, approvalid, approvalname, seq, phase, jobid, version, approverid, approvername, requesterid, requestername, reqdate, approvedate, reqreason
+		,(case when approvalid = 'RESTORE_APPROVAL' then (select custid from cotdl.tbl_piirestore where restoreid=f.jobid) else null end) as custid
+		from ( 
+				select 
+					 ROWNUM rn, reqid, approvalid, approvalname, seq, phase, jobid, version, approverid, approvername, requesterid, requestername, reqdate, approvedate, reqreason
+				from (
+						select a.reqid, a.approvalid, a.approvalname, a.seq, a.phase, a.jobid, a.version
+								, a.approverid
+               					 , a.approvername
+								, a.requesterid, a.requestername, to_char(a.reqdate,'yyyy/mm/dd HH24:MI:SS') as reqdate, to_char(a.approvedate,'yyyy/mm/dd HH24:MI:SS') as approvedate, a.reqreason
+						  from cotdl.tbl_piiapprovalreq a
+                          order by a.reqid desc 
+					 ) r
+				where 
+		]]>
+	    
+		<trim prefix="(1=1" suffix=") AND" >
+			<if test="search1 != null">
+				and upper(requesterid) = upper(#{search1})
+			</if>
+			<if test="search2 != null">
+				and upper(approverid) = upper(#{search2})
+			</if>
+			<if test="search3 != null">
+				and upper(phase) = upper(#{search3})
+			</if>
+		</trim>
+	    
+	    <![CDATA[
+				 ROWNUM <= #{pagenum} * #{amount} 
+				order by reqid desc
+			  ) f
+		where rn > (#{pagenum} -1) * #{amount} 
+		order by reqid desc
+		]]> 
+	</select>	
+
+	<select id="getTotalCount" resultType="int">
+		select count(1) from cotdl.tbl_piiapprovalreq 
+		
+		<include refid="criteria_piiapprovalreq"></include> 
+			
+	</select>
+
+	<select id="getMaxReqid" resultType="int">
+		select COALESCE(max(reqid),10000) from cotdl.tbl_piiapprovalreq
+	</select>
+</mapper>

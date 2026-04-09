@@ -163,15 +163,28 @@ if [ "$MARIADB_PORT" != "3306" ]; then
     log "MariaDB 포트 → ${MARIADB_PORT}"
 fi
 
+FINAL_DLM_PORT=$(grep '^DLM_PORT=' "$ENV_FILE" | cut -d= -f2)
+FINAL_AI_PORT=$(grep '^AI_PORT=' "$ENV_FILE" | cut -d= -f2)
+
 echo ""
 echo "  현재 설정:"
 echo "    MariaDB: ${MARIADB_CONTAINER}:${MARIADB_PORT} (기존 컨테이너)"
 echo "    네트워크: ${MARIADB_NETWORK} (기존 네트워크 참여)"
-echo "    DLM 포트: $(grep '^DLM_PORT=' "$ENV_FILE" | cut -d= -f2)"
-echo "    AI  포트: $(grep '^AI_PORT=' "$ENV_FILE" | cut -d= -f2)"
+echo "    DLM 포트: ${FINAL_DLM_PORT}"
+echo "    AI  포트: ${FINAL_AI_PORT}"
 echo ""
 
-# 설정 변경은 .env.hanson 파일을 직접 수정
+read -p "  DLM 포트 변경 [Enter=${FINAL_DLM_PORT} 유지]: " NEW_DLM_PORT
+if [ -n "$NEW_DLM_PORT" ]; then
+    sed -i "s|^DLM_PORT=.*|DLM_PORT=${NEW_DLM_PORT}|g" "$ENV_FILE"
+    log "DLM 포트 → ${NEW_DLM_PORT}"
+fi
+
+read -p "  Privacy-AI 포트 변경 [Enter=${FINAL_AI_PORT} 유지]: " NEW_AI_PORT
+if [ -n "$NEW_AI_PORT" ]; then
+    sed -i "s|^AI_PORT=.*|AI_PORT=${NEW_AI_PORT}|g" "$ENV_FILE"
+    log "AI 포트 → ${NEW_AI_PORT}"
+fi
 
 # ==============================================================================
 # STEP 5: 실행

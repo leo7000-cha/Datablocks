@@ -2,11 +2,11 @@
 # DLM Docker Compose — 한국손해보험 전용
 # ==============================================================================
 # ★ 기존 Docker 컨테이너 'mariadb'가 이미 운영 중
-# ★ DLM + Privacy-AI 만 실행, 기존 mariadb 에 dlm-network 으로 연결
+# ★ DLM + Privacy-AI 가 기존 mariadb의 네트워크에 참여 (기존 환경 수정 없음)
 #
 # 사전 조건:
-#   1) deploy.sh 가 기존 mariadb 컨테이너를 dlm-network 에 연결해 줌
-#   2) 네트워크 dlm-network 은 deploy.sh 에서 미리 생성
+#   deploy.sh 가 기존 mariadb 컨테이너의 네트워크를 감지하여
+#   MARIADB_NETWORK 환경변수로 전달
 #
 # 사용법:
 #   docker compose -f docker-compose.hanson.yml up -d
@@ -33,7 +33,7 @@ services:
       - dlm_logs:/app/logs
       - dlm_upload:/app/upload
     networks:
-      - dlm-network
+      - mariadb-net
     deploy:
       resources:
         limits:
@@ -64,7 +64,7 @@ services:
       - privacy_ai_logs:/app/logs
       - privacy_ai_models:/app/models
     networks:
-      - dlm-network
+      - mariadb-net
     depends_on:
       dlm:
         condition: service_started
@@ -83,14 +83,13 @@ services:
         max-file: "5"
 
 # ==============================================================================
-# Networks — 외부에서 미리 생성된 네트워크 사용
-# deploy.sh 에서 docker network create dlm-network 후
-# 기존 mariadb 컨테이너를 이 네트워크에 연결
+# Networks — 기존 mariadb 컨테이너의 네트워크에 참여
+# deploy.sh 가 감지한 네트워크명을 MARIADB_NETWORK 으로 전달
 # ==============================================================================
 networks:
-  dlm-network:
+  mariadb-net:
     external: true
-    name: dlm-network
+    name: ${MARIADB_NETWORK}
 
 # ==============================================================================
 # Volumes

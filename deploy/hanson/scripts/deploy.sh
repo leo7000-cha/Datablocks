@@ -65,27 +65,39 @@ MARIADB_PORT="${MARIADB_PORT:-3306}"
 log "MariaDB 내부 포트: $MARIADB_PORT"
 
 # ==============================================================================
-# STEP 2: Docker 네트워크 구성 (기존 mariadb 연결)
+# STEP 2: 기존 MariaDB 네트워크 감지 (기존 환경 수정 없음)
 # ==============================================================================
 echo ""
-log "=== STEP 2/5: Docker 네트워크 구성 ==="
+log "=== STEP 2/5: 기존 MariaDB 네트워크 감지 ==="
 
-# dlm-network 생성 (이미 존재하면 무시)
-if ! docker network ls --format '{{.Name}}' | grep -qw "dlm-network"; then
-    docker network create dlm-network
-    log "dlm-network 생성 완료"
+# 기존 mariadb 컨테이너가 속한 사용자 정의 네트워크를 찾음
+# (default bridge 제외 — bridge 에서는 컨테이너명 DNS 안 됨)
+MARIADB_NETWORK=""
+for net in $(docker inspect "$MARIADB_CONTAINER" \
+    --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'); do
+    # 기본 bridge 는 skip
+    if [ "$net" = "bridge" ]; then
+        continue
+    fi
+    MARIADB_NETWORK="$net"
+    break
+done
+
+if [ -z "$MARIADB_NETWORK" ]; then
+    # 사용자 정의 네트워크가 없으면 → 하나 만들고 기존 mariadb 연결
+    warn "기존 mariadb 에 사용자 정의 네트워크가 없습니다."
+    warn "dlm-network 를 생성하고 기존 mariadb 를 연결합니다."
+    MARIADB_NETWORK="dlm-network"
+    if ! docker network ls --format '{{.Name}}' | grep -qw "$MARIADB_NETWORK"; then
+        docker network create "$MARIADB_NETWORK"
+    fi
+    docker network connect "$MARIADB_NETWORK" "$MARIADB_CONTAINER" 2>/dev/null || true
+    log "fallback: $MARIADB_CONTAINER → $MARIADB_NETWORK 연결"
 else
-    log "dlm-network 이미 존재"
+    log "기존 네트워크 감지: $MARIADB_NETWORK (기존 환경 수정 없음)"
 fi
 
-# 기존 mariadb 컨테이너를 dlm-network 에 연결 (이미 연결되어 있으면 무시)
-if docker inspect "$MARIADB_CONTAINER" --format '{{json .NetworkSettings.Networks}}' \
-    | grep -q '"dlm-network"'; then
-    log "$MARIADB_CONTAINER → dlm-network 이미 연결됨"
-else
-    docker network connect dlm-network "$MARIADB_CONTAINER"
-    log "$MARIADB_CONTAINER → dlm-network 연결 완료"
-fi
+export MARIADB_NETWORK
 
 # ==============================================================================
 # STEP 3: Docker 이미지 로드
@@ -127,10 +139,18 @@ log "파일 복사 완료: $INSTALL_DIR"
 
 ENV_FILE="$INSTALL_DIR/.env.hanson"
 
+# 감지한 네트워크명을 .env 에 기록
+if grep -q '^MARIADB_NETWORK=' "$ENV_FILE"; then
+    sed -i "s|^MARIADB_NETWORK=.*|MARIADB_NETWORK=${MARIADB_NETWORK}|g" "$ENV_FILE"
+else
+    echo "" >> "$ENV_FILE"
+    echo "# --- 자동 감지된 MariaDB 네트워크 ---" >> "$ENV_FILE"
+    echo "MARIADB_NETWORK=${MARIADB_NETWORK}" >> "$ENV_FILE"
+fi
+
 # mariadb 컨테이너 이름이 기본(mariadb)이 아닌 경우 env 파일 업데이트
 if [ "$MARIADB_CONTAINER" != "mariadb" ]; then
     sed -i "s|^MARIADB_CONTAINER=.*|MARIADB_CONTAINER=${MARIADB_CONTAINER}|g" "$ENV_FILE"
-    # JDBC URL & Privacy-AI DB 호스트도 컨테이너명으로 변경
     sed -i "s|mariadb://mariadb:|mariadb://${MARIADB_CONTAINER}:|g" "$ENV_FILE"
     sed -i "s|^PRIVACY_AI_DB_HOST=.*|PRIVACY_AI_DB_HOST=${MARIADB_CONTAINER}|g" "$ENV_FILE"
     log "MariaDB 호스트명 → ${MARIADB_CONTAINER}"
@@ -146,6 +166,7 @@ fi
 echo ""
 echo "  현재 설정:"
 echo "    MariaDB: ${MARIADB_CONTAINER}:${MARIADB_PORT} (기존 컨테이너)"
+echo "    네트워크: ${MARIADB_NETWORK} (기존 네트워크 참여)"
 echo "    DLM 포트: $(grep '^DLM_PORT=' "$ENV_FILE" | cut -d= -f2)"
 echo "    AI  포트: $(grep '^AI_PORT=' "$ENV_FILE" | cut -d= -f2)"
 echo ""
@@ -176,6 +197,10 @@ echo ""
 log "=== STEP 5/5: DLM 실행 ==="
 
 cd "$INSTALL_DIR"
+
+# MARIADB_NETWORK 을 export 해야 docker compose 에서 사용 가능
+export MARIADB_NETWORK
+
 docker compose -f docker-compose.hanson.yml down 2>/dev/null || true
 docker compose -f docker-compose.hanson.yml up -d
 
@@ -211,7 +236,7 @@ echo "=============================================="
 echo "  배포 완료"
 echo "=============================================="
 echo ""
-[ "$DB_STATUS"  = "running" ] && echo -e "  MariaDB:    ${GREEN}Running${NC} (기존 컨테이너: $MARIADB_CONTAINER)" || echo -e "  MariaDB:    ${RED}${DB_STATUS}${NC}"
+[ "$DB_STATUS"  = "running" ] && echo -e "  MariaDB:    ${GREEN}Running${NC} (기존: $MARIADB_CONTAINER @ $MARIADB_NETWORK)" || echo -e "  MariaDB:    ${RED}${DB_STATUS}${NC}"
 [ "$DLM_STATUS" = "running" ] && echo -e "  DLM:        ${GREEN}Running${NC}" || echo -e "  DLM:        ${RED}${DLM_STATUS}${NC}"
 [ "$AI_STATUS"  = "running" ] && echo -e "  Privacy-AI: ${GREEN}Running${NC}" || echo -e "  Privacy-AI: ${RED}${AI_STATUS}${NC}"
 echo ""
@@ -219,8 +244,8 @@ echo "  접속: http://${SERVER_IP}:${FINAL_PORT:-8082}"
 echo "  계정: admin / admin1234"
 echo ""
 echo "  관리 명령어:"
-echo "    시작:    cd $INSTALL_DIR && docker compose -f docker-compose.hanson.yml up -d"
-echo "    중지:    cd $INSTALL_DIR && docker compose -f docker-compose.hanson.yml down"
+echo "    시작:    cd $INSTALL_DIR && MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml up -d"
+echo "    중지:    cd $INSTALL_DIR && MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml down"
 echo "    로그:    docker logs -f dlm-app"
 echo "    상태:    docker ps"
 echo ""

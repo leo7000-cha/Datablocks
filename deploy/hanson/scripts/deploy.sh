@@ -171,24 +171,7 @@ echo "    DLM 포트: $(grep '^DLM_PORT=' "$ENV_FILE" | cut -d= -f2)"
 echo "    AI  포트: $(grep '^AI_PORT=' "$ENV_FILE" | cut -d= -f2)"
 echo ""
 
-# --- 인터랙티브 설정 변경 ---
-read -p "  DB 비밀번호 변경 [Enter=건너뛰기]: " DB_PASS
-if [ -n "$DB_PASS" ]; then
-    sed -i "s|^PRIVACY_AI_DB_PASSWORD=.*|PRIVACY_AI_DB_PASSWORD=${DB_PASS}|g" "$ENV_FILE"
-    log "DB 비밀번호 변경됨"
-fi
-
-read -p "  DLM 포트 변경 [Enter=8082 유지]: " NEW_DLM_PORT
-if [ -n "$NEW_DLM_PORT" ]; then
-    sed -i "s|^DLM_PORT=.*|DLM_PORT=${NEW_DLM_PORT}|g" "$ENV_FILE"
-    log "DLM 포트 → ${NEW_DLM_PORT}"
-fi
-
-read -p "  Privacy-AI 포트 변경 [Enter=8000 유지]: " NEW_AI_PORT
-if [ -n "$NEW_AI_PORT" ]; then
-    sed -i "s|^AI_PORT=.*|AI_PORT=${NEW_AI_PORT}|g" "$ENV_FILE"
-    log "AI 포트 → ${NEW_AI_PORT}"
-fi
+# 설정 변경은 .env.hanson 파일을 직접 수정
 
 # ==============================================================================
 # STEP 5: 실행

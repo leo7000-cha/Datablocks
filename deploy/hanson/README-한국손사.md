@@ -359,6 +359,45 @@ sudo iptables -A INPUT -p tcp --dport 8082 -j ACCEPT
 
 ---
 
+## 8. tbl_piidatabase 설정 (중요)
+
+DLM이 Job 실행 시 대상 DB에 JDBC로 접속할 때 `tbl_piidatabase` 테이블의 `hostname` 컬럼을 사용합니다.
+
+### 네트워크 구조
+
+```
+[dlm-app 컨테이너] ──(mariadb-net)──→ [mariadb 컨테이너]
+                                        │
+                                   컨테이너명: mariadb
+```
+
+### hostname 설정 규칙
+
+| hostname 값 | 동작 | 결과 |
+|-------------|------|------|
+| `mariadb` (컨테이너명) | Docker DNS로 mariadb 컨테이너 접속 | **정상** |
+| `localhost` | dlm-app 컨테이너 자기 자신 접속 | **실패** (MariaDB 없음) |
+
+### 설정 방법
+
+```sql
+-- mariadb 컨테이너에서 실행
+UPDATE cotdl.tbl_piidatabase SET hostname = 'mariadb' WHERE hostname = 'localhost';
+```
+
+### 확인
+
+```sql
+SELECT db, hostname, port FROM cotdl.tbl_piidatabase;
+-- hostname이 모두 'mariadb'인지 확인
+```
+
+> **주의**: `localhost`로 되어 있으면 Job 실행 시 DB 접속 실패합니다.
+> 이전 버전에서 `network_mode: host`를 사용했다면 `localhost`로 동작했지만,
+> 현재는 Docker 네트워크 방식이므로 반드시 **컨테이너명(`mariadb`)**을 사용해야 합니다.
+
+---
+
 ## 체크리스트
 
 ```
@@ -370,6 +409,7 @@ sudo iptables -A INPUT -p tcp --dport 8082 -j ACCEPT
     ☐ 이미지 로드 완료
     ☐ 포트 확인 (DLM=8082, AI=8000)
     ☐ 컨테이너 2개 Running
+  ☐ tbl_piidatabase.hostname = 'mariadb' 확인 (★ 중요)
   ☐ 브라우저 http://WAS서버IP:8082 접속
   ☐ 로그인 성공 (admin / admin1234)
   ☐ Docker 자동시작 확인 (systemctl is-enabled docker)

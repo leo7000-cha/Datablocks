@@ -1,15 +1,15 @@
 # ==============================================================================
 # DLM Docker Compose — JB우리캐피탈 전용
 # ==============================================================================
-# Docker/MariaDB는 고객사에 설치됨
-# DLM + Privacy-AI 컨테이너만 실행
+# ★ MariaDB는 호스트 OS (Rocky 9)에 직접 설치되어 운영 중
+# ★ DLM + Privacy-AI 컨테이너가 host.docker.internal 로 호스트 DB에 접속
 #
 # 사용법:
-#   docker compose -f docker-compose.jbwoori.yml up -d
+#   docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
 #
 # 로그:    docker logs -f dlm-app
-# 중지:    docker compose -f docker-compose.jbwoori.yml down
-# 재시작:  docker compose -f docker-compose.jbwoori.yml restart
+# 중지:    docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml down
+# 재시작:  docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml restart
 # ==============================================================================
 
 services:
@@ -23,6 +23,8 @@ services:
     env_file: .env.jbwoori
     environment:
       TZ: Asia/Seoul
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${DLM_PORT:-8080}:8080"
     volumes:
@@ -54,6 +56,8 @@ services:
     env_file: .env.jbwoori
     environment:
       TZ: Asia/Seoul
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${AI_PORT:-8000}:8000"
     volumes:
@@ -79,7 +83,7 @@ services:
         max-file: "5"
 
 # ==============================================================================
-# Networks
+# Networks — DLM 전용 브리지 네트워크
 # ==============================================================================
 networks:
   dlm-network:

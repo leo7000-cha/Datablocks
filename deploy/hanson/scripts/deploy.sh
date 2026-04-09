@@ -97,8 +97,6 @@ else
     log "기존 네트워크 감지: $MARIADB_NETWORK (기존 환경 수정 없음)"
 fi
 
-export MARIADB_NETWORK
-
 # ==============================================================================
 # STEP 3: Docker 이미지 로드
 # ==============================================================================
@@ -234,11 +232,8 @@ log "=== STEP 5/5: DLM 실행 ==="
 
 cd "$INSTALL_DIR"
 
-# MARIADB_NETWORK 을 export 해야 docker compose 에서 사용 가능
-export MARIADB_NETWORK
-
-docker compose -f docker-compose.hanson.yml down 2>/dev/null || true
-docker compose -f docker-compose.hanson.yml up -d
+docker compose --env-file .env.hanson -f docker-compose.hanson.yml down 2>/dev/null || true
+docker compose --env-file .env.hanson -f docker-compose.hanson.yml up -d
 
 log "컨테이너 시작 대기 중..."
 sleep 10
@@ -280,8 +275,9 @@ echo "  접속: http://${SERVER_IP}:${FINAL_PORT:-8082}"
 echo "  계정: admin / admin1234"
 echo ""
 echo "  관리 명령어:"
-echo "    시작:    cd $INSTALL_DIR && MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml up -d"
-echo "    중지:    cd $INSTALL_DIR && MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml down"
+echo "    시작:    cd $INSTALL_DIR && docker compose --env-file .env.hanson -f docker-compose.hanson.yml up -d"
+echo "    중지:    cd $INSTALL_DIR && docker compose --env-file .env.hanson -f docker-compose.hanson.yml down"
+echo "    재시작:  cd $INSTALL_DIR && docker compose --env-file .env.hanson -f docker-compose.hanson.yml restart"
 echo "    로그:    docker logs -f dlm-app"
 echo "    상태:    docker ps"
 echo ""

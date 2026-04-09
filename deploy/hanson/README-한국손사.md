@@ -1,7 +1,7 @@
 # DLM 배포 가이드 — 한국손사
 
-> 폐쇄망 Ubuntu / Docker 설치됨 / MariaDB 설치됨
-> 작성일: 2026-04-08
+> 폐쇄망 Ubuntu / Docker 설치됨 / MariaDB 컨테이너 이미 운영 중
+> 작성일: 2026-04-08 | 갱신: 2026-04-09
 
 ---
 
@@ -12,34 +12,34 @@
 ============                       ================
 
 deploy/hanson/ 폴더
-    |                              [DB 서버]
-    | USB 복사                      [1] MariaDB 설정 확인
-    v                              [2] DLM_DATABASE_INIT.sql 실행 (수동)
-                                   [3] cotdl_dump.sql.data 임포트
-
+    |                              기존 MariaDB 컨테이너 운영 중
+    | USB 복사                      (cotdl DB 구성 완료)
+    v
                                [WAS 서버]
-                               [4] bash scripts/deploy.sh
+                               bash scripts/deploy.sh
+                                   → 기존 mariadb 컨테이너 감지
+                                   → 네트워크 자동 감지
                                    → 이미지 로드
-                                   → DB IP/포트 설정
-                                   → 컨테이너 실행
+                                   → DLM + Privacy-AI 실행
                                    |
                                    v
                                +-------+    +-----------+
                                |  DLM  |    | Privacy-AI|
+                               | :8082 |    |   :8000   |
                                +---+---+    +-----+-----+
                                    |              |
                                    +--------------+
                                          |
-                                    손사 MariaDB
-                                    (기존 설치됨)
+                                  기존 mariadb 컨테이너
+                                  (같은 Docker 네트워크)
 ```
 
 ### 요약
 
 ```
-1. DB 서버:  MariaDB 설정 확인 + SQL 수동 실행
+1. DB: 이미 구성 완료 (지난주 작업)
 2. WAS 서버: bash scripts/deploy.sh   → DLM 실행 완료
-3. 브라우저: http://WAS서버IP:8080     → 접속
+3. 브라우저: http://WAS서버IP:8082     → 접속
 ```
 
 ---
@@ -49,14 +49,14 @@ deploy/hanson/ 폴더
 ```
 deploy/hanson/
 ├── images/
-│   ├── dlm-app.tar.gz             ← DLM 이미지 (301MB)
-│   └── dlm-privacy-ai.tar.gz     ← Privacy-AI 이미지 (78MB)
+│   ├── dlm-app.tar.gz             ← DLM 이미지 (~301MB)
+│   └── dlm-privacy-ai.tar.gz     ← Privacy-AI 이미지 (~78MB)
 ├── docker-compose.hanson.yml      ← 손사 전용 Docker Compose
-├── .env.hanson                    ← 손사 전용 환경변수 (★ 수정 대상)
-├── mariadb/
-│   ├── DLM_DATABASE_INIT.sql      ← DB/계정 초기화 SQL (★ 변수 치환 후 실행)
-│   ├── cotdl_dump.sql.data        ← DB 스키마 + 데이터
-│   └── custom-prod.cnf            ← MariaDB 권장 설정 (DBA 전달)
+├── .env.hanson                    ← 손사 전용 환경변수
+├── mariadb/                       ← 참고용 (DB 이미 구성됨, 실행 불필요)
+│   ├── DLM_DATABASE_INIT.sql
+│   ├── cotdl_dump.sql.data
+│   └── custom-prod.cnf
 ├── scripts/
 │   └── deploy.sh                  ← DLM 배포 스크립트
 └── README-한국손사.md              ← 이 문서
@@ -64,223 +64,244 @@ deploy/hanson/
 
 ---
 
-## 2. DB 초기화 (DB 서버에서 수동 실행)
-
-### STEP 1: MariaDB 필수 설정 확인
-
-```bash
-mysql -u root -p -e "SHOW VARIABLES LIKE 'lower_case_table_names';"   # 반드시 1
-mysql -u root -p -e "SHOW VARIABLES LIKE 'sql_mode';"                 # ANSI_QUOTES 포함 필수
-mysql -u root -p -e "SHOW VARIABLES LIKE 'character_set_server';"     # utf8mb4 권장
-```
-
-설정이 안 되어 있으면 `mariadb/custom-prod.cnf`를 DBA에게 전달하고 적용 요청:
-
-```ini
-[mysqld]
-lower_case_table_names = 1        ← 없으면 테이블 못 찾음
-sql_mode = "ANSI_QUOTES,..."      ← 없으면 SQL 오류
-character-set-server = utf8mb4     ← 한글 깨짐 방지
-```
-
-### STEP 2: DLM_DATABASE_INIT.sql 변수 치환
-
-`mariadb/DLM_DATABASE_INIT.sql` 파일을 열어 아래 변수를 **사이트 값으로 치환(Replace All)** 합니다:
-
-| 변수 | 설명 | 예시 |
-|------|------|------|
-| `#{ROOT_PW}` | root 비밀번호 | 사이트 root 비밀번호 |
-| `#{DLM_DB}` | DLM 메인 DB명 | `cotdl` |
-| `#{DLM_DB_BK}` | 백업 DB명 | `cotdlbk` |
-| `#{DLM_USER}` | DLM 접속 사용자명 | `cotdl` |
-| `#{DLM_PW}` | DLM 사용자 비밀번호 | 사이트에서 지정 |
-
-> **주의**: `ALTER USER 'root'@'localhost'` 구문은 기존 MariaDB root 비밀번호를 변경합니다.
-> 이미 root 비밀번호가 설정되어 있으면 해당 라인을 **주석 처리하거나 삭제**하고 실행하세요.
-
-### STEP 3: SQL 실행
-
-```bash
-# DB/계정 생성
-mysql -u root -p < mariadb/DLM_DATABASE_INIT.sql
-
-# 스키마 + 데이터 임포트
-mysql -u root -p cotdl < mariadb/cotdl_dump.sql.data
-```
-
-### STEP 4: 확인
-
-```bash
-mysql -u root -p -e "SHOW DATABASES;"                                  # cotdl, cotdlbk 보이면 OK
-mysql -u root -p -e "SELECT User, Host FROM mysql.user WHERE User='cotdl';"  # cotdl 보이면 OK
-```
-
-### 네트워크 확인 (WAS 서버에서)
-
-```bash
-# WAS 서버 → DB 서버 통신 확인
-nc -zv [DB서버IP] 3306
-# succeeded 나오면 OK
-```
-
-안 되면 방화벽 오픈 요청: `WAS서버IP → DB서버IP:3306`
-
----
-
-## 3. DLM 배포 (WAS 서버에서 실행)
-
-### 스크립트로 실행 (권장)
+## 2. 최초 배포 (deploy.sh)
 
 ```bash
 bash scripts/deploy.sh
 ```
 
-실행하면 대화형으로 진행됩니다:
-
-```
-  DB 서버 IP [Enter=건너뛰기]:      ← 손사 DB IP 입력
-  DB 포트 [Enter=3306 유지]:        ← 기본이면 Enter
-  DB 비밀번호 [Enter=기본값 유지]:   ← 변경했으면 입력
-  DLM 포트 [Enter=8080 유지]:       ← 충돌 시 변경 (예: 18080)
-  Privacy-AI 포트 [Enter=8000 유지]:← 충돌 시 변경 (예: 18000)
-```
-
-스크립트가 자동으로 수행하는 작업:
+스크립트 실행 흐름:
 
 | 순서 | 작업 | 설명 |
 |------|------|------|
-| 1 | Docker 이미지 로드 | dlm-app.tar.gz, dlm-privacy-ai.tar.gz |
-| 2 | 설정 파일 복사 | /app/Datablocks/ 에 compose, env 배치 |
-| 3 | 환경변수 설정 | DB IP, 포트 등 .env.hanson 반영 |
-| 4 | 컨테이너 실행 | docker compose up -d |
-| 5 | 헬스체크 | 애플리케이션 시작 확인 (최대 120초) |
+| 1 | MariaDB 컨테이너 감지 | 기존 `mariadb` 컨테이너 확인 |
+| 2 | 네트워크 감지 | mariadb의 Docker 네트워크 자동 감지 |
+| 3 | Docker 이미지 로드 | dlm-app.tar.gz, dlm-privacy-ai.tar.gz |
+| 4 | 설정 확인 | 감지 결과 표시 → Enter로 유지 또는 변경 |
+| 5 | 컨테이너 실행 | docker compose up -d + 헬스체크 |
 
-### 수동으로 하는 경우
+```
+  ──────────────────────────────────────────
+  감지/설정 결과 확인 (Enter=유지, 입력=변경)
+  ──────────────────────────────────────────
 
-```bash
-# 1. 이미지 로드
-docker load < images/dlm-app.tar.gz
-docker load < images/dlm-privacy-ai.tar.gz
-
-# 2. 설정 파일 복사
-mkdir -p /app/Datablocks
-cp docker-compose.hanson.yml .env.hanson /app/Datablocks/
-
-# 3. .env.hanson 수정 (DB IP, 포트, 비밀번호)
-vi /app/Datablocks/.env.hanson
-
-# 4. 실행
-cd /app/Datablocks
-docker compose -f docker-compose.hanson.yml up -d
+  MariaDB 컨테이너 [mariadb]:           ← Enter
+  MariaDB 네트워크 [xxx_default]:       ← Enter
+  DLM 포트 [8082]:                      ← Enter
+  Privacy-AI 포트 [8000]:               ← Enter
 ```
 
 ---
 
-## 4. 환경변수 (.env.hanson)
+## 3. 운영 명령어
 
-수정이 필요한 항목만 ★ 표시:
-
-```properties
-# ★ DB 서버 IP — 손사 DB 서버 주소로 변경
-SPRING_DATASOURCE_URL=jdbc:mariadb://[DB서버IP]:3306/cotdl?serverTimezone=UTC&autoReconnect=true&allowMultiQueries=true
-PRIVACY_AI_DB_HOST=[DB서버IP]
-
-# ★ 포트 — 기존 서비스와 충돌 시 변경
-DLM_PORT=8080
-AI_PORT=8000
-
-# ★ DB 비밀번호 — DLM_DATABASE_INIT.sql의 #{DLM_PW} 값과 일치해야 함
-PRIVACY_AI_DB_PASSWORD=[DLM_PW와 동일한 비밀번호]
-
-# --- 아래는 수정 불필요 ---
-SPRING_PROFILES_ACTIVE=local
-JASYPT_ENCRYPTOR_PASSWORD=datablocks
-PRIVACY_AI_DB_PORT=3306
-PRIVACY_AI_DB_NAME=cotdl
-PRIVACY_AI_DB_USER=cotdl
-PRIVACY_AI_DLM_API_URL=http://dlm:8080
-PRIVACY_AI_DEBUG=false
-```
-
-> **비밀번호 주의**: `DLM_DATABASE_INIT.sql`에서 `#{DLM_PW}`로 설정한 비밀번호와
-> `.env.hanson`의 `PRIVACY_AI_DB_PASSWORD` 값이 반드시 일치해야 합니다.
-
-수정 후 반영:
-```bash
-cd /app/Datablocks
-docker compose -f docker-compose.hanson.yml down
-docker compose -f docker-compose.hanson.yml up -d
-```
-
----
-
-## 5. 동작 확인
-
-```bash
-# 컨테이너 상태
-docker ps
-
-# 정상이면:
-#  dlm-app          Up 3 minutes   0.0.0.0:8080->8080/tcp
-#  dlm-privacy-ai   Up 2 minutes   0.0.0.0:8000->8000/tcp
-```
-
-브라우저 접속: `http://WAS서버IP:8080`
-- 기본 계정: `admin` / `admin1234`
-
----
-
-## 6. 운영 명령어
+### 기본 명령어
 
 ```bash
 cd /app/Datablocks
 
-# 상태 확인
-docker ps
+# ─── 상태 확인 ───
+docker ps                                            # 전체 컨테이너 상태
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"   # 간결하게
 
-# 시작
-docker compose -f docker-compose.hanson.yml up -d
-
-# 중지
-docker compose -f docker-compose.hanson.yml down
-
-# 재시작 (DLM만)
-docker compose -f docker-compose.hanson.yml restart dlm
-
-# 로그
-docker logs -f dlm-app             # DLM 로그
-docker logs -f dlm-privacy-ai     # AI 로그
-
-# 로그 파일 위치 (호스트)
-docker volume inspect dlm-app-logs
-# Mountpoint 값이 실제 경로
+# ─── 시작 / 중지 / 재시작 ───
+MARIADB_NETWORK=<네트워크명> docker compose -f docker-compose.hanson.yml up -d       # 전체 시작
+MARIADB_NETWORK=<네트워크명> docker compose -f docker-compose.hanson.yml down         # 전체 중지
+MARIADB_NETWORK=<네트워크명> docker compose -f docker-compose.hanson.yml restart      # 전체 재시작
+MARIADB_NETWORK=<네트워크명> docker compose -f docker-compose.hanson.yml restart dlm  # DLM만 재시작
 ```
 
-### 단축 명령 등록 (선택)
+> **참고**: `MARIADB_NETWORK` 값은 deploy.sh 실행 시 `.env.hanson`에 자동 기록됩니다.
+> `.env.hanson`에 이미 기록되어 있으면 `source .env.hanson && MARIADB_NETWORK=$MARIADB_NETWORK docker compose ...` 로 사용.
+
+### 단축 명령 등록 (권장)
 
 ```bash
-cat >> ~/.bashrc << 'EOF'
-alias dlm-up='cd /app/Datablocks && docker compose -f docker-compose.hanson.yml up -d'
-alias dlm-down='cd /app/Datablocks && docker compose -f docker-compose.hanson.yml down'
-alias dlm-restart='cd /app/Datablocks && docker compose -f docker-compose.hanson.yml restart'
+# .env.hanson 에서 네트워크명 읽어서 alias 등록
+MARIADB_NETWORK=$(grep '^MARIADB_NETWORK=' /app/Datablocks/.env.hanson | cut -d= -f2)
+
+cat >> ~/.bashrc << EOF
+export MARIADB_NETWORK=${MARIADB_NETWORK}
+alias dlm-ps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "NAME|dlm|mariadb"'
+alias dlm-up='cd /app/Datablocks && MARIADB_NETWORK=\$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml up -d'
+alias dlm-down='cd /app/Datablocks && MARIADB_NETWORK=\$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml down'
+alias dlm-restart='cd /app/Datablocks && MARIADB_NETWORK=\$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml restart'
+alias dlm-restart-app='cd /app/Datablocks && MARIADB_NETWORK=\$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml restart dlm'
+alias dlm-restart-ai='cd /app/Datablocks && MARIADB_NETWORK=\$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml restart dlm-privacy-ai'
 alias dlm-log='docker logs -f dlm-app'
-alias dlm-ps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias dlm-log-ai='docker logs -f dlm-privacy-ai'
 EOF
 source ~/.bashrc
 ```
 
 등록 후:
 ```bash
-dlm-up        # 시작
-dlm-down      # 중지
-dlm-restart   # 재시작
-dlm-log       # DLM 로그
-dlm-ps        # 상태 확인
+dlm-ps             # 상태 확인
+dlm-up             # 전체 시작
+dlm-down           # 전체 중지
+dlm-restart        # 전체 재시작
+dlm-restart-app    # DLM만 재시작
+dlm-restart-ai     # Privacy-AI만 재시작
+dlm-log            # DLM 실시간 로그
+dlm-log-ai         # Privacy-AI 실시간 로그
+```
+
+### 로그 확인
+
+```bash
+# ─── 실시간 로그 (Ctrl+C로 종료) ───
+docker logs -f dlm-app                              # DLM 전체 로그
+docker logs -f dlm-privacy-ai                       # Privacy-AI 전체 로그
+
+# ─── 최근 N줄만 ───
+docker logs dlm-app --tail 50                       # 최근 50줄
+docker logs dlm-app --tail 100                      # 최근 100줄
+
+# ─── 최근 N줄 + 실시간 이어서 ───
+docker logs -f --tail 100 dlm-app                   # 최근 100줄부터 실시간
+
+# ─── 시간 기준 ───
+docker logs --since 30m dlm-app                     # 최근 30분
+docker logs --since 1h dlm-app                      # 최근 1시간
+docker logs --since 2h --until 1h dlm-app           # 2시간 전 ~ 1시간 전
+docker logs --since "2026-04-09T09:00:00" dlm-app   # 특정 시각 이후
+
+# ─── 에러만 필터 ───
+docker logs dlm-app 2>&1 | grep -i "error"          # error 포함 라인
+docker logs dlm-app 2>&1 | grep -i "exception"      # exception 포함 라인
+docker logs dlm-app 2>&1 | grep -i "error\|exception" | tail -20   # 최근 에러 20건
+
+# ─── 로그 파일 위치 (호스트) ───
+docker volume inspect dlm-app-logs --format '{{.Mountpoint}}'
+# 예: /var/lib/docker/volumes/dlm-app-logs/_data/
+```
+
+### 컨테이너 상세 정보
+
+```bash
+# ─── 리소스 사용량 (실시간) ───
+docker stats dlm-app dlm-privacy-ai                 # CPU / 메모리 / 네트워크
+
+# ─── 컨테이너 내부 접속 ───
+docker exec -it dlm-app sh                          # DLM 쉘 진입
+docker exec -it dlm-privacy-ai bash                 # Privacy-AI 쉘 진입
+
+# ─── 컨테이너 내부 파일 확인 ───
+docker exec dlm-app ls -la /app/logs/               # 로그 파일 목록
+docker exec dlm-app cat /app/logs/logback.2026-04-09.0.logger   # 특정 로그 파일
+
+# ─── 환경변수 확인 ───
+docker exec dlm-app env | grep -i "spring\|jasypt\|mail"       # DLM 환경변수
+docker exec dlm-privacy-ai env | grep -i "privacy"             # AI 환경변수
+
+# ─── 네트워크 확인 ───
+docker network ls                                    # 네트워크 목록
+docker network inspect <네트워크명>                    # 네트워크 상세 (연결된 컨테이너 목록)
+
+# ─── 디스크 사용량 ───
+docker system df                                     # Docker 전체 디스크 사용량
+docker volume ls                                     # 볼륨 목록
+```
+
+### 이미지 관리
+
+```bash
+# ─── 현재 이미지 확인 ───
+docker images | grep datablocks                      # DLM 관련 이미지
+
+# ─── 오래된 이미지 정리 ───
+docker image prune -f                                # 사용 안 하는 이미지 삭제
+docker system prune -f                               # 미사용 컨테이너/네트워크/이미지 전부 정리
+
+# ─── 현재 이미지 백업 (패치 전 필수!) ───
+docker save datablocks-dlm:latest | gzip > /app/backup/dlm-app-backup-$(date +%Y%m%d).tar.gz
 ```
 
 ---
 
-## 7. 서버 재부팅 시
+## 4. 패치 적용
+
+### 4-1. 개발PC에서 이미지 준비 (WSL)
+
+```bash
+cd /app/Datablocks
+
+# 1. 코드 수정 후 이미지 빌드 (--no-cache 권장)
+docker compose build --no-cache dlm                    # DLM만 변경된 경우
+docker compose build --no-cache dlm dlm-privacy-ai     # 둘 다 변경된 경우
+
+# 2. 이미지 추출
+docker save datablocks-dlm:latest | gzip > deploy/hanson/images/dlm-app.tar.gz
+docker save datablocks-dlm-privacy-ai:latest | gzip > deploy/hanson/images/dlm-privacy-ai.tar.gz
+
+# 3. Windows → USB로 복사
+cp -r deploy/hanson/images/ /mnt/c/Users/사용자명/Desktop/hanson-patch/
+```
+
+### 4-2. 손사 서버에서 패치 적용
+
+```bash
+# 0. 현재 이미지 백업 (권장)
+mkdir -p /app/backup
+docker save datablocks-dlm:latest | gzip > /app/backup/dlm-app-backup-$(date +%Y%m%d).tar.gz
+
+# 1. USB 파일을 서버로 복사
+mkdir -p /tmp/patch
+cp -r /media/usb/* /tmp/patch/
+
+# 2. 현재 컨테이너 중지
+cd /app/Datablocks
+source .env.hanson
+MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml down
+
+# 3. 새 이미지 로드
+docker load < /tmp/patch/dlm-app.tar.gz
+#  → "Loaded image: datablocks-dlm:latest" 메시지 확인
+
+# Privacy-AI도 변경된 경우:
+docker load < /tmp/patch/dlm-privacy-ai.tar.gz
+
+# 4. 컨테이너 재시작
+MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml up -d
+
+# 5. 동작 확인
+docker ps                                            # 컨테이너 2개 Up 확인
+docker logs -f --tail 50 dlm-app                     # 로그 확인 (Ctrl+C 종료)
+docker logs dlm-app 2>&1 | grep -i "error\|exception" | tail -10   # 에러 확인
+```
+
+브라우저 접속: `http://WAS서버IP:8082` → 로그인 → 변경 기능 확인
+
+### 4-3. DB 패치가 있는 경우
+
+```bash
+# 기존 mariadb 컨테이너에서 SQL 실행
+docker exec -i mariadb mysql -u cotdl -p cotdl < /tmp/patch/PATCH_YYYYMMDD_설명.sql
+```
+
+### 4-4. 롤백 (문제 발생 시)
+
+```bash
+cd /app/Datablocks
+source .env.hanson
+
+# 1. 문제 컨테이너 중지
+MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml down
+
+# 2. 백업 이미지 복원
+docker load < /app/backup/dlm-app-backup-20260409.tar.gz
+
+# 3. 재시작
+MARIADB_NETWORK=$MARIADB_NETWORK docker compose -f docker-compose.hanson.yml up -d
+
+# 4. 확인
+docker ps
+docker logs -f --tail 50 dlm-app
+```
+
+---
+
+## 5. 서버 재부팅 시
 
 Docker에 `restart: unless-stopped` 설정이 되어 있으므로:
 
@@ -290,135 +311,57 @@ Docker에 `restart: unless-stopped` 설정이 되어 있으므로:
 
 확인:
 ```bash
-sudo systemctl is-enabled docker
-# enabled 이면 OK
+sudo systemctl is-enabled docker       # enabled 이면 OK
 ```
+
+> **주의**: 기존 `mariadb` 컨테이너가 먼저 시작되어야 DLM이 DB에 접속 가능합니다.
+> mariadb도 `restart: unless-stopped` 또는 `restart: always`이면 자동 시작됩니다.
 
 ---
 
-## 8. 업데이트 (패치 적용)
-
-> 상세 가이드: [docs/패치-배포-가이드.md](../../docs/패치-배포-가이드.md)
-
-### 8-1. 개발PC에서 이미지 준비 (WSL)
-
-```bash
-cd /app/Datablocks
-
-# 1. 코드 수정 후 이미지 빌드
-docker compose build dlm                    # DLM만 변경된 경우
-docker compose build dlm-privacy-ai         # Privacy-AI만 변경된 경우
-docker compose build dlm dlm-privacy-ai     # 둘 다 변경된 경우
-
-# 2. 이미지 추출
-docker save datablocks-dlm:latest | gzip > dlm-app.tar.gz
-docker save datablocks-dlm-privacy-ai:latest | gzip > dlm-privacy-ai.tar.gz   # AI 변경 시
-
-# 3. 배포 폴더에 복사
-cp dlm-app.tar.gz deploy/hanson/images/
-
-# 4. Windows → USB로 복사
-cp -r deploy/hanson/images/ /mnt/c/Users/사용자명/Desktop/hanson-patch/
-```
-
-### 8-2. 손사 서버에서 패치 적용
-
-```bash
-# 1. USB 파일을 서버로 복사
-mkdir -p /tmp/patch
-cp -r /media/usb/* /tmp/patch/
-
-# 2. 현재 컨테이너 중지
-cd /app/Datablocks
-docker compose -f docker-compose.hanson.yml down
-
-# 3. 새 이미지 로드
-docker load < /tmp/patch/images/dlm-app.tar.gz
-#  → "Loaded image: datablocks-dlm:latest" 메시지 확인
-
-# Privacy-AI도 변경된 경우:
-docker load < /tmp/patch/images/dlm-privacy-ai.tar.gz
-
-# 4. 컨테이너 재시작
-docker compose -f docker-compose.hanson.yml up -d
-
-# 5. 동작 확인
-docker ps                          # 컨테이너 2개 Up 확인
-docker logs dlm-app --tail 20      # 에러 없는지 확인
-```
-
-브라우저 접속: `http://WAS서버IP:8080` → 로그인 → 변경 기능 확인
-
-### 8-3. DB 패치가 있는 경우
-
-이미지 교체 후, DB 서버에서 패치 SQL을 실행합니다:
-
-```bash
-mysql -u cotdl -p cotdl < /tmp/patch/mariadb/PATCH_YYYYMMDD_설명.sql
-```
-
-### 8-4. 롤백 (문제 발생 시)
-
-```bash
-# 패치 전에 미리 백업해 둔 이미지로 복원
-cd /app/Datablocks
-docker compose -f docker-compose.hanson.yml down
-docker load < dlm-app-backup-YYYYMMDD.tar.gz
-docker compose -f docker-compose.hanson.yml up -d
-```
-
-> **팁**: 패치 전에 현재 이미지를 백업하세요:
-> `docker save datablocks-dlm:latest | gzip > dlm-app-backup-$(date +%Y%m%d).tar.gz`
-
----
-
-## 9. 트러블슈팅
+## 6. 트러블슈팅
 
 | 증상 | 원인 | 해결 |
 |------|------|------|
-| 웹 접속 안 됨 | 방화벽 | `sudo ufw allow 8080/tcp` |
-| 로그인 후 에러 | DB 연결 실패 | `.env.hanson`의 DB IP 확인 |
-| `Connection refused` | DB 방화벽 | WAS→DB 3306 포트 오픈 |
-| `Access denied` | DB 계정/비밀번호 | DLM_DATABASE_INIT.sql 재실행 또는 비밀번호 확인 |
-| `Unknown database` | DB 미생성 | DLM_DATABASE_INIT.sql 재실행 |
-| `ANSI_QUOTES` 에러 | sql_mode | DBA에게 custom-prod.cnf 전달 |
-| 컨테이너 재시작 반복 | 메모리 | `docker logs dlm-app` 확인 |
+| 웹 접속 안 됨 | 방화벽 | `sudo ufw allow 8082/tcp` |
+| 로그인 후 에러 | DB 연결 실패 | `docker logs dlm-app --tail 50` 확인 |
+| `Connection refused` | mariadb 미시작 | `docker ps`로 mariadb 확인 |
+| `Access denied` | DB 비밀번호 불일치 | `.env.hanson`의 PRIVACY_AI_DB_PASSWORD 확인 |
+| `Unknown host` | 네트워크 연결 안 됨 | `docker network inspect <네트워크명>` 확인 |
+| 컨테이너 재시작 반복 | 메모리/에러 | `docker logs dlm-app` 확인 |
 | 포트 충돌 | 기존 서비스 | `.env.hanson`에서 DLM_PORT 변경 |
+| compose 에러 | MARIADB_NETWORK 미설정 | `source .env.hanson` 후 재실행 |
 
-### DB 계정 권한 문제 시
-
-```sql
--- 손사 DB 서버에서 실행 (비밀번호는 사이트 지정 값으로)
-GRANT ALL PRIVILEGES ON cotdl.* TO 'cotdl'@'%' IDENTIFIED BY '[DLM_PW]';
-FLUSH PRIVILEGES;
-```
-
-### 로그 확인
+### 빠른 진단
 
 ```bash
-# DLM 에러 로그
-docker logs dlm-app --tail 50
+# 1. 컨테이너 상태
+docker ps -a | grep dlm
 
-# AI 에러 로그
-docker logs dlm-privacy-ai --tail 50
+# 2. DLM 에러 확인
+docker logs dlm-app 2>&1 | grep -i "error\|exception" | tail -20
 
-# 특정 키워드 검색
-docker logs dlm-app 2>&1 | grep -i "error\|exception"
+# 3. DB 연결 테스트 (DLM 컨테이너 안에서)
+docker exec dlm-app sh -c "wget -qO- --timeout=3 http://localhost:8080/ && echo OK || echo FAIL"
+
+# 4. mariadb 접속 테스트
+docker exec dlm-app sh -c "nc -zv mariadb 3306 2>&1 || echo 'DB 연결 실패'"
+
+# 5. 네트워크 상태
+docker network inspect $(grep '^MARIADB_NETWORK=' /app/Datablocks/.env.hanson | cut -d= -f2) 2>/dev/null | grep -A2 '"Name"'
 ```
 
 ---
 
-## 10. 방화벽 설정 (Ubuntu)
+## 7. 방화벽 설정
 
 ```bash
-# UFW 사용하는 경우
-sudo ufw allow 8080/tcp    # DLM 웹
-sudo ufw allow 8000/tcp    # Privacy-AI (내부 통신용, 외부 노출 불필요시 생략)
+# UFW
+sudo ufw allow 8082/tcp    # DLM 웹
 sudo ufw reload
 
-# iptables 사용하는 경우
-sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
+# iptables
+sudo iptables -A INPUT -p tcp --dport 8082 -j ACCEPT
 ```
 
 ---
@@ -426,31 +369,24 @@ sudo iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
 ## 체크리스트
 
 ```
-DB 준비 (DB 서버)
-  ☐ MariaDB 설정 확인 (lower_case_table_names=1, ANSI_QUOTES)
-  ☐ DLM_DATABASE_INIT.sql 변수 치환 완료
-    - #{ROOT_PW}, #{DLM_DB}=cotdl, #{DLM_DB_BK}=cotdlbk
-    - #{DLM_USER}=cotdl, #{DLM_PW}=사이트지정
-  ☐ mysql -u root -p < DLM_DATABASE_INIT.sql 실행
-  ☐ mysql -u root -p cotdl < cotdl_dump.sql.data 실행
-  ☐ DB/계정 생성 확인 (SHOW DATABASES, SELECT User FROM mysql.user)
-  ☐ WAS → DB 통신 확인 (nc -zv DB서버IP 3306)
-
-DLM 배포 (WAS 서버)
+최초 배포
+  ☐ DB: 이미 구성 완료 (cotdl DB + 데이터)
   ☐ bash scripts/deploy.sh 실행
-    ☐ 이미지 로드 완료 (docker images로 확인)
-    ☐ DB IP 설정 완료
-    ☐ DB 비밀번호 = DLM_DATABASE_INIT.sql의 #{DLM_PW}와 일치
-    ☐ 포트 확인 (충돌 여부)
-    ☐ 컨테이너 2개 Running 확인 (docker ps)
-
-동작 확인
-  ☐ 브라우저 http://WAS서버IP:8080 접속
+    ☐ 기존 mariadb 컨테이너 감지 OK
+    ☐ 네트워크 감지 OK
+    ☐ 이미지 로드 완료
+    ☐ 포트 확인 (DLM=8082, AI=8000)
+    ☐ 컨테이너 2개 Running
+  ☐ 브라우저 http://WAS서버IP:8082 접속
   ☐ 로그인 성공 (admin / admin1234)
-  ☐ 대시보드 정상 표시
-
-운영 설정
   ☐ Docker 자동시작 확인 (systemctl is-enabled docker)
-  ☐ 방화벽 포트 오픈 확인
-  ☐ 담당자에게 운영 명령어 전달
+  ☐ 방화벽 8082 포트 오픈
+  ☐ 담당자에게 단축 명령 등록 안내
+
+패치 적용
+  ☐ 현재 이미지 백업
+  ☐ 새 이미지 로드
+  ☐ down → up
+  ☐ 로그 에러 확인
+  ☐ 브라우저 동작 확인
 ```

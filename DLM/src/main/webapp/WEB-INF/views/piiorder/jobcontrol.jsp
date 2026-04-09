@@ -79,7 +79,7 @@
                         <input type="text" class="policy-filter-input" placeholder="YYYY/MM/DD" maxlength="10"
                                id="search2" name="search2"
                                onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}"
-                               value='<c:out value="${pageMaker.cri.search2}"/>'>
+                               value='<c:out value="${pageMaker.cri.search2}"/>' autocomplete="off">
                     </div>
                     <div class="policy-filter-item" style="width: 150px;">
                         <label class="policy-filter-label" for="search3"><spring:message code="col.job_owner" text="Job owner"/></label>

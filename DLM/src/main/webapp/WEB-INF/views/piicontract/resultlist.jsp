@@ -6,9 +6,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
 <!-- on/off check box styles -->
 <link rel="stylesheet" href="/resources/css/bootstrap4-toggle.css">
 <script src="/resources/js/bootstrap4-toggle.js"></script>
@@ -90,7 +87,7 @@
                                    onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
                                    style="height: 25px; vertical-align: middle" id="search4" name="search4"
                                    onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}"
-                                   value='<c:out value="${pageMaker.cri.search4}"/>'>
+                                   value='<c:out value="${pageMaker.cri.search4}"/>' autocomplete="off">
                         </div>
                         ~
                         <div class="col-sm-4">
@@ -98,7 +95,7 @@
                                    onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
                                    style="height: 25px; vertical-align: middle" id="search5" name="search5"
                                    onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}"
-                                   value='<c:out value="${pageMaker.cri.search5}"/>'>
+                                   value='<c:out value="${pageMaker.cri.search5}"/>' autocomplete="off">
                         </div>
                     </div>
                 </div>

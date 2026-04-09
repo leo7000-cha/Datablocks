@@ -6,10 +6,6 @@
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Policy Management CSS -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
@@ -90,13 +86,13 @@
                             <label class="policy-filter-label" for="filter_search4"><spring:message code="etc.period" text="Period"/></label>
                             <input type="text" class="policy-filter-input" id="filter_search4" name="search4"
                                    maxlength="10" value='<c:out value="${pageMaker.cri.search4}"/>'
-                                   onkeyup="characterCheck(this)" onkeydown="characterCheck(this)">
+                                   onkeyup="characterCheck(this)" onkeydown="characterCheck(this)" autocomplete="off">
                         </div>
                         <div class="policy-filter-item" id="periodTo" style="display:none;">
                             <label class="policy-filter-label" for="filter_search5">~</label>
                             <input type="text" class="policy-filter-input" id="filter_search5" name="search5"
                                    maxlength="10" value='<c:out value="${pageMaker.cri.search5}"/>'
-                                   onkeyup="characterCheck(this)" onkeydown="characterCheck(this)">
+                                   onkeyup="characterCheck(this)" onkeydown="characterCheck(this)" autocomplete="off">
                         </div>
                     </div>
                     <div class="policy-filter-actions">

@@ -14,10 +14,6 @@
 <!-- Policy Management CSS -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Hidden Form for pagination -->
 <form style="display:none;" role="form" id="searchForm">
     <input type='hidden' name='pagenum' value='<c:out value="${pageMaker.cri.pagenum}"/>'>
@@ -82,12 +78,12 @@
                         <input type="text" class="policy-filter-input" id="filter_search4" name="search4" style="width: 100px;"
                                maxlength="10" value='<c:out value="${pageMaker.cri.search4}"/>'
                                onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
-                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}">
+                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}" autocomplete="off">
                         <span class="policy-filter-separator">~</span>
                         <input type="text" class="policy-filter-input" id="filter_search5" name="search5" style="width: 100px;"
                                maxlength="10" value='<c:out value="${pageMaker.cri.search5}"/>'
                                onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
-                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}">
+                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}" autocomplete="off">
                     </div>
                 </div>
             </div>

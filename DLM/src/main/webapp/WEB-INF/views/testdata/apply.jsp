@@ -6,9 +6,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
 <c:set var="siteUpperCase" value="${fn:toUpperCase(site)}"/>

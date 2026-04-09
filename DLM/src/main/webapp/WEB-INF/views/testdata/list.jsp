@@ -8,7 +8,6 @@
 
 <!-- Policy Management CSS (shared styles) -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
-<link href="/resources/vendor/bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet">
 
 <style>
 /* Master Key Detail Modal Header */
@@ -275,7 +274,6 @@
 <script src="/resources/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="/resources/vendor/jquery-easing/jquery.easing.min.js"></script>
 <script src="/resources/js/sb-admin-2.min.js"></script>
-<script src="/resources/vendor/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
 
 <script type="text/javascript">
     $(document).ready(function () {
@@ -333,33 +331,28 @@
             td.html(input);
             input.val(originalDate).focus();
 
-            input.datepicker({
-                format: "yyyy/mm/dd",
-                autoclose: true,
-                todayHighlight: true,
-                language: 'ko'
-            });
-
-            input.on('changeDate', function (e) {
-                var newDate = $(this).val();
-                $(this).datepicker('hide');
-
-                if (newDate && newDate !== originalDate) {
-                    updateDisposalDate(td, testdataid, newDate, originalDate);
-                } else {
-                    td.html('<span class="editable-date">' + (originalDate || "") + '</span>');
-                }
-            });
-
-            input.on('blur', function () {
-                setTimeout(function () {
-                    if (td.find('input').length > 0) {
+            var fp = flatpickr(input[0], {
+                locale: "ko",
+                dateFormat: "Y/m/d",
+                defaultDate: originalDate || null,
+                allowInput: true,
+                onChange: function(selectedDates, dateStr) {
+                    fp.close();
+                    if (dateStr && dateStr !== originalDate) {
+                        updateDisposalDate(td, testdataid, dateStr, originalDate);
+                    } else {
                         td.html('<span class="editable-date">' + (originalDate || "") + '</span>');
                     }
-                }, 200);
+                },
+                onClose: function() {
+                    setTimeout(function () {
+                        if (td.find('input').length > 0 && !td.find('.flatpickr-calendar').length) {
+                            td.html('<span class="editable-date">' + (originalDate || "") + '</span>');
+                        }
+                    }, 200);
+                }
             });
-
-            input.datepicker('show');
+            fp.open();
         });
 
         function updateDisposalDate(td, testdataid, newDate, originalDate) {

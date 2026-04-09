@@ -2576,3 +2576,14 @@
     font-size: 0.8rem;
     line-height: 1.3;
 }
+
+/* =====================================================
+   Datepicker / Flatpickr Z-Index Fix
+   — sticky 테이블 헤더(z-index:20) 위에 표시되도록 보정
+   ===================================================== */
+.datepicker {
+    z-index: 1050 !important;
+}
+.flatpickr-calendar {
+    z-index: 1050 !important;
+}

@@ -12,9 +12,6 @@
 <link rel="stylesheet" href="/resources/css/piijob-refactor.css">
 
 <script type="text/javascript" src="resources/jquery-ui-1.12.1/jquery-ui.js"></script>
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
 
 
 <div class="job-detail-container" style="height:100%;display:flex;flex-direction:column;">
@@ -209,7 +206,7 @@
                     <input type="text" id="datePicker" class="form-control" placeholder="YYYY/MM/DD" maxlength='10'
                            style="border: 2px solid #e0e7ff; border-radius: 12px; padding: 16px 20px; font-size: 1.25rem; font-weight: 700; text-align: center; background: #fff; width: 180px; color: #4f46e5; letter-spacing: 2px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1); transition: all 0.2s ease;"
                            onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 4px 16px rgba(99, 102, 241, 0.25)';"
-                           onblur="this.style.borderColor='#e0e7ff'; this.style.boxShadow='0 4px 12px rgba(79, 70, 229, 0.1)';">
+                           onblur="this.style.borderColor='#e0e7ff'; this.style.boxShadow='0 4px 12px rgba(79, 70, 229, 0.1)';" autocomplete="off">
                 </div>
                 <div id="orderresult" style="min-height: 24px; font-size: 0.85rem; color: #6b7280; text-align: center;"></div>
             </div>

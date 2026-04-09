@@ -46,7 +46,7 @@
                         <input type="text" class="policy-filter-input" placeholder="YYYY/MM/DD" maxlength="10"
                                id="search2" name="search2"
                                onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}"
-                               value='<c:out value="${pageMaker.cri.search2}"/>'>
+                               value='<c:out value="${pageMaker.cri.search2}"/>' autocomplete="off">
                     </div>
                 </div>
                 <div class="policy-filter-actions">
@@ -134,9 +134,6 @@
 
 </div>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
 <script type="text/javascript">
     function checkeRowColorChange(obj) {
         jQuery("#apply > tr").css("background-color", "");

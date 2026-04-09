@@ -5,7 +5,6 @@
 
 <!-- Policy Management CSS (shared styles) -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
-<link href="/resources/vendor/bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet">
 
 <!-- Main Container -->
 <div class="policy-management-container">
@@ -31,13 +30,16 @@
                     <div class="policy-filter-item" style="width: 150px;">
                         <label class="policy-filter-label" for="startDate">Start Date</label>
                         <input type="text" class="policy-filter-input" id="startDate" name="startDate"
-                               placeholder="YYYY/MM/DD" value='<c:out value="${startDate}"/>'>
+                               placeholder="YYYY/MM/DD" value='<c:out value="${startDate}"/>' autocomplete="off">
                     </div>
                     <div class="policy-filter-item" style="width: 150px;">
                         <label class="policy-filter-label" for="endDate">End Date</label>
                         <input type="text" class="policy-filter-input" id="endDate" name="endDate"
-                               placeholder="YYYY/MM/DD" value='<c:out value="${endDate}"/>'>
+                               placeholder="YYYY/MM/DD" value='<c:out value="${endDate}"/>' autocomplete="off">
                     </div>
+                </div>
+                <div style="display: flex; align-items: center; margin-left: 8px;">
+                    <span style="color: #64748b; font-size: 0.8rem;"><spring:message code="testdata.usage_date_limit" text="* 최근 6개월 이내 조회 가능"/></span>
                 </div>
                 <div class="policy-filter-actions">
                     <button data-oper="search" class="btn btn-filter-search">
@@ -110,15 +112,34 @@
 
 </div>
 
-<script src="/resources/vendor/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
-
 <script type="text/javascript">
     $(document).ready(function () {
-        $('#startDate, #endDate').datepicker({
-            format: "yyyy/mm/dd",
-            autoclose: true,
-            todayHighlight: true,
-            language: 'ko'
+        // 조회 시작일 제한: 최근 6개월
+        var sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        flatpickr("#startDate", {
+            locale: "ko",
+            dateFormat: "Y/m/d",
+            altInput: true,
+            altFormat: "Y/m/d",
+            allowInput: true,
+            minDate: sixMonthsAgo,
+            altInputClass: "policy-filter-input",
+            onChange: function(selectedDates, dateStr, instance) {
+                instance._input.blur();
+            }
+        });
+        flatpickr("#endDate", {
+            locale: "ko",
+            dateFormat: "Y/m/d",
+            altInput: true,
+            altFormat: "Y/m/d",
+            allowInput: true,
+            altInputClass: "policy-filter-input",
+            onChange: function(selectedDates, dateStr, instance) {
+                instance._input.blur();
+            }
         });
 
         $('#startDate, #endDate').keypress(function (e) {

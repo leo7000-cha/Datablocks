@@ -6,10 +6,6 @@
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Policy Management CSS -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
@@ -68,13 +64,13 @@
                                placeholder="YYYY/MM/DD" maxlength="10"
                                value='<c:out value="${pageMaker.cri.search3}"/>'
                                onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
-                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}">
+                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}" autocomplete="off">
                         <span class="policy-filter-separator">~</span>
                         <input type="text" class="policy-filter-input" id="filter_search4" name="search4" style="width: 120px;"
                                placeholder="YYYY/MM/DD" maxlength="10"
                                value='<c:out value="${pageMaker.cri.search4}"/>'
                                onkeyup="characterCheck(this)" onkeydown="characterCheck(this)"
-                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}">
+                               onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}" autocomplete="off">
                     </div>
                 </div>
             </div>

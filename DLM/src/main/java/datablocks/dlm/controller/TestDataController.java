@@ -176,16 +176,23 @@ public class TestDataController {
 
         LogUtil.log("WARN", "TestDataController.getTestDataStatus() called with startDate: " + startDate + ", endDate: " + endDate);
         // 날짜 파라미터가 둘 다 null이거나 빈 값인 경우, 최근 한 달 기간으로 설정
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+        LocalDate today = LocalDate.now();
         if ((startDate == null || startDate.isEmpty()) && (endDate == null || endDate.isEmpty())) {
-            LocalDate today = LocalDate.now();
             LocalDate oneMonthAgo = today.minusMonths(1);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
-
             startDate = oneMonthAgo.format(formatter);
             endDate = today.format(formatter);
         }
 
-        // Log.info() 대신 LogUtil.log() 사용
+        // 조회 시작일을 최근 6개월 이내로 제한 (퍼지된 오더 이력은 6개월 경과 후 삭제됨)
+        LocalDate sixMonthsAgo = today.minusMonths(6);
+        if (startDate != null && !startDate.isEmpty()) {
+            LocalDate parsedStart = LocalDate.parse(startDate, formatter);
+            if (parsedStart.isBefore(sixMonthsAgo)) {
+                startDate = sixMonthsAgo.format(formatter);
+            }
+        }
+
         LogUtil.log("WARN", "TestDataController.getTestDataStatus() called with startDate: " + startDate + ", endDate: " + endDate);
 
         List<TestDataCombinedStatusVO> statusList = service.getTestDataStatus(startDate, endDate);
@@ -225,12 +232,21 @@ public class TestDataController {
             HttpServletRequest request) { // HttpServletRequest를 추가하여 템플릿 경로를 가져옴
 
         // 날짜 파라미터가 둘 다 null이거나 빈 값인 경우, 최근 한 달 기간으로 설정
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+        LocalDate today = LocalDate.now();
         if ((startDate == null || startDate.isEmpty()) && (endDate == null || endDate.isEmpty())) {
-            LocalDate today = LocalDate.now();
             LocalDate oneMonthAgo = today.minusMonths(1);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
             startDate = oneMonthAgo.format(formatter);
             endDate = today.format(formatter);
+        }
+
+        // 조회 시작일을 최근 6개월 이내로 제한 (퍼지된 오더 이력은 6개월 경과 후 삭제됨)
+        LocalDate sixMonthsAgo = today.minusMonths(6);
+        if (startDate != null && !startDate.isEmpty()) {
+            LocalDate parsedStart = LocalDate.parse(startDate, formatter);
+            if (parsedStart.isBefore(sixMonthsAgo)) {
+                startDate = sixMonthsAgo.format(formatter);
+            }
         }
 
         // 데이터 조회 (기존 로직 재사용)

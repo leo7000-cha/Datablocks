@@ -6,10 +6,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Policy Management CSS (shared styles) -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
@@ -84,7 +80,7 @@
                     <label class="policy-filter-label" for="filter_search7"><spring:message code="etc.pagi_basedate" text="Basedate"/></label>
                     <input type="text" class="policy-filter-input" id="filter_search7"
                            placeholder="YYYY/MM/DD" value='<c:out value="${pageMaker.cri.search7}"/>'
-                           onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}">
+                           onkeypress="if (event.keyCode === 13) {event.preventDefault();searchAction(1);}" autocomplete="off">
                 </div>
                 <div class="policy-filter-item" style="min-width: 270px;">
                     <label class="policy-filter-label" for="filter_search8"><spring:message code="col.jobid" text="JOBID"/></label>

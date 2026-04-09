@@ -7,10 +7,6 @@
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Policy Management CSS -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
@@ -100,10 +96,10 @@
                     <label class="policy-filter-label" for="filter_search12" style="color:#B28709;">Update</label>
                     <div style="display: flex; align-items: center; gap: 4px;">
                         <input type="text" class="policy-filter-input" id="filter_search12" name="search12" style="width: 95px;"
-                               maxlength="10" value='<c:out value="${pageMaker.cri.search12}"/>'>
+                               maxlength="10" value='<c:out value="${pageMaker.cri.search12}"/>' autocomplete="off">
                         <span class="policy-filter-separator">~</span>
                         <input type="text" class="policy-filter-input" id="filter_search13" name="search13" style="width: 95px;"
-                               maxlength="10" value='<c:out value="${pageMaker.cri.search13}"/>'>
+                               maxlength="10" value='<c:out value="${pageMaker.cri.search13}"/>' autocomplete="off">
                     </div>
                 </div>
                 <div class="policy-filter-item">

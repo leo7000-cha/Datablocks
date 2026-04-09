@@ -6,10 +6,6 @@
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 
-<script src="resources/js/bootstrap-datepicker.min.js"></script>
-<script src="resources/js/bootstrap-datepicker.ko.min.js"></script>
-<link href="resources/css/bootstrap-datepicker.css" rel="stylesheet">
-
 <!-- Policy Management CSS -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
 
@@ -94,10 +90,10 @@
                             <option value="ARCDEL" <c:if test="${pageMaker.cri.search9 eq 'ARCDEL'}">selected</c:if>><spring:message code="etc.delarcperiod" text="Purging Archived Data Period"/></option>
                         </select>
                         <input type="text" class="policy-filter-input" id="filter_search4" name="search4" style="width: 90px;"
-                               value='<c:out value="${pageMaker.cri.search4}"/>'>
+                               value='<c:out value="${pageMaker.cri.search4}"/>' autocomplete="off">
                         <span class="policy-filter-separator">~</span>
                         <input type="text" class="policy-filter-input" id="filter_search5" name="search5" style="width: 90px;"
-                               value='<c:out value="${pageMaker.cri.search5}"/>'>
+                               value='<c:out value="${pageMaker.cri.search5}"/>' autocomplete="off">
                     </div>
                 </div>
             </div>

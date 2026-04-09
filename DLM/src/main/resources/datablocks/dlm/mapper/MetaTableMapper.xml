@@ -122,12 +122,6 @@
             <if test="search5 == 'N'.toString()">
                 and r.column_name is null
             </if>
-            <if test="search9 == 'Y'.toString()">
-                and t.val1 = 'Y'
-            </if>
-            <if test="search9 == 'N'.toString()">
-                and (t.val1 != 'Y' or t.val1 is null)
-            </if>
             <if test="search12 != null">
                 <![CDATA[ and t.upddate >= STR_TO_DATE(#{search12, jdbcType=VARCHAR}, '%Y/%m/%d') ]]>
             </if>
@@ -568,5 +562,12 @@
         order by db, owner, table_name
         ]]>
 	</select>
+
+    <!-- PII 메타데이터 캐시용: piitype이 설정된 컬럼만 조회 -->
+    <select id="selectPiiColumnsForCache" resultType="datablocks.dlm.domain.MetaTableVO">
+        SELECT db, owner, table_name, column_name, piitype, piigrade
+        FROM cotdl.tbl_metatable
+        WHERE piitype IS NOT NULL AND piitype != ''
+    </select>
 
 </mapper>

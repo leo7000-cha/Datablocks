@@ -20,7 +20,17 @@
         var loadPage = '<c:out value="${loadPage}" />';
         var loadDb = '<c:out value="${loadDb}" />';
 
-        if (loadPage === 'exeupdate') {
+        var appMode = '<c:out value="${appMode}" />';
+
+        if (loadPage === 'dashboard' && appMode === 'gen') {
+            // X-Gen 모드 진입 → 테스트데이터 신청 로드
+            Menupath = "<i class='fas fa-vial'></i> <spring:message code="memu.testdata" text="테스트 데이터"/>";
+            $('#content_home').load("/testdata/apply?pagenum=1&amount=100&search2=CORE");
+        } else if (loadPage === 'dashboard') {
+            // Hub에서 파기 모듈 진입 → 대시보드 로드
+            Menupath = "<i class='far fa-chart-bar'></i> Dashboard";
+            $('#content_home').load("/piidashboard/dashboard?pagenum=1&amount=100");
+        } else if (loadPage === 'exeupdate') {
             // Load SQL Manager page
             Menupath = "SQL Manager";
             var url = "/piidatabase/exeupdate";
@@ -29,8 +39,8 @@
             }
             $('#content_home').load(url);
         } else {
-            // No page parameter - load default dashboard
-            Menupath = "<spring:message code="memu.dashboard" text="Dashboard"/>";
+            // No page parameter - load dashboard
+            Menupath = "<i class='far fa-chart-bar'></i> Dashboard";
             $('#content_home').load("/piidashboard/dashboard?pagenum=1&amount=100");
         }
 
@@ -71,7 +81,8 @@
                 url = "/piipolicy/list?pagenum=1&amount=100";
                 Menupath = "<i class='fas fa-layer-group'></i> <spring:message code="memu.task_configuration" text="작업 관리"/>";
             } else if (menuId == "2001") {
-                url = "/piijob/list?pagenum=1&amount=100&search2=PII&search7=ACTIVE";
+                var jobType = (appMode === 'gen') ? 'TDM' : 'PII';
+                url = "/piijob/list?pagenum=1&amount=100&search2=" + jobType + "&search7=ACTIVE";
                 Menupath = "<i class='fas fa-layer-group'></i> <spring:message code="memu.task_configuration" text="작업 관리"/>";
             } else if (menuId == "2002") {
                 url = "/piistep/list?pagenum=1&amount=100";
@@ -89,7 +100,7 @@
                 url = "/lkpiiscrtype/list?pagenum=1&amount=100";
                 Menupath = "<i class='fas fa-shield-alt'></i> <spring:message code="memu.lkpiiscr_mgmt" text="민감정보 분류·보호 정책"/>";
             } else if (menuId == "2040") {
-                // 민감정보 자동 탐지 - 새 탭으로 열기
+                // 개인정보 자동 탐지 - 새 탭으로 열기
                 window.open("/piidiscovery/index", "_blank");
                 ingHide();
                 return;
@@ -134,10 +145,12 @@
                 url = "/piiapprovalreq/myrequestlist?pagenum=1&amount=100";
                 Menupath = "<i class='fas fa-stamp'></i> <spring:message code="memu.approval_management" text="결재 관리"/>";
             } else if (menuId == "6001") {
-                url = "/piiorder/list?pagenum=1&amount=100";
+                var jobType6 = (appMode === 'gen') ? 'TDM' : (appMode === 'purge') ? 'PII' : '';
+                url = "/piiorder/list?pagenum=1&amount=100" + (jobType6 ? "&search6=" + jobType6 : "");
                 Menupath = "<i class='fas fa-gauge-high'></i> <spring:message code="memu.monitoring" text="모니터링"/>";
             } else if (menuId == "6002") {
-                url = "/piiorder/jobcontrol?pagenum=1&amount=100";
+                var jobType6c = (appMode === 'gen') ? 'TDM' : (appMode === 'purge') ? 'PII' : '';
+                url = "/piiorder/jobcontrol?pagenum=1&amount=100" + (jobType6c ? "&search6=" + jobType6c : "");
                 Menupath = "<i class='fas fa-gauge-high'></i> <spring:message code="memu.monitoring" text="모니터링"/>";
             } else if (menuId == "7001") {
                 url = "/piiextract/custstatlist?pagenum=1&amount=100";
@@ -657,9 +670,19 @@
 <div id="menubar">
     <ul id="menulist" class="nav nav-pills">
         <!-- Brand Logo -->
-        <a class="nav-brand" href="/index">
+        <a class="nav-brand" href="/hub">
             <img src="/resources/img/XOne.png" alt="X-ONE" class="brand-logo">
-            <span class="brand-name">X-One</span>
+            <c:choose>
+                <c:when test="${appMode == 'purge'}">
+                    <span class="brand-name">X-Purge</span>
+                </c:when>
+                <c:when test="${appMode == 'gen'}">
+                    <span class="brand-name">X-Gen</span>
+                </c:when>
+                <c:otherwise>
+                    <span class="brand-name">X-One</span>
+                </c:otherwise>
+            </c:choose>
             <span class="brand-badge">v2.0</span>
         </a>
 
@@ -678,14 +701,17 @@
                     <span class="menu-icon"><i class="fas fa-file-contract"></i></span>
                     <spring:message code="memu.policy" text="파기 정책"/>
                 </a>
+                <c:if test="${appMode != 'gen'}">
                 <a class="dropdown-item" href='javascript:void(0)' id='2012'>
                     <span class="menu-icon"><i class="fas fa-check-circle"></i></span>
                     <spring:message code="memu.columnregisteredStatus" text="컬럼 등록 현황"/>
                 </a>
+                </c:if>
             </div>
         </li>
 
-        <!-- Restore Management (복원·열람) -->
+        <!-- Restore Management (복원·열람) — X-Gen 모드에서 숨김 -->
+        <c:if test="${appMode != 'gen'}">
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
                 <i class="fas fa-box-archive"></i>
@@ -708,8 +734,10 @@
                 </a>
             </div>
         </li>
+        </c:if>
 
-        <!-- Test Data (테스트 데이터) -->
+        <!-- Test Data (테스트 데이터) — X-Purge 모드에서 숨김 -->
+        <c:if test="${appMode != 'purge'}">
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
                 <i class="fas fa-vial"></i>
@@ -730,8 +758,10 @@
                 </a>
             </div>
         </li>
+        </c:if>
 
-        <!-- Recovery Management (복구 관리 - IT/ADMIN only) -->
+        <!-- Recovery Management (복구 관리 - IT/ADMIN only) — X-Gen 모드에서 숨김 -->
+        <c:if test="${appMode != 'gen'}">
         <sec:authorize access="hasAnyRole('ROLE_IT','ROLE_ADMIN')">
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
@@ -754,6 +784,7 @@
                 </div>
             </li>
         </sec:authorize>
+        </c:if>
 
         <!-- Monitoring (모니터링) -->
         <li class="nav-item dropdown">
@@ -775,7 +806,8 @@
             </div>
         </li>
 
-        <!-- Report (리포트) -->
+        <!-- Report (리포트) — X-Gen 모드에서 숨김 -->
+        <c:if test="${appMode != 'gen'}">
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
                 <i class="fas fa-chart-pie"></i>
@@ -796,8 +828,10 @@
                 </a>
             </div>
         </li>
+        </c:if>
 
-        <!-- Document Purge (실물 파기) -->
+        <!-- Document Purge (실물 파기) — X-Gen 모드에서 숨김 -->
+        <c:if test="${appMode != 'gen'}">
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
                 <i class="fas fa-broom"></i>
@@ -814,6 +848,7 @@
                 </a>
             </div>
         </li>
+        </c:if>
 
         <!-- Approval Management (결재 관리) -->
         <li class="nav-item dropdown">
@@ -851,7 +886,7 @@
                 <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href='javascript:void(0)' id='2040'>
                     <span class="menu-icon"><i class="fas fa-magnifying-glass-chart"></i></span>
-                    <spring:message code="menu.discovery" text="민감정보 자동 탐지"/> <i class="fas fa-external-link-alt" style="font-size:0.55rem; opacity:0.4; margin-left:4px;"></i>
+                    <spring:message code="menu.discovery" text="개인정보 자동 탐지"/> <i class="fas fa-external-link-alt" style="font-size:0.55rem; opacity:0.4; margin-left:4px;"></i>
                 </a>
             </div>
         </li>

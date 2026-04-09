@@ -553,8 +553,14 @@ public class DiscoveryServiceImpl implements DiscoveryService {
         // 3. Registry에 등록 (UPSERT - 이미 있으면 상태 업데이트)
         mapper.insertPiiRegistry(registry);
 
-        // 4. Scan Result의 confirm_status도 업데이트 (이력 추적용)
-        mapper.updateScanResultConfirm(resultId, status, userId);
+        // 4. 동일 컬럼의 모든 Scan Result confirm_status 일괄 업데이트
+        String schemaForUpdate = result.getSchemaName() != null ? result.getSchemaName() : "";
+        int updatedCount = mapper.updateScanResultConfirmByColumn(
+                result.getDbName(), schemaForUpdate,
+                result.getTableName(), result.getColumnName(),
+                status, userId);
+        LogUtil.log("INFO", "Bulk updated scan results: " + result.getTableName() + "." + result.getColumnName()
+                + " (" + updatedCount + " rows -> " + status + ")");
 
         // 5. Meta Table VAL2 동기화
         // schemaName null 방어 (기존 스캔 결과 데이터 대응)

@@ -88,6 +88,7 @@
     font-size: 0.9rem;
 }
 
+.category-icon.module { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; }
 .category-icon.system { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
 .category-icon.job { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
 .category-icon.restore { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
@@ -408,6 +409,7 @@
     border-radius: 50%;
 }
 
+.stats-dot.module { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
 .stats-dot.flag { background: linear-gradient(135deg, #14b8a6, #0d9488); }
 .stats-dot.system { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 .stats-dot.job { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
@@ -464,6 +466,7 @@
     </form>
 
     <%-- Calculate counts for each category --%>
+    <c:set var="moduleCount" value="0"/>
     <c:set var="flagCount" value="0"/>
     <c:set var="systemCount" value="0"/>
     <c:set var="jobCount" value="0"/>
@@ -474,6 +477,7 @@
     <c:set var="otherCnt" value="0"/>
     <c:forEach items="${list}" var="cfg">
         <c:choose>
+            <c:when test="${fn:startsWith(cfg.cfgkey, 'MODULE_')}"><c:set var="moduleCount" value="${moduleCount + 1}"/></c:when>
             <c:when test="${fn:contains(cfg.cfgkey, '_FLAG')}"><c:set var="flagCount" value="${flagCount + 1}"/></c:when>
             <c:when test="${cfg.cfgkey eq 'SITE' || cfg.cfgkey eq 'DLM_ENV' || cfg.cfgkey eq 'DLM_LOG_PATH' || cfg.cfgkey eq 'DEFAULT_LOCALE' || cfg.cfgkey eq 'LOG_LEVEL' || cfg.cfgkey eq 'DASHBOARD_SHOW'}"><c:set var="systemCount" value="${systemCount + 1}"/></c:when>
             <c:when test="${cfg.cfgkey eq 'DLM_CURRENT_ORDERID' || cfg.cfgkey eq 'DLM_TABLELIST_ORDERBY' || cfg.cfgkey eq 'DLM_ARCDELJOB_TIME' || cfg.cfgkey eq 'DLM_ARCDELJOB_THREADCNT' || cfg.cfgkey eq 'TESTDATA_AUTO_GEN_JOB_MAX_CNT' || cfg.cfgkey eq 'RESTORE_JOB_MAX_CNT'}"><c:set var="jobCount" value="${jobCount + 1}"/></c:when>
@@ -493,6 +497,11 @@
             <span class="stats-count">${fn:length(list)}</span>
         </div>
         <div class="stats-divider"></div>
+        <div class="stats-item">
+            <span class="stats-dot module"></span>
+            <span class="stats-label">Module</span>
+            <span class="stats-count">${moduleCount}</span>
+        </div>
         <div class="stats-item">
             <span class="stats-dot flag"></span>
             <span class="stats-label">Flags</span>
@@ -539,6 +548,31 @@
 
     <!-- Settings Body -->
     <div class="settings-body">
+
+        <!-- Module Settings -->
+        <div class="settings-category">
+            <div class="category-header">
+                <div class="category-icon module"><i class="fas fa-th-large"></i></div>
+                <div class="category-title">HUB Modules</div>
+            </div>
+            <div class="category-body">
+                <c:forEach items="${list}" var="piiconfig">
+                    <c:if test="${fn:startsWith(piiconfig.cfgkey, 'MODULE_')}">
+                        <div class="settings-flag" data-cfgkey="<c:out value='${piiconfig.cfgkey}'/>"
+                             data-value="<c:out value='${piiconfig.value}'/>" data-comments="<c:out value='${piiconfig.comments}'/>" data-type="FLAG">
+                            <div class="settings-flag-info">
+                                <div class="settings-flag-key">${piiconfig.cfgkey}</div>
+                                <div class="settings-flag-desc">${piiconfig.comments}</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" ${piiconfig.value eq 'Y' ? 'checked' : ''} disabled>
+                                <span class="settings-toggle-slider"></span>
+                            </label>
+                        </div>
+                    </c:if>
+                </c:forEach>
+            </div>
+        </div>
 
         <!-- FLAG Settings -->
         <div class="settings-category">
@@ -710,6 +744,8 @@
                 <c:set var="otherCount" value="0"/>
                 <c:forEach items="${list}" var="piiconfig">
                     <c:set var="isOther" value="true"/>
+                    <%-- Exclude MODULE Settings --%>
+                    <c:if test="${fn:startsWith(piiconfig.cfgkey, 'MODULE_')}"><c:set var="isOther" value="false"/></c:if>
                     <%-- Exclude FLAGS --%>
                     <c:if test="${fn:contains(piiconfig.cfgkey, '_FLAG')}"><c:set var="isOther" value="false"/></c:if>
                     <%-- Exclude System Settings --%>
@@ -868,6 +904,8 @@
 <script type="text/javascript">
     // List of known/categorized keys
     var categorizedKeys = [
+        // MODULE
+        'MODULE_XPURGE', 'MODULE_XGEN', 'MODULE_XSCAN', 'MODULE_XAUDIT',
         // FLAGS
         'DLM_RUN_FLAG', 'DLM_ORDER_FLAG', 'DLM_ORDER_ARCDELJOB_FLAG', 'DLM_ARC_TAB_AUTO_MGMT_FLAG',
         // System

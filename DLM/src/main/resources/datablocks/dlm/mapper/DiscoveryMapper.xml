@@ -434,6 +434,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE result_id = #{resultId}
     </update>
 
+    <update id="updateScanResultConfirmByColumn">
+        UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT
+        SET confirm_status = #{confirmStatus},
+            confirmed_by = #{userId},
+            confirmed_date = NOW(),
+            upd_date = NOW()
+        WHERE db_name = #{dbName}
+          AND COALESCE(schema_name, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+          AND (confirm_status IS NULL OR confirm_status != #{confirmStatus})
+    </update>
+
     <delete id="deleteScanResult">
         DELETE FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE result_id = #{resultId}
     </delete>

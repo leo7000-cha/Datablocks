@@ -46,7 +46,9 @@ public class SecurityConfig {
                 .requestMatchers(ant("/piijob/order/by-prog")).permitAll()
                 .requestMatchers(ant("/pii/database/bridgeQuery")).permitAll()
                 .requestMatchers(ant("/dlmapi/**")).permitAll()
+                .requestMatchers(ant("/api/agent/**")).permitAll()
 
+                .requestMatchers(ant("/hub")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/index")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/piidashboard/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/piiupload/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
@@ -197,6 +199,7 @@ public class SecurityConfig {
                 .requestMatchers(ant("/piicontract/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
 
                 .requestMatchers(ant("/piidiscovery/**")).hasAnyRole("IT","SEC","ADMIN")
+                .requestMatchers(ant("/accesslog/**")).hasAnyRole("IT","SEC","ADMIN")
                 .anyRequest().authenticated()
         );
 
@@ -211,7 +214,7 @@ public class SecurityConfig {
     * */
 
         http.csrf(csrf -> csrf
-                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"))
+                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"), ant("/accesslog/api/**"), ant("/api/agent/**"))
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
         );
 

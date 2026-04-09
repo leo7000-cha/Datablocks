@@ -16,7 +16,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <base href="/">
-    <title>X-One </title>
+    <title><c:choose><c:when test="${appMode == 'purge'}">X-Purge</c:when><c:when test="${appMode == 'gen'}">X-Gen</c:when><c:otherwise>X-One</c:otherwise></c:choose></title>
 
     <!-- Custom fonts for this template -->
     <link href="/resources/vendor/fontawesome-free-6.1.1-web/css/all.min.css" rel="stylesheet" type="text/css">

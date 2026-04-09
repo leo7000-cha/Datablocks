@@ -84,6 +84,13 @@ public interface DiscoveryMapper {
                                 @Param("confirmStatus") String confirmStatus,
                                 @Param("userId") String userId);
 
+    int updateScanResultConfirmByColumn(@Param("dbName") String dbName,
+                                        @Param("schemaName") String schemaName,
+                                        @Param("tableName") String tableName,
+                                        @Param("columnName") String columnName,
+                                        @Param("confirmStatus") String confirmStatus,
+                                        @Param("userId") String userId);
+
     int deleteScanResult(@Param("resultId") String resultId);
 
     int deleteScanResultByJobId(@Param("jobId") String jobId);

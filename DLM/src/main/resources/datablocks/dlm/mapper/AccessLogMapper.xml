@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="datablocks.dlm.mapper.AccessLogMapper">
+
+    <!-- ========== Dashboard ========== -->
+    <select id="getDashboardStats" resultType="datablocks.dlm.domain.AccessLogStatVO">
+        SELECT
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE DATE(access_time) = CURDATE()) AS todayAccessCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE DATE(detected_time) = CURDATE()) AS alertCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status IN ('NEW','ACKNOWLEDGED')) AS unresolvedAlertCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y') AS activeSourceCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_SOURCE) AS totalSourceCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG) AS totalAccessCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE action_type = 'SELECT' AND DATE(access_time) = CURDATE()) AS selectCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE action_type = 'UPDATE' AND DATE(access_time) = CURDATE()) AS updateCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE action_type = 'DELETE' AND DATE(access_time) = CURDATE()) AS deleteCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE action_type = 'DOWNLOAD' AND DATE(access_time) = CURDATE()) AS downloadCount,
+            (SELECT MAX(last_collect_time) FROM COTDL.TBL_ACCESS_LOG_SOURCE) AS lastCollectTime,
+            (SELECT CASE WHEN COUNT(*) = 0 THEN 'N/A'
+                         WHEN SUM(CASE WHEN status = 'INVALID' THEN 1 ELSE 0 END) > 0 THEN 'INVALID'
+                         ELSE 'VALID' END
+             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY WHERE verify_date = CURDATE()) AS hashVerifyStatus,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE pii_grade IS NOT NULL AND DATE(access_time) = CURDATE()) AS piiAccessCount
+    </select>
+
+    <select id="selectHourlyAccessTrend" resultType="java.util.HashMap">
+        SELECT HOUR(access_time) AS hour, COUNT(*) AS cnt
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) = #{date}
+        GROUP BY HOUR(access_time)
+        ORDER BY hour
+    </select>
+
+    <select id="selectActionTypeDistribution" resultType="java.util.HashMap">
+        SELECT action_type AS actionType, COUNT(*) AS cnt
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) = #{date}
+        GROUP BY action_type
+        ORDER BY cnt DESC
+    </select>
+
+    <!-- ========== Access Log ========== -->
+    <insert id="insertAccessLog" parameterType="datablocks.dlm.domain.AccessLogVO" useGeneratedKeys="true" keyProperty="logId">
+        INSERT INTO COTDL.TBL_ACCESS_LOG (
+            source_system_id, user_account, user_name, department, access_time, client_ip,
+            action_type, target_db, target_schema, target_table, target_columns,
+            pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
+            access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
+        ) VALUES (
+            #{sourceSystemId}, #{userAccount}, #{userName}, #{department}, #{accessTime}, #{clientIp},
+            #{actionType}, #{targetDb}, #{targetSchema}, #{targetTable}, #{targetColumns},
+            #{piiTypeCodes}, #{piiGrade}, #{affectedRows}, #{searchCondition}, #{sqlText},
+            #{accessChannel}, #{sessionId}, #{resultCode}, #{hashValue}, #{prevHash}, NOW(),
+            DATE_FORMAT(#{accessTime}, '%Y%m%d')
+        )
+    </insert>
+
+    <insert id="insertAccessLogBatch" parameterType="java.util.List">
+        INSERT INTO COTDL.TBL_ACCESS_LOG (
+            source_system_id, user_account, user_name, department, access_time, client_ip,
+            action_type, target_db, target_schema, target_table, target_columns,
+            pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
+            access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.sourceSystemId}, #{item.userAccount}, #{item.userName}, #{item.department},
+            #{item.accessTime}, #{item.clientIp}, #{item.actionType}, #{item.targetDb},
+            #{item.targetSchema}, #{item.targetTable}, #{item.targetColumns},
+            #{item.piiTypeCodes}, #{item.piiGrade}, #{item.affectedRows}, #{item.searchCondition},
+            #{item.sqlText}, #{item.accessChannel}, #{item.sessionId}, #{item.resultCode},
+            #{item.hashValue}, #{item.prevHash}, NOW(), DATE_FORMAT(#{item.accessTime}, '%Y%m%d')
+        )
+        </foreach>
+    </insert>
+
+    <select id="selectAccessLog" resultType="datablocks.dlm.domain.AccessLogVO">
+        SELECT a.*, s.source_name AS sourceName
+        FROM COTDL.TBL_ACCESS_LOG a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
+        WHERE a.log_id = #{logId}
+    </select>
+
+    <sql id="accessLogSearchCondition">
+        <where>
+            <if test="search1 != null and search1 != ''">AND a.source_system_id = #{search1}</if>
+            <if test="search2 != null and search2 != ''">AND a.user_account LIKE CONCAT('%', #{search2}, '%')</if>
+            <if test="search3 != null and search3 != ''">AND a.action_type = #{search3}</if>
+            <if test="search4 != null and search4 != ''">AND a.target_db = #{search4}</if>
+            <if test="search5 != null and search5 != ''">AND a.target_table LIKE CONCAT('%', #{search5}, '%')</if>
+            <if test="search6 != null and search6 != ''">AND a.pii_grade = #{search6}</if>
+            <if test="search7 != null and search7 != ''">AND a.access_time >= #{search7}</if>
+            <if test="search8 != null and search8 != ''">AND a.access_time &lt;= #{search8}</if>
+            <if test="search9 != null and search9 != ''">AND a.client_ip LIKE CONCAT('%', #{search9}, '%')</if>
+            <if test="search10 != null and search10 != ''">AND a.result_code = #{search10}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (a.user_account LIKE CONCAT('%', #{keyword}, '%')
+                     OR a.user_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR a.target_table LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAccessLogList" resultType="datablocks.dlm.domain.AccessLogVO">
+        SELECT a.*, s.source_name AS sourceName
+        FROM COTDL.TBL_ACCESS_LOG a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
+        <include refid="accessLogSearchCondition"/>
+        ORDER BY a.access_time DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectAccessLogTotal" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_ACCESS_LOG a
+        <include refid="accessLogSearchCondition"/>
+    </select>
+
+    <select id="selectLastHash" resultType="String">
+        SELECT hash_value FROM COTDL.TBL_ACCESS_LOG ORDER BY log_id DESC LIMIT 1
+    </select>
+
+    <!-- ========== Source ========== -->
+    <insert id="insertSource" parameterType="datablocks.dlm.domain.AccessLogSourceVO">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_SOURCE (
+            source_id, source_name, source_type, db_name, db_type, hostname, port,
+            schema_name, description, collect_interval, table_filter, exclude_accounts, is_active, status, reg_user_id
+        ) VALUES (
+            #{sourceId}, #{sourceName}, #{sourceType}, #{dbName}, #{dbType}, #{hostname}, #{port},
+            #{schemaName}, #{description}, #{collectInterval}, #{tableFilter}, #{excludeAccounts}, #{isActive}, 'STOPPED', #{regUserId}
+        )
+    </insert>
+
+    <select id="selectSource" resultType="datablocks.dlm.domain.AccessLogSourceVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE source_id = #{sourceId}
+    </select>
+
+    <select id="selectSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (source_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR db_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY reg_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectSourceTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_SOURCE
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (source_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR db_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <update id="updateSource" parameterType="datablocks.dlm.domain.AccessLogSourceVO">
+        UPDATE COTDL.TBL_ACCESS_LOG_SOURCE SET
+            source_name = #{sourceName},
+            source_type = #{sourceType},
+            db_name = #{dbName},
+            db_type = #{dbType},
+            hostname = #{hostname},
+            port = #{port},
+            schema_name = #{schemaName},
+            description = #{description},
+            collect_interval = #{collectInterval},
+            table_filter = #{tableFilter},
+            exclude_accounts = #{excludeAccounts},
+            is_active = #{isActive},
+            upd_user_id = #{updUserId}
+        WHERE source_id = #{sourceId}
+    </update>
+
+    <delete id="deleteSource">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE source_id = #{sourceId}
+    </delete>
+
+    <update id="updateSourceStatus">
+        UPDATE COTDL.TBL_ACCESS_LOG_SOURCE SET
+            status = #{status},
+            error_msg = #{errorMsg}
+        WHERE source_id = #{sourceId}
+    </update>
+
+    <update id="updateSourceCollectInfo">
+        UPDATE COTDL.TBL_ACCESS_LOG_SOURCE SET
+            last_collect_time = #{lastCollectTime},
+            total_collected = total_collected + #{collectedCount}
+        WHERE source_id = #{sourceId}
+    </update>
+
+    <!-- ========== Collect Status ========== -->
+    <insert id="insertCollectStatus" parameterType="datablocks.dlm.domain.AccessLogCollectStatusVO">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_COLLECT_STATUS (
+            source_id, collect_start, collect_end, last_offset, collected_count, status, error_msg, retry_count
+        ) VALUES (
+            #{sourceId}, #{collectStart}, #{collectEnd}, #{lastOffset}, #{collectedCount}, #{status}, #{errorMsg}, #{retryCount}
+        )
+    </insert>
+
+    <select id="selectLatestCollectStatus" resultType="datablocks.dlm.domain.AccessLogCollectStatusVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
+        WHERE source_id = #{sourceId}
+        ORDER BY collect_start DESC LIMIT 1
+    </select>
+
+    <select id="selectCollectStatusList" resultType="datablocks.dlm.domain.AccessLogCollectStatusVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
+        WHERE source_id = #{sourceId}
+        ORDER BY collect_start DESC LIMIT 50
+    </select>
+
+    <!-- ========== Alert ========== -->
+    <insert id="insertAlert" parameterType="datablocks.dlm.domain.AccessLogAlertVO" useGeneratedKeys="true" keyProperty="alertId">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT (
+            rule_id, rule_code, severity, alert_title, alert_detail,
+            target_user_id, target_user_name, related_log_ids, status
+        ) VALUES (
+            #{ruleId}, #{ruleCode}, #{severity}, #{alertTitle}, #{alertDetail},
+            #{targetUserId}, #{targetUserName}, #{relatedLogIds}, 'NEW'
+        )
+    </insert>
+
+    <select id="selectAlert" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT a.*, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        WHERE a.alert_id = #{alertId}
+    </select>
+
+    <sql id="alertSearchCondition">
+        <where>
+            <if test="search11 != null and search11 != ''">AND a.status = #{search11}</if>
+            <if test="search12 != null and search12 != ''">AND a.severity = #{search12}</if>
+            <if test="search7 != null and search7 != ''">AND a.detected_time >= #{search7}</if>
+            <if test="search8 != null and search8 != ''">AND a.detected_time &lt;= #{search8}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (a.alert_title LIKE CONCAT('%', #{keyword}, '%')
+                     OR a.target_user_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAlertList" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT a.*, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        <include refid="alertSearchCondition"/>
+        ORDER BY a.detected_time DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectAlertTotal" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        <include refid="alertSearchCondition"/>
+    </select>
+
+    <select id="selectLatestAlerts" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT a.*, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        ORDER BY a.detected_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateAlertStatus">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = #{status},
+            resolved_by = #{resolvedBy},
+            resolved_time = NOW(),
+            resolve_comment = #{resolveComment}
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <!-- ========== Alert Rule ========== -->
+    <insert id="insertAlertRule" parameterType="datablocks.dlm.domain.AccessLogAlertRuleVO">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT_RULE (
+            rule_id, rule_code, rule_name, description, severity, condition_type,
+            threshold_value, time_window_min, time_range_start, time_range_end,
+            target_action, target_pii_grade, is_active, sort_order, reg_user_id
+        ) VALUES (
+            #{ruleId}, #{ruleCode}, #{ruleName}, #{description}, #{severity}, #{conditionType},
+            #{thresholdValue}, #{timeWindowMin}, #{timeRangeStart}, #{timeRangeEnd},
+            #{targetAction}, #{targetPiiGrade}, #{isActive}, #{sortOrder}, #{regUserId}
+        )
+    </insert>
+
+    <select id="selectAlertRule" resultType="datablocks.dlm.domain.AccessLogAlertRuleVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE rule_id = #{ruleId}
+    </select>
+
+    <select id="selectAlertRuleList" resultType="datablocks.dlm.domain.AccessLogAlertRuleVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE ORDER BY sort_order, rule_code
+    </select>
+
+    <update id="updateAlertRule" parameterType="datablocks.dlm.domain.AccessLogAlertRuleVO">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_RULE SET
+            rule_name = #{ruleName},
+            description = #{description},
+            severity = #{severity},
+            condition_type = #{conditionType},
+            threshold_value = #{thresholdValue},
+            time_window_min = #{timeWindowMin},
+            time_range_start = #{timeRangeStart},
+            time_range_end = #{timeRangeEnd},
+            target_action = #{targetAction},
+            target_pii_grade = #{targetPiiGrade},
+            is_active = #{isActive},
+            sort_order = #{sortOrder},
+            upd_user_id = #{updUserId}
+        WHERE rule_id = #{ruleId}
+    </update>
+
+    <delete id="deleteAlertRule">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE rule_id = #{ruleId}
+    </delete>
+
+    <!-- ========== Config ========== -->
+    <insert id="insertConfig" parameterType="datablocks.dlm.domain.AccessLogConfigVO">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_CONFIG (
+            config_id, config_key, config_value, config_type, description, is_active, sort_order, reg_user_id
+        ) VALUES (
+            #{configId}, #{configKey}, #{configValue}, #{configType}, #{description}, #{isActive}, #{sortOrder}, #{regUserId}
+        )
+    </insert>
+
+    <select id="selectConfig" resultType="datablocks.dlm.domain.AccessLogConfigVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_id = #{configId}
+    </select>
+
+    <select id="selectConfigByKey" resultType="datablocks.dlm.domain.AccessLogConfigVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_key = #{configKey}
+    </select>
+
+    <select id="selectConfigList" resultType="datablocks.dlm.domain.AccessLogConfigVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG ORDER BY sort_order
+    </select>
+
+    <select id="selectConfigListByType" resultType="datablocks.dlm.domain.AccessLogConfigVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_type = #{configType} ORDER BY sort_order
+    </select>
+
+    <update id="updateConfig" parameterType="datablocks.dlm.domain.AccessLogConfigVO">
+        UPDATE COTDL.TBL_ACCESS_LOG_CONFIG SET
+            config_value = #{configValue},
+            description = #{description},
+            is_active = #{isActive},
+            upd_user_id = #{updUserId}
+        WHERE config_id = #{configId}
+    </update>
+
+    <delete id="deleteConfig">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_id = #{configId}
+    </delete>
+
+    <!-- ========== Hash Verify ========== -->
+    <insert id="insertHashVerify">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_HASH_VERIFY (
+            verify_date, total_records, valid_records, invalid_records, first_invalid_id, status, started_at, completed_at
+        ) VALUES (
+            #{verifyDate}, #{totalRecords}, #{validRecords}, #{invalidRecords}, #{firstInvalidId}, #{status}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="selectHashVerifyList" resultType="java.util.HashMap">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
+        ORDER BY verify_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <!-- ========== Download Log ========== -->
+    <insert id="insertDownloadLog">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_DOWNLOAD (
+            user_id, user_name, search_criteria, record_count, file_format, reason, client_ip
+        ) VALUES (
+            #{userId}, #{userName}, #{searchCriteria}, #{recordCount}, #{fileFormat}, #{reason}, #{clientIp}
+        )
+    </insert>
+
+    <!-- ========== Partition & Archive ========== -->
+    <select id="selectPartitionInfo" resultType="java.util.HashMap">
+        SELECT PARTITION_NAME AS partitionName,
+               PARTITION_DESCRIPTION AS partitionDescription,
+               TABLE_ROWS AS tableRows
+        FROM INFORMATION_SCHEMA.PARTITIONS
+        WHERE TABLE_SCHEMA = 'COTDL'
+          AND TABLE_NAME = 'TBL_ACCESS_LOG'
+          AND PARTITION_NAME IS NOT NULL
+        ORDER BY PARTITION_ORDINAL_POSITION
+    </select>
+
+    <update id="executePartitionDDL">
+        ${sql}
+    </update>
+
+    <select id="selectPartitionRecordCount" resultType="java.lang.Long">
+        SELECT TABLE_ROWS
+        FROM INFORMATION_SCHEMA.PARTITIONS
+        WHERE TABLE_SCHEMA = 'COTDL'
+          AND TABLE_NAME = 'TBL_ACCESS_LOG'
+          AND PARTITION_NAME = #{partitionName}
+    </select>
+
+    <insert id="insertArchiveHistory">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_ARCHIVE_HISTORY (
+            action_type, partition_name, target_month, record_count, status, error_msg
+        ) VALUES (
+            #{actionType}, #{partitionName}, #{targetMonth}, #{recordCount}, #{status}, #{errorMsg}
+        )
+    </insert>
+
+    <!-- ========== Scheduler ========== -->
+    <select id="selectActiveSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
+        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y'
+    </select>
+
+    <!-- ========== Alert Count ========== -->
+    <select id="selectNewAlertCount" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'NEW'
+    </select>
+
+    <!-- ========== Detection: VOLUME ========== -->
+    <select id="detectVolumeAnomaly" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               user_name AS userName,
+               COUNT(*) AS accessCount,
+               GROUP_CONCAT(DISTINCT log_id ORDER BY log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE access_time >= DATE_SUB(NOW(), INTERVAL #{timeWindowMin} MINUTE)
+        GROUP BY user_account, user_name
+        HAVING COUNT(*) > #{threshold}
+    </select>
+
+    <!-- ========== Detection: TIME_RANGE ========== -->
+    <select id="detectTimeRangeAnomaly" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               user_name AS userName,
+               COUNT(*) AS accessCount,
+               GROUP_CONCAT(DISTINCT log_id ORDER BY log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) = CURDATE()
+          AND TIME(access_time) BETWEEN #{timeStart} AND #{timeEnd}
+        GROUP BY user_account, user_name
+        HAVING COUNT(*) > 0
+    </select>
+
+    <!-- ========== Detection: ACCESS_DENIED ========== -->
+    <select id="detectAccessDenied" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               user_name AS userName,
+               COUNT(*) AS deniedCount,
+               GROUP_CONCAT(DISTINCT log_id ORDER BY log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE access_time >= DATE_SUB(NOW(), INTERVAL #{timeWindowMin} MINUTE)
+          AND result_code = 'DENIED'
+        GROUP BY user_account, user_name
+        HAVING COUNT(*) > #{threshold}
+    </select>
+
+    <!-- ========== Detection: PII_GRADE ========== -->
+    <select id="detectPiiGradeAnomaly" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               user_name AS userName,
+               COUNT(*) AS piiAccessCount,
+               GROUP_CONCAT(DISTINCT log_id ORDER BY log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE access_time >= DATE_SUB(NOW(), INTERVAL #{timeWindowMin} MINUTE)
+          AND pii_grade = #{piiGrade}
+        GROUP BY user_account, user_name
+        HAVING COUNT(*) > #{threshold}
+    </select>
+
+    <!-- ========== Detection: REPEAT ========== -->
+    <select id="detectRepeatAccess" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               user_name AS userName,
+               target_table AS targetTable,
+               COUNT(*) AS repeatCount,
+               GROUP_CONCAT(DISTINCT log_id ORDER BY log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE access_time >= DATE_SUB(NOW(), INTERVAL #{timeWindowMin} MINUTE)
+        GROUP BY user_account, user_name, target_table
+        HAVING COUNT(*) > #{threshold}
+    </select>
+
+    <!-- ========== Detection: NEW_IP ========== -->
+    <select id="detectNewIp" resultType="java.util.HashMap">
+        SELECT a.user_account AS userAccount,
+               a.user_name AS userName,
+               a.client_ip AS clientIp,
+               a.log_id AS logId
+        FROM COTDL.TBL_ACCESS_LOG a
+        WHERE a.access_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          AND a.client_ip NOT IN (
+              SELECT DISTINCT client_ip
+              FROM COTDL.TBL_ACCESS_LOG
+              WHERE access_time >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+                AND access_time &lt; DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                AND user_account = a.user_account
+          )
+        GROUP BY a.user_account, a.user_name, a.client_ip
+    </select>
+
+    <!-- ========== Detection: INACTIVE ========== -->
+    <select id="detectInactiveAccount" resultType="java.util.HashMap">
+        SELECT a.user_account AS userAccount,
+               a.user_name AS userName,
+               a.log_id AS logId,
+               a.access_time AS accessTime
+        FROM COTDL.TBL_ACCESS_LOG a
+        WHERE a.access_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          AND a.user_account NOT IN (
+              SELECT DISTINCT user_account
+              FROM COTDL.TBL_ACCESS_LOG
+              WHERE access_time >= DATE_SUB(NOW(), INTERVAL #{inactiveDays} DAY)
+                AND access_time &lt; DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          )
+        GROUP BY a.user_account, a.user_name
+    </select>
+
+</mapper>

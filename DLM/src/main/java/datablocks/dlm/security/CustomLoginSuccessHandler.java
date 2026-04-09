@@ -79,6 +79,7 @@ public class CustomLoginSuccessHandler implements AuthenticationSuccessHandler {
 			return;
 		}
 */
+		logger.info("[PERF] Login SUCCESS - user={}, redirecting to /", auth.getName());
 		response.sendRedirect("/");
 	}
 }

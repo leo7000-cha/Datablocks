@@ -42,15 +42,23 @@ public class PiiDashboardController {
     @PreAuthorize("isAuthenticated()")
     public void list(Criteria cri, Model model, Authentication authentication) {
 
-        LogUtil.log("INFO", "/PiiDashboard dashboard1(Criteria cri, Model model): " + cri);
+        long totalStart = System.currentTimeMillis();
+        long lap;
+        logger.info("[PERF] ========== Dashboard loading START ==========");
+
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        lap = System.currentTimeMillis();
         PiiMemberVO piimember = memberservice.get(userDetails.getUsername());
+        logger.info("[PERF] memberservice.get('{}') → {} ms", userDetails.getUsername(), System.currentTimeMillis() - lap);
+
         String needtochangepwd = "";
-        LogUtil.log("INFO", "/dashboard = userDetails.getUsername() ==>" + userDetails.getUsername()+"  "+piimember);
         try {
+            lap = System.currentTimeMillis();
             if (memberservice.getPwdElapsedCount(userDetails.getUsername()) > 0) {
                 needtochangepwd = "EXPIRED";
             }
+            logger.info("[PERF] getPwdElapsedCount → {} ms", System.currentTimeMillis() - lap);
         } catch (Exception ex) {
             logger.warn("dashboard: pwd expiry check failed for userId=" + userDetails.getUsername());
         }
@@ -58,75 +66,67 @@ public class PiiDashboardController {
         model.addAttribute("dashboardShow", EnvConfig.getConfig("DASHBOARD_SHOW"));
 
         try {
+            lap = System.currentTimeMillis();
             if (PasswordEncoder.matches("#"+userDetails.getUsername(), memberservice.get(piimember.getUserid()).getUserpw())) {
                 needtochangepwd = "INI";
             }
+            logger.info("[PERF] PasswordEncoder check → {} ms", System.currentTimeMillis() - lap);
         } catch (Exception ex) {
             logger.warn("dashboard: initial pwd check failed for userId=" + userDetails.getUsername());
         }
-        LogUtil.log("INFO", "/dashboard = needtochangepwd ==>" + needtochangepwd);
         model.addAttribute("needtochangepwd", needtochangepwd);
         model.addAttribute("userid", userDetails.getUsername());
+
         try {
+            lap = System.currentTimeMillis();
             model.addAttribute("jobresultlist", orderservice.getRunResultStat());
+            logger.info("[PERF] orderservice.getRunResultStat() → {} ms", System.currentTimeMillis() - lap);
         } catch (Exception ex) {
             logger.warn("warn "+"orderservice.getRunResultStat()   " + ex.getMessage());
         }
+
         try {
+            lap = System.currentTimeMillis();
             List<PiiCustStatVO> custstatlistdaily = extractservice.getCustStatListDaily(cri);
-            /*for (PiiCustStatVO custStat : custstatlistdaily) {
-                // mon 칼럼의 값을 가져와 5번째부터 끝까지의 문자열을 추출하여 다시 설정합니다.
-                String originalDateStr = custStat.getMon();
-                if (originalDateStr != null && originalDateStr.length() >= 5) {
-                    String trimmedDate = originalDateStr.substring(5); // 5번째 문자부터 끝까지 잘라냅니다.
-                    custStat.setMon(trimmedDate);
-                }
-            }*/
-            model.addAttribute("custstatlistdaily", custstatlistdaily); // 통계 테이블(TBL_PIICUSTSTAT)로 적재후 빠른 조회 방식으로 수정 20230426
+            logger.info("[PERF] extractservice.getCustStatListDaily() → {} ms", System.currentTimeMillis() - lap);
+            model.addAttribute("custstatlistdaily", custstatlistdaily);
         } catch (Exception ex) {
             logger.warn("warn "+"extractservice.getCustStatListDaily(cri)   " + ex.getMessage());
         }
+
         try {
-            model.addAttribute("custstatlistmonthly", extractservice.getCustStatListMonthly(cri)); // 통계 테이블(TBL_PIICUSTSTAT)로 적재후 빠른 조회 방식으로 수정 20230426
+            lap = System.currentTimeMillis();
+            model.addAttribute("custstatlistmonthly", extractservice.getCustStatListMonthly(cri));
+            logger.info("[PERF] extractservice.getCustStatListMonthly() → {} ms", System.currentTimeMillis() - lap);
         } catch (Exception ex) {
             logger.warn("warn "+"extractservice.getCustStatListMonthly(cri)   " + ex.getMessage());
         }
+
         try {
+            lap = System.currentTimeMillis();
             model.addAttribute("realdocstatlistmonthly", contractService.getStatList12Month());
+            logger.info("[PERF] contractService.getStatList12Month() → {} ms", System.currentTimeMillis() - lap);
         } catch (Exception ex) {
             logger.warn("warn "+"contractService.getStatList12Month()   " + ex.getMessage());
         }
+
         try {
-            logger.info("info "+"metaPiiStatusService.getListByDb().size()   " + metaPiiStatusService.getListByDb().size());
-            model.addAttribute("piiallstatus", metaPiiStatusService.getListByDb());
+            lap = System.currentTimeMillis();
+            List<?> piiallstatus = metaPiiStatusService.getListByDb();
+            logger.info("[PERF] metaPiiStatusService.getListByDb() → {} ms (size={})", System.currentTimeMillis() - lap, piiallstatus.size());
+            model.addAttribute("piiallstatus", piiallstatus);
         } catch (Exception ex) {
             logger.warn("warn "+"metaTableService.getListPiiAllStatus()   " + ex.getMessage());
         }
-        try {
-            PiiExtractRunRusultYearStatVO resultYearStat = extractservice.getRunExtractResultSumStat();
-//            DecimalFormat formatter = new DecimalFormat("#,###");
-//
-//            resultYearStat.setCnt_0(formatter.format(Double.parseDouble(resultYearStat.getCnt_0())));
-//            resultYearStat.setCnt_1(formatter.format(Double.parseDouble(resultYearStat.getCnt_1())));
-//            resultYearStat.setCnt_2(formatter.format(Double.parseDouble(resultYearStat.getCnt_2())));
-//            resultYearStat.setCnt_3(formatter.format(Double.parseDouble(resultYearStat.getCnt_3())));
-//            resultYearStat.setCnt_4(formatter.format(Double.parseDouble(resultYearStat.getCnt_4())));
-//            resultYearStat.setCnt_5(formatter.format(Double.parseDouble(resultYearStat.getCnt_5())));
-//            resultYearStat.setCnt_6(formatter.format(Double.parseDouble(resultYearStat.getCnt_6())));
-//            resultYearStat.setCnt_7(formatter.format(Double.parseDouble(resultYearStat.getCnt_7())));
-//            resultYearStat.setCnt_8(formatter.format(Double.parseDouble(resultYearStat.getCnt_8())));
-//            resultYearStat.setCnt_9(formatter.format(Double.parseDouble(resultYearStat.getCnt_9())));
-//            resultYearStat.setCnt_10(formatter.format(Double.parseDouble(resultYearStat.getCnt_10())));
-//            resultYearStat.setCnt_11(formatter.format(Double.parseDouble(resultYearStat.getCnt_11())));
 
-            model.addAttribute("custstatsumlist", resultYearStat);//누적파기현황 // 통계 테이블(TBL_PIICUSTSTATYEAR)로 적재후 빠른 조회 방식으로 수정 20230426
+        try {
+            lap = System.currentTimeMillis();
+            PiiExtractRunRusultYearStatVO resultYearStat = extractservice.getRunExtractResultSumStat();
+            logger.info("[PERF] extractservice.getRunExtractResultSumStat() → {} ms", System.currentTimeMillis() - lap);
+            model.addAttribute("custstatsumlist", resultYearStat);
         } catch (Exception ex) {
             logger.warn("warn "+"extractservice.getRunExtractResultSumStat()   " + ex.getMessage());
         }
-//        model.addAttribute("policycnt", policyservice.getTotal(cri));
-//        model.addAttribute("jobcnt", jobservice.getPiiTotalCount());
-//        model.addAttribute("steptablecnt", steptableservice.getTotalDistinctTabCount());
-//        model.addAttribute("tableconfiglist", steptableservice.getTableConfigStatus());
 
         try {
             model.addAttribute("notice1", configservice.get("NOTICE1").getValue());
@@ -149,11 +149,11 @@ public class PiiDashboardController {
         } catch (NullPointerException ex) {
         }
 
-        int total = 0;//orderservice.getTotal(cri);
+        int total = 0;
         PageDTO pageMaker = new PageDTO(cri, total);
         model.addAttribute("pageMaker", pageMaker);
-        //LogUtil.log("INFO", "/PiiDashboard pageMaker: " + pageMaker);
 
+        logger.info("[PERF] ========== Dashboard loading END — TOTAL {} ms ==========", System.currentTimeMillis() - totalStart);
     }
 
 

@@ -82,6 +82,14 @@ public class PiiJobController {
         model.addAttribute("listkeymap", jobService.getKeymapList());
     }
 
+    @GetMapping("/checkJobId")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseBody
+    public ResponseEntity<Boolean> checkJobId(@RequestParam("jobid") String jobid) {
+        PiiJobVO existing = jobService.get(jobid, "1");
+        return ResponseEntity.ok(existing != null);
+    }
+
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
     public String register(PiiJobDbidVO piijobVO, RedirectAttributes rttr) {

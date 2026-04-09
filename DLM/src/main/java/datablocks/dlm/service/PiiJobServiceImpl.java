@@ -89,6 +89,7 @@ public class PiiJobServiceImpl implements PiiJobService {
 //		 mapper.insert(piijob); 
 		 mapper.insertSelectKey(piijob); 
 		 
+		 if ("PII".equalsIgnoreCase(piijob.getJobtype())) {
 		 PiiStepVO piistep = new PiiStepVO();
 		 piistep.setJobid(piijob.getJobid());
 		 piistep.setVersion("1");
@@ -138,6 +139,7 @@ public class PiiJobServiceImpl implements PiiJobService {
 		 piistep.setStepseq("6");
 		 piistep.setThreadcnt("1");
 		 stepmapper.insert(piistep);
+		 }
 		 
 		 
 		 }

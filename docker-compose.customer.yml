@@ -1,0 +1,129 @@
+# ==============================================================================
+# DLM 고객사 배포용 Docker Compose
+# MariaDB는 고객사 기존 서버 사용 (Docker 외부)
+# ==============================================================================
+#
+# [폐쇄망 — 사전 빌드된 이미지 사용]
+#   1. 개발PC에서 deploy/offline/package-offline.sh 실행 → 패키지 생성
+#   2. 고객사에서 deploy/offline/deploy-customer.sh 실행 → 이미지 로드 + 실행
+#   3. docker compose -f docker-compose.customer.yml --env-file .env.customer up -d
+#
+# [인터넷 가능 — 소스에서 빌드]
+#   docker compose -f docker-compose.customer.yml --env-file .env.customer up -d --build
+#
+# 로그 확인:
+#   docker logs -f dlm-app
+#   docker logs -f dlm-privacy-ai
+#
+# 중지:
+#   docker compose -f docker-compose.customer.yml --env-file .env.customer down
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # DLM - Spring Boot Main Application
+  # ============================================================================
+  dlm:
+    image: datablocks-dlm:latest
+    build:
+      context: ./DLM
+      dockerfile: Dockerfile
+    container_name: dlm-app
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      JASYPT_ENCRYPTOR_PASSWORD: ${JASYPT_ENCRYPTOR_PASSWORD}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      TZ: Asia/Seoul
+    ports:
+      - "${DLM_PORT:-8080}:8080"
+    volumes:
+      - dlm_logs:/app/logs
+      - dlm_upload:/app/upload
+    networks:
+      - dlm-network
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 12G
+        reservations:
+          cpus: "1.5"
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ============================================================================
+  # DLM-Privacy-AI - FastAPI AI Service
+  # ============================================================================
+  dlm-privacy-ai:
+    image: datablocks-dlm-privacy-ai:latest
+    build:
+      context: ./DLM-Privacy-AI
+      dockerfile: Dockerfile
+    container_name: dlm-privacy-ai
+    restart: unless-stopped
+    environment:
+      PRIVACY_AI_DB_HOST: ${PRIVACY_AI_DB_HOST}
+      PRIVACY_AI_DB_PORT: ${PRIVACY_AI_DB_PORT}
+      PRIVACY_AI_DB_NAME: ${PRIVACY_AI_DB_NAME}
+      PRIVACY_AI_DB_USER: ${PRIVACY_AI_DB_USER}
+      PRIVACY_AI_DB_PASSWORD: ${PRIVACY_AI_DB_PASSWORD}
+      PRIVACY_AI_DLM_API_URL: ${PRIVACY_AI_DLM_API_URL}
+      PRIVACY_AI_DEBUG: ${PRIVACY_AI_DEBUG}
+      PRIVACY_AI_LLM_ENABLED: ${PRIVACY_AI_LLM_ENABLED:-false}
+      PRIVACY_AI_LLM_API_URL: ${PRIVACY_AI_LLM_API_URL:-}
+      PRIVACY_AI_LLM_API_KEY: ${PRIVACY_AI_LLM_API_KEY:-}
+      PRIVACY_AI_LLM_MODEL: ${PRIVACY_AI_LLM_MODEL:-}
+      TZ: Asia/Seoul
+    ports:
+      - "${AI_PORT:-8000}:8000"
+    volumes:
+      - privacy_ai_logs:/app/logs
+      - privacy_ai_models:/app/models
+    networks:
+      - dlm-network
+    depends_on:
+      dlm:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 8G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  dlm-network:
+    driver: bridge
+    name: dlm-network
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  dlm_logs:
+    name: dlm-app-logs
+  dlm_upload:
+    name: dlm-app-upload
+  privacy_ai_logs:
+    name: dlm-privacy-ai-logs
+  privacy_ai_models:
+    name: dlm-privacy-ai-models

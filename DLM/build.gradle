@@ -81,11 +81,15 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
 
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'com.jcraft:jsch:0.1.55'
 
     implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
     implementation 'com.openhtmltopdf:openhtmltopdf-slf4j:1.0.10'
+
+    // JSqlParser — SQL 파싱 (접속기록 PII 자동 분류)
+    implementation 'com.github.jsqlparser:jsqlparser:5.0'
 
     //test
     testImplementation('org.springframework.boot:spring-boot-starter-test') {

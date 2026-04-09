@@ -226,14 +226,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 
 	<select id="readrunresultstat" resultType="datablocks.dlm.domain.PiiOrderRunRusultStatVO">
-		select 
-		         sum(case when status='Ended OK' then 1 else 0 end ) as ok
-		        ,sum(case when status='Running' then 1 else 0 end ) as run
-		        ,sum(case when status='Wait condition' then 1 else 0 end ) as wait
-		        ,sum(case when status='Ended not OK' then 1 else 0 end ) as ko
-		        ,sum(case when status='Recovered' then 1 else 0 end ) as recovered
-		        ,count(1) total 
-		 from cotdl.tbl_piiorder
+		SELECT
+			SUM(CASE WHEN status='Ended OK' THEN 1 ELSE 0 END) AS ok,
+			SUM(CASE WHEN status='Running' THEN 1 ELSE 0 END) AS run,
+			SUM(CASE WHEN status='Wait condition' THEN 1 ELSE 0 END) AS wait,
+			SUM(CASE WHEN status='Ended not OK' THEN 1 ELSE 0 END) AS ko,
+			SUM(CASE WHEN status='Recovered' THEN 1 ELSE 0 END) AS recovered,
+			COUNT(1) AS total
+		FROM cotdl.tbl_piiorder
+		WHERE status IN ('Running', 'Wait condition', 'Ended not OK', 'Hold')
+		   OR eststarttime >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 	</select>
 	<update id="updatebefore">
 		update cotdl.tbl_piiorder

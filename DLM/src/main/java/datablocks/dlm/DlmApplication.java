@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.Locale;
 @MapperScan(value="datablocks.dlm.mapper")
 @SpringBootApplication
 @EnableScheduling
+@EnableAsync
 public class DlmApplication implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(DlmApplication.class);
     @Autowired

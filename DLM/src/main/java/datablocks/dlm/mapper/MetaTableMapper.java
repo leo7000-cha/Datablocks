@@ -47,4 +47,7 @@ public interface MetaTableMapper {
 
     public java.util.List<java.util.Map<String, Object>> getDistinctDbOwners();
 
+    /** PII 메타데이터 캐시용 — piitype이 설정된 모든 컬럼 조회 */
+    public List<MetaTableVO> selectPiiColumnsForCache();
+
 }

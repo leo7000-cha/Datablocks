@@ -123,13 +123,13 @@
             <div class="reg-grid reg-grid-schedule">
                 <div class="reg-field">
                     <label class="reg-label">Run Type <span class="reg-required">*</span></label>
-                    <select class="reg-select" name="runtype">
+                    <select class="reg-select" name="runtype" id="runtypeSelect">
+                        <option value="IRREGULAR" <c:if test="${empty piijob.runtype or piijob.runtype eq 'IRREGULAR'}">selected</c:if>><spring:message code="etc.irregular" text="Irregular"/></option>
                         <option value="REGULAR" <c:if test="${piijob.runtype eq 'REGULAR'}">selected</c:if>><spring:message code="etc.regular" text="Regular"/></option>
-                        <option value="IRREGULAR" <c:if test="${piijob.runtype eq 'IRREGULAR'}">selected</c:if>><spring:message code="etc.irregular" text="Irregular"/></option>
                         <option value="DLM_BATCH" <c:if test="${piijob.runtype eq 'DLM_BATCH'}">selected</c:if>><spring:message code="etc.dlmbatch" text="Batch"/></option>
                     </select>
                 </div>
-                <div class="reg-field reg-field-calendar">
+                <div class="reg-field reg-field-calendar" id="scheduleCalendarField" style="display:none;">
                     <label class="reg-label">Calendar</label>
                     <div class="cal-picker" id="calPicker">
                         <button type="button" class="cal-trigger" id="calTrigger">
@@ -175,7 +175,7 @@
                         <input type="hidden" name="calendar" id="calendarHidden" value='<c:out value="${piijob.calendar}"/>'>
                     </div>
                 </div>
-                <div class="reg-field reg-field-time">
+                <div class="reg-field reg-field-time" id="scheduleTimeField" style="display:none;">
                     <label class="reg-label"><spring:message code="col.time" text="시각"/></label>
                     <div class="tp-picker" id="tpPicker">
                         <button type="button" class="tp-trigger" id="tpTrigger">
@@ -328,6 +328,42 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm p-0 pb-2 button" id="diologsearchmemberlistclose"
                         data-dismiss="modal">Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate JOBID Notice Modal -->
+<div class="modal fade" id="dupJobIdModal" role="dialog" aria-labelledby="dupJobIdTitle">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+        <div class="modal-content" style="border: none; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); border: none; padding: 18px 24px;">
+                <h5 class="modal-title" id="dupJobIdTitle" style="color: #fff; font-weight: 700; font-size: 1rem;">
+                    <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i>JOBID 중복 안내
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" style="color: #fff; opacity: 0.9; text-shadow: none;">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 28px 24px; text-align: center;">
+                <div style="width: 56px; height: 56px; margin: 0 auto 18px; background: #fef2f2; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-copy" style="font-size: 1.5rem; color: #ef4444;"></i>
+                </div>
+                <p style="margin: 0 0 8px; font-weight: 600; font-size: 0.95rem; color: #1e293b;">
+                    이미 존재하는 JOBID 입니다.
+                </p>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">
+                    <span style="display: inline-block; background: #f1f5f9; padding: 4px 14px; border-radius: 6px; font-family: monospace; font-weight: 600; color: #ef4444; font-size: 0.9rem;" id="dupJobIdValue"></span>
+                </p>
+                <p style="margin: 14px 0 0; color: #64748b; font-size: 0.82rem;">
+                    다른 JOBID를 입력해 주세요.
+                </p>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 12px 24px 20px; justify-content: center;">
+                <button type="button" class="btn" data-dismiss="modal" id="dupJobIdCloseBtn"
+                        style="background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; border: none; border-radius: 8px; padding: 8px 32px; font-weight: 600; font-size: 0.82rem;">
+                    확인
                 </button>
             </div>
         </div>
@@ -533,13 +569,52 @@
             }
         });
 
+        // Run Type 변경 시 Calendar/시각 필드 표시 토글
+        function toggleScheduleFields() {
+            var runtype = $('#runtypeSelect').val();
+            if (runtype === 'REGULAR') {
+                $('#scheduleCalendarField').show();
+                $('#scheduleTimeField').show();
+            } else {
+                $('#scheduleCalendarField').hide();
+                $('#scheduleTimeField').hide();
+                // 비정기 선택 시 값 초기화
+                $('#calendarHidden').val('');
+                $('#calTriggerText').text('<spring:message code="cal.select" text="스케줄 선택"/>');
+                $('.cal-chip').removeClass('cal-chip-active');
+                $('#timeHidden').val('');
+                $('#tpTriggerText').text('<spring:message code="cal.select" text="시간 선택"/>');
+            }
+        }
+        $('#runtypeSelect').on('change', toggleScheduleFields);
+        toggleScheduleFields();
+
         $("button[data-oper='register']").on("click", function (e) {
             e.preventDefault();e.stopPropagation();
             var jobtype = $('#piijob_register_form [name="jobtype"]').val();
             var runtype = $('#piijob_register_form [name="runtype"]').val();
-            if (isEmpty($('#piijob_register_form [name="jobid"]').val())) {
+            var jobid = $('#piijob_register_form [name="jobid"]').val();
+            if (isEmpty(jobid)) {
                 alert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
                 $('#piijob_register_form [name="jobid"]').focus();
+                return;
+            }
+            // JOBID 중복 체크
+            var isDup = false;
+            $.ajax({
+                type: "GET",
+                url: "/piijob/checkJobId",
+                data: { jobid: jobid.toUpperCase() },
+                async: false,
+                success: function (data) { isDup = data; }
+            });
+            if (isDup) {
+                $('#dupJobIdValue').text(jobid.toUpperCase());
+                $('#dupJobIdModal').modal('show');
+                $('#dupJobIdModal').on('hidden.bs.modal', function () {
+                    $('#piijob_register_form [name="jobid"]').focus().select();
+                    $(this).off('hidden.bs.modal');
+                });
                 return;
             }
             if (isEmpty($('#piijob_register_form [name="jobname"]').val())) {

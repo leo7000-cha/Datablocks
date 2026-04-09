@@ -97,14 +97,6 @@
                     </select>
                 </div>
                 <div class="policy-filter-item">
-                    <label class="policy-filter-label" for="filter_search9"><spring:message code="col.exclusion_purging" text="Exclusion"/></label>
-                    <select class="policy-filter-select" id="filter_search9" name="search9" style="width: 80px;" onchange="searchAction(1);">
-                        <option value="">All</option>
-                        <option value="Y" <c:if test="${pageMaker.cri.search9 eq 'Y'}">selected</c:if>>Y</option>
-                        <option value="N" <c:if test="${pageMaker.cri.search9 eq 'N'}">selected</c:if>>N</option>
-                    </select>
-                </div>
-                <div class="policy-filter-item">
                     <label class="policy-filter-label" for="filter_search12" style="color:#B28709;">Update</label>
                     <div style="display: flex; align-items: center; gap: 4px;">
                         <input type="text" class="policy-filter-input" id="filter_search12" name="search12" style="width: 95px;"
@@ -156,7 +148,6 @@
                     <th style="color:#2C58D9;"><spring:message code="col.scramble_type" text="Scramble_Type"/></th>
                     <th class="th-hidden" style="color:#2C58D9;"><spring:message code="col.masterkey" text="Parent Key"/></th>
                     <th class="th-hidden" style="color:#2C58D9;"><spring:message code="col.masteryn" text="Parent YN"/></th>
-                    <th style="color:#2C58D9;"><spring:message code="col.exclusion_purging" text="Exclusion"/></th>
                     <th><spring:message code="col.jobid" text="JOBID"/></th>
                     <th>JOB<spring:message code="col.regdate" text="Regdate"/></th>
                 </tr>
@@ -187,7 +178,6 @@
                         <td><c:out value="${metatable.scramble_type}"/></td>
                         <td class="td-hidden"><c:out value="${metatable.masterkey}"/></td>
                         <td class="td-hidden"><c:out value="${metatable.masteryn}"/></td>
-                        <td class="text-center"><c:out value="${metatable.val1}"/></td>
                         <td><c:out value="${metatable.jobid}"/></td>
                         <td class="text-center"><c:out value="${metatable.confregdate}"/></td>
                     </tr>
@@ -251,7 +241,6 @@
         var search4 = $('#filter_search4').val();
         var search5 = $('#filter_search5').val();
         var search6 = $('#filter_search6').val();
-        var search9 = $('#filter_search9').val();
         var search11 = $('#filter_search11').val();
         var search12 = $('#filter_search12').val();
         var search13 = $('#filter_search13').val();
@@ -265,7 +254,6 @@
         if (!isEmpty(search4)) { url_search += "&search4=" + search4; search5 = "Y"; }
         if (!isEmpty(search5)) url_search += "&search5=" + search5;
         if (!isEmpty(search6)) url_search += "&search6=" + search6;
-        if (!isEmpty(search9)) url_search += "&search9=" + search9;
         if (!isEmpty(search11)) url_search += "&search11=" + search11;
         if (!isEmpty(search12)) url_search += "&search12=" + search12;
         if (!isEmpty(search13)) url_search += "&search13=" + search13;
@@ -305,7 +293,6 @@
         var search4 = $('#filter_search4').val();
         var search5 = $('#filter_search5').val();
         var search6 = $('#filter_search6').val();
-        var search9 = $('#filter_search9').val();
         var search11 = $('#filter_search11').val();
         var search12 = $('#filter_search12').val();
         var search13 = $('#filter_search13').val();
@@ -328,7 +315,6 @@
         if (!isEmpty(search4)) url_search += "&search4=" + search4;
         if (!isEmpty(search5)) url_search += "&search5=" + search5;
         if (!isEmpty(search6)) url_search += "&search6=" + search6;
-        if (!isEmpty(search9)) url_search += "&search9=" + search9;
         if (!isEmpty(search11)) url_search += "&search11=" + search11;
         if (!isEmpty(search12)) url_search += "&search12=" + search12;
         if (!isEmpty(search13)) url_search += "&search13=" + search13;

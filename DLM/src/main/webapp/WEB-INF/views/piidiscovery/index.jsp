@@ -556,9 +556,9 @@
                         <div class="user-role">관리자</div>
                     </div>
                 </div>
-                <a href="/index" class="btn-back-main">
+                <a href="/hub" class="btn-back-main">
                     <i class="fas fa-arrow-left"></i>
-                    X-One으로 돌아가기
+                    메인으로 돌아가기
                 </a>
             </div>
         </aside>
@@ -585,7 +585,7 @@
 
     <!-- New Scan Modal (Compact Layout) -->
     <div class="modal fade" id="newScanModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 1100px;">
             <div class="modal-content" style="border-radius: 12px; border: none;">
                 <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 24px;">
                     <h5 class="modal-title" style="font-weight: 600; color: #1e293b;">
@@ -695,7 +695,7 @@
 
                                 <div class="mb-3">
                                     <label class="form-label" style="font-weight: 500; margin-bottom: 6px;">제외 데이터 타입</label>
-                                    <input type="text" class="form-control text-uppercase" id="excludeDataTypes" placeholder="NUMBER,DATE,TIMESTAMP,BLOB,CLOB" style="text-transform: uppercase;">
+                                    <textarea class="form-control text-uppercase" id="excludeDataTypes" rows="3" placeholder="NUMBER,DATE,TIMESTAMP,BLOB,CLOB" style="text-transform: uppercase; resize: vertical;"></textarea>
                                     <small class="text-muted">쉼표로 구분 (미입력 시 기본값 적용)</small>
                                 </div>
 
@@ -712,7 +712,7 @@
 
                                 <div class="mb-3">
                                     <label class="form-label" style="font-weight: 500; margin-bottom: 6px;">제외 컬럼 패턴</label>
-                                    <input type="text" class="form-control text-uppercase" id="excludePatterns" placeholder="*_CD,*_YN,*_FLAG,*_SEQ,REG_DATE,UPD_DATE" style="text-transform: uppercase;">
+                                    <textarea class="form-control text-uppercase" id="excludePatterns" rows="3" placeholder="*_CD,*_YN,*_FLAG,*_SEQ,REG_DATE,UPD_DATE" style="text-transform: uppercase; resize: vertical;"></textarea>
                                     <small class="text-muted">* = 와일드카드 (예: *_YN → _YN으로 끝나는 컬럼 제외)</small>
                                 </div>
 

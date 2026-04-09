@@ -330,7 +330,7 @@ public class JobScheduler {
     }
 
     @Async
-    @Scheduled(fixedRate = 6000, initialDelay = 2000)
+    @Scheduled(fixedRate = 10000, initialDelay = 2000)
     public void runOrder() throws Exception {
         if (!runOrderRunning.compareAndSet(false, true)) {
             logger.warn("Previous runOrder() still running. Skipping this turn.");
@@ -1235,27 +1235,28 @@ public class JobScheduler {
         }
     }
 
-    /**
-     * 매 분 0초에 실행 (Asia/Seoul)
-     * 이전 실행이 아직 끝나지 않았으면 이번 턴은 건너뜀(중복 방지)
-     */
-    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
-    public void runEveryMinute() {
-        if (!running.compareAndSet(false, true)) {
-            logger.warn("Previous minute-run still running. Skipping this turn.");
-            return;
-        }
-        long started = System.currentTimeMillis();
-        try {
-            // ✅ 여기에 매 분마다 돌릴 task 들을 정의/호출
-            runTasks();
-        } catch (Exception e) {
-            logger.error("Minute tasks failed", e);
-        } finally {
-            running.set(false);
-            logger.info("Minute tasks took {} ms", System.currentTimeMillis() - started);
-        }
-    }
+    // /**
+    //  * 매 분 0초에 실행 (Asia/Seoul)
+    //  * 이전 실행이 아직 끝나지 않았으면 이번 턴은 건너뜀(중복 방지)
+    //  * — 현재 사용 안 함
+    //  */
+    // @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
+    // public void runEveryMinute() {
+    //     if (!running.compareAndSet(false, true)) {
+    //         logger.warn("Previous minute-run still running. Skipping this turn.");
+    //         return;
+    //     }
+    //     long started = System.currentTimeMillis();
+    //     try {
+    //         // ✅ 여기에 매 분마다 돌릴 task 들을 정의/호출
+    //         runTasks();
+    //     } catch (Exception e) {
+    //         logger.error("Minute tasks failed", e);
+    //     } finally {
+    //         running.set(false);
+    //         logger.info("Minute tasks took {} ms", System.currentTimeMillis() - started);
+    //     }
+    // }
 
     private void runTasks() throws Exception {
 

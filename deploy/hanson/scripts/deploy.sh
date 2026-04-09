@@ -139,52 +139,92 @@ log "파일 복사 완료: $INSTALL_DIR"
 
 ENV_FILE="$INSTALL_DIR/.env.hanson"
 
-# 감지한 네트워크명을 .env 에 기록
-if grep -q '^MARIADB_NETWORK=' "$ENV_FILE"; then
-    sed -i "s|^MARIADB_NETWORK=.*|MARIADB_NETWORK=${MARIADB_NETWORK}|g" "$ENV_FILE"
-else
-    echo "" >> "$ENV_FILE"
-    echo "# --- 자동 감지된 MariaDB 네트워크 ---" >> "$ENV_FILE"
-    echo "MARIADB_NETWORK=${MARIADB_NETWORK}" >> "$ENV_FILE"
-fi
-
-# mariadb 컨테이너 이름이 기본(mariadb)이 아닌 경우 env 파일 업데이트
+# 자동 감지된 컨테이너/포트 정보를 .env 에 반영
 if [ "$MARIADB_CONTAINER" != "mariadb" ]; then
     sed -i "s|^MARIADB_CONTAINER=.*|MARIADB_CONTAINER=${MARIADB_CONTAINER}|g" "$ENV_FILE"
     sed -i "s|mariadb://mariadb:|mariadb://${MARIADB_CONTAINER}:|g" "$ENV_FILE"
     sed -i "s|^PRIVACY_AI_DB_HOST=.*|PRIVACY_AI_DB_HOST=${MARIADB_CONTAINER}|g" "$ENV_FILE"
-    log "MariaDB 호스트명 → ${MARIADB_CONTAINER}"
 fi
-
-# MariaDB 포트가 3306이 아닌 경우
 if [ "$MARIADB_PORT" != "3306" ]; then
     sed -i "s|:3306/cotdl|:${MARIADB_PORT}/cotdl|g" "$ENV_FILE"
     sed -i "s|^PRIVACY_AI_DB_PORT=.*|PRIVACY_AI_DB_PORT=${MARIADB_PORT}|g" "$ENV_FILE"
-    log "MariaDB 포트 → ${MARIADB_PORT}"
 fi
 
 FINAL_DLM_PORT=$(grep '^DLM_PORT=' "$ENV_FILE" | cut -d= -f2)
 FINAL_AI_PORT=$(grep '^AI_PORT=' "$ENV_FILE" | cut -d= -f2)
 
 echo ""
-echo "  현재 설정:"
-echo "    MariaDB: ${MARIADB_CONTAINER}:${MARIADB_PORT} (기존 컨테이너)"
-echo "    네트워크: ${MARIADB_NETWORK} (기존 네트워크 참여)"
-echo "    DLM 포트: ${FINAL_DLM_PORT}"
-echo "    AI  포트: ${FINAL_AI_PORT}"
+echo "  ──────────────────────────────────────────"
+echo "  감지/설정 결과 확인 (Enter=유지, 입력=변경)"
+echo "  ──────────────────────────────────────────"
 echo ""
 
-read -p "  DLM 포트 변경 [Enter=${FINAL_DLM_PORT} 유지]: " NEW_DLM_PORT
+read -p "  MariaDB 컨테이너 [${MARIADB_CONTAINER}]: " NEW_MARIADB
+if [ -n "$NEW_MARIADB" ]; then
+    # 변경된 컨테이너가 실행 중인지 확인
+    if ! docker ps --format '{{.Names}}' | grep -qw "$NEW_MARIADB"; then
+        err "컨테이너 '$NEW_MARIADB' 이(가) 실행 중이지 않습니다. 기존값 유지: $MARIADB_CONTAINER"
+    else
+        MARIADB_CONTAINER="$NEW_MARIADB"
+        sed -i "s|^MARIADB_CONTAINER=.*|MARIADB_CONTAINER=${MARIADB_CONTAINER}|g" "$ENV_FILE"
+        sed -i "s|mariadb://[^:]*:|mariadb://${MARIADB_CONTAINER}:|g" "$ENV_FILE"
+        sed -i "s|^PRIVACY_AI_DB_HOST=.*|PRIVACY_AI_DB_HOST=${MARIADB_CONTAINER}|g" "$ENV_FILE"
+        # 네트워크도 재감지
+        MARIADB_NETWORK=""
+        for net in $(docker inspect "$MARIADB_CONTAINER" \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'); do
+            [ "$net" = "bridge" ] && continue
+            MARIADB_NETWORK="$net"
+            break
+        done
+        if [ -z "$MARIADB_NETWORK" ]; then
+            MARIADB_NETWORK="dlm-network"
+            docker network create "$MARIADB_NETWORK" 2>/dev/null || true
+            docker network connect "$MARIADB_NETWORK" "$MARIADB_CONTAINER" 2>/dev/null || true
+        fi
+        log "MariaDB 컨테이너 → ${MARIADB_CONTAINER}"
+    fi
+fi
+
+read -p "  MariaDB 네트워크 [${MARIADB_NETWORK}]: " NEW_NETWORK
+if [ -n "$NEW_NETWORK" ]; then
+    if docker network ls --format '{{.Name}}' | grep -qw "$NEW_NETWORK"; then
+        MARIADB_NETWORK="$NEW_NETWORK"
+        log "네트워크 → ${MARIADB_NETWORK}"
+    else
+        err "네트워크 '$NEW_NETWORK' 이(가) 존재하지 않습니다. 기존값 유지: $MARIADB_NETWORK"
+    fi
+fi
+
+read -p "  DLM 포트 [${FINAL_DLM_PORT}]: " NEW_DLM_PORT
 if [ -n "$NEW_DLM_PORT" ]; then
     sed -i "s|^DLM_PORT=.*|DLM_PORT=${NEW_DLM_PORT}|g" "$ENV_FILE"
+    FINAL_DLM_PORT="$NEW_DLM_PORT"
     log "DLM 포트 → ${NEW_DLM_PORT}"
 fi
 
-read -p "  Privacy-AI 포트 변경 [Enter=${FINAL_AI_PORT} 유지]: " NEW_AI_PORT
+read -p "  Privacy-AI 포트 [${FINAL_AI_PORT}]: " NEW_AI_PORT
 if [ -n "$NEW_AI_PORT" ]; then
     sed -i "s|^AI_PORT=.*|AI_PORT=${NEW_AI_PORT}|g" "$ENV_FILE"
+    FINAL_AI_PORT="$NEW_AI_PORT"
     log "AI 포트 → ${NEW_AI_PORT}"
 fi
+
+# 네트워크명 .env 에 반영
+if grep -q '^MARIADB_NETWORK=' "$ENV_FILE"; then
+    sed -i "s|^MARIADB_NETWORK=.*|MARIADB_NETWORK=${MARIADB_NETWORK}|g" "$ENV_FILE"
+else
+    echo "" >> "$ENV_FILE"
+    echo "# --- MariaDB 네트워크 ---" >> "$ENV_FILE"
+    echo "MARIADB_NETWORK=${MARIADB_NETWORK}" >> "$ENV_FILE"
+fi
+
+echo ""
+log "최종 설정:"
+echo "    MariaDB:  ${MARIADB_CONTAINER}:${MARIADB_PORT} → 네트워크: ${MARIADB_NETWORK}"
+echo "    DLM:      :${FINAL_DLM_PORT}"
+echo "    AI:       :${FINAL_AI_PORT}"
+echo ""
 
 # ==============================================================================
 # STEP 5: 실행

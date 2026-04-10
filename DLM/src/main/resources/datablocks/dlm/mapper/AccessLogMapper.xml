@@ -19,7 +19,9 @@
             (SELECT CASE WHEN COUNT(*) = 0 THEN 'N/A'
                          WHEN SUM(CASE WHEN status = 'INVALID' THEN 1 ELSE 0 END) > 0 THEN 'INVALID'
                          ELSE 'VALID' END
-             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY WHERE verify_date = CURDATE()) AS hashVerifyStatus,
+             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY) AS hashVerifyStatus,
+            (SELECT DATE_FORMAT(MAX(completed_at), '%Y-%m-%d %H:%i')
+             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY) AS lastHashVerifyTime,
             (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE pii_grade IS NOT NULL AND DATE(access_time) = CURDATE()) AS piiAccessCount
     </select>
 
@@ -74,8 +76,23 @@
         </foreach>
     </insert>
 
+    <sql id="accessLogColumns">
+        a.log_id AS logId, a.source_system_id AS sourceSystemId,
+        a.user_account AS userAccount, a.user_name AS userName, a.department,
+        a.access_time AS accessTime, a.client_ip AS clientIp,
+        a.action_type AS actionType, a.target_db AS targetDb,
+        a.target_schema AS targetSchema, a.target_table AS targetTable,
+        a.target_columns AS targetColumns, a.pii_type_codes AS piiTypeCodes,
+        a.pii_grade AS piiGrade, a.affected_rows AS affectedRows,
+        a.search_condition AS searchCondition, a.sql_text AS sqlText,
+        a.access_channel AS accessChannel, a.session_id AS sessionId,
+        a.result_code AS resultCode, a.hash_value AS hashValue,
+        a.prev_hash AS prevHash, a.collected_at AS collectedAt,
+        a.partition_key AS partitionKey
+    </sql>
+
     <select id="selectAccessLog" resultType="datablocks.dlm.domain.AccessLogVO">
-        SELECT a.*, s.source_name AS sourceName
+        SELECT <include refid="accessLogColumns"/>, s.source_name AS sourceName
         FROM COTDL.TBL_ACCESS_LOG a
         LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
         WHERE a.log_id = #{logId}
@@ -102,7 +119,7 @@
     </sql>
 
     <select id="selectAccessLogList" resultType="datablocks.dlm.domain.AccessLogVO">
-        SELECT a.*, s.source_name AS sourceName
+        SELECT <include refid="accessLogColumns"/>, s.source_name AS sourceName
         FROM COTDL.TBL_ACCESS_LOG a
         LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
         <include refid="accessLogSearchCondition"/>
@@ -131,12 +148,22 @@
         )
     </insert>
 
+    <sql id="sourceColumns">
+        source_id AS sourceId, source_name AS sourceName, source_type AS sourceType,
+        db_name AS dbName, db_type AS dbType, hostname, port, schema_name AS schemaName,
+        description, collect_interval AS collectInterval, table_filter AS tableFilter,
+        exclude_accounts AS excludeAccounts, is_active AS isActive, status,
+        last_collect_time AS lastCollectTime, total_collected AS totalCollected,
+        error_msg AS errorMsg, reg_user_id AS regUserId, reg_date AS regDate,
+        upd_user_id AS updUserId, upd_date AS updDate
+    </sql>
+
     <select id="selectSource" resultType="datablocks.dlm.domain.AccessLogSourceVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE source_id = #{sourceId}
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE source_id = #{sourceId}
     </select>
 
     <select id="selectSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (source_name LIKE CONCAT('%', #{keyword}, '%')
@@ -202,14 +229,20 @@
         )
     </insert>
 
+    <sql id="collectStatusColumns">
+        status_id AS statusId, source_id AS sourceId, collect_start AS collectStart,
+        collect_end AS collectEnd, last_offset AS lastOffset, collected_count AS collectedCount,
+        status, error_msg AS errorMsg, retry_count AS retryCount, reg_date AS regDate
+    </sql>
+
     <select id="selectLatestCollectStatus" resultType="datablocks.dlm.domain.AccessLogCollectStatusVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
+        SELECT <include refid="collectStatusColumns"/> FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
         WHERE source_id = #{sourceId}
         ORDER BY collect_start DESC LIMIT 1
     </select>
 
     <select id="selectCollectStatusList" resultType="datablocks.dlm.domain.AccessLogCollectStatusVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
+        SELECT <include refid="collectStatusColumns"/> FROM COTDL.TBL_ACCESS_LOG_COLLECT_STATUS
         WHERE source_id = #{sourceId}
         ORDER BY collect_start DESC LIMIT 50
     </select>
@@ -290,29 +323,42 @@
         )
     </insert>
 
+    <sql id="alertRuleColumns">
+        rule_id AS ruleId, rule_code AS ruleCode, rule_name AS ruleName,
+        description, severity, condition_type AS conditionType,
+        threshold_value AS thresholdValue, time_window_min AS timeWindowMin,
+        time_range_start AS timeRangeStart, time_range_end AS timeRangeEnd,
+        target_action AS targetAction, target_pii_grade AS targetPiiGrade,
+        is_active AS isActive, sort_order AS sortOrder,
+        reg_user_id AS regUserId, reg_date AS regDate,
+        upd_user_id AS updUserId, upd_date AS updDate
+    </sql>
+
     <select id="selectAlertRule" resultType="datablocks.dlm.domain.AccessLogAlertRuleVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE rule_id = #{ruleId}
+        SELECT <include refid="alertRuleColumns"/> FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE rule_id = #{ruleId}
     </select>
 
     <select id="selectAlertRuleList" resultType="datablocks.dlm.domain.AccessLogAlertRuleVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE ORDER BY sort_order, rule_code
+        SELECT <include refid="alertRuleColumns"/> FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE ORDER BY sort_order, rule_code
     </select>
 
     <update id="updateAlertRule" parameterType="datablocks.dlm.domain.AccessLogAlertRuleVO">
-        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_RULE SET
-            rule_name = #{ruleName},
-            description = #{description},
-            severity = #{severity},
-            condition_type = #{conditionType},
-            threshold_value = #{thresholdValue},
-            time_window_min = #{timeWindowMin},
-            time_range_start = #{timeRangeStart},
-            time_range_end = #{timeRangeEnd},
-            target_action = #{targetAction},
-            target_pii_grade = #{targetPiiGrade},
-            is_active = #{isActive},
-            sort_order = #{sortOrder},
-            upd_user_id = #{updUserId}
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_RULE
+        <set>
+            <if test="ruleName != null">rule_name = #{ruleName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="conditionType != null">condition_type = #{conditionType},</if>
+            <if test="thresholdValue != null">threshold_value = #{thresholdValue},</if>
+            <if test="timeWindowMin != null">time_window_min = #{timeWindowMin},</if>
+            <if test="timeRangeStart != null">time_range_start = #{timeRangeStart},</if>
+            <if test="timeRangeEnd != null">time_range_end = #{timeRangeEnd},</if>
+            <if test="targetAction != null">target_action = #{targetAction},</if>
+            <if test="targetPiiGrade != null">target_pii_grade = #{targetPiiGrade},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="updUserId != null">upd_user_id = #{updUserId},</if>
+        </set>
         WHERE rule_id = #{ruleId}
     </update>
 
@@ -329,28 +375,37 @@
         )
     </insert>
 
+    <sql id="configColumns">
+        config_id AS configId, config_key AS configKey, config_value AS configValue,
+        config_type AS configType, description, is_active AS isActive,
+        sort_order AS sortOrder, reg_user_id AS regUserId, reg_date AS regDate,
+        upd_user_id AS updUserId, upd_date AS updDate
+    </sql>
+
     <select id="selectConfig" resultType="datablocks.dlm.domain.AccessLogConfigVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_id = #{configId}
+        SELECT <include refid="configColumns"/> FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_id = #{configId}
     </select>
 
     <select id="selectConfigByKey" resultType="datablocks.dlm.domain.AccessLogConfigVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_key = #{configKey}
+        SELECT <include refid="configColumns"/> FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_key = #{configKey}
     </select>
 
     <select id="selectConfigList" resultType="datablocks.dlm.domain.AccessLogConfigVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG ORDER BY sort_order
+        SELECT <include refid="configColumns"/> FROM COTDL.TBL_ACCESS_LOG_CONFIG ORDER BY sort_order
     </select>
 
     <select id="selectConfigListByType" resultType="datablocks.dlm.domain.AccessLogConfigVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_type = #{configType} ORDER BY sort_order
+        SELECT <include refid="configColumns"/> FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_type = #{configType} ORDER BY sort_order
     </select>
 
     <update id="updateConfig" parameterType="datablocks.dlm.domain.AccessLogConfigVO">
-        UPDATE COTDL.TBL_ACCESS_LOG_CONFIG SET
-            config_value = #{configValue},
-            description = #{description},
-            is_active = #{isActive},
-            upd_user_id = #{updUserId}
+        UPDATE COTDL.TBL_ACCESS_LOG_CONFIG
+        <set>
+            <if test="configValue != null">config_value = #{configValue},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="updUserId != null">upd_user_id = #{updUserId},</if>
+        </set>
         WHERE config_id = #{configId}
     </update>
 
@@ -368,7 +423,13 @@
     </insert>
 
     <select id="selectHashVerifyList" resultType="java.util.HashMap">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
+        SELECT verify_id AS verifyId, verify_date AS verifyDate,
+               total_records AS totalRecords, valid_records AS validRecords,
+               invalid_records AS invalidRecords, first_invalid_id AS firstInvalidId,
+               status, error_msg AS errorMsg,
+               started_at AS startedAt, completed_at AS completedAt,
+               reg_date AS regDate
+        FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
         ORDER BY verify_date DESC
         LIMIT #{offset}, #{amount}
     </select>
@@ -416,7 +477,7 @@
 
     <!-- ========== Scheduler ========== -->
     <select id="selectActiveSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
-        SELECT * FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y'
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y'
     </select>
 
     <!-- ========== Alert Count ========== -->
@@ -504,6 +565,21 @@
                 AND user_account = a.user_account
           )
         GROUP BY a.user_account, a.user_name, a.client_ip
+    </select>
+
+    <!-- ========== Detection: HOLIDAY ========== -->
+    <select id="detectHolidayAccess" resultType="java.util.HashMap">
+        SELECT a.user_account AS userAccount,
+               a.user_name AS userName,
+               COUNT(*) AS accessCount,
+               GROUP_CONCAT(DISTINCT a.log_id ORDER BY a.log_id LIMIT 10) AS logIds
+        FROM COTDL.TBL_ACCESS_LOG a
+        JOIN COTDL.TBL_PIIBIZDAY b
+          ON DATE_FORMAT(a.access_time, '%Y%m%d') = b.BASE_DT
+        WHERE b.HLDY_YN = 'Y'
+          AND a.access_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+        GROUP BY a.user_account, a.user_name
+        HAVING COUNT(*) > 0
     </select>
 
     <!-- ========== Detection: INACTIVE ========== -->

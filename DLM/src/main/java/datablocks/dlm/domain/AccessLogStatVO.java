@@ -24,5 +24,6 @@ public class AccessLogStatVO {
     // 추가 정보
     private String lastCollectTime;
     private String hashVerifyStatus;
+    private String lastHashVerifyTime;
     private Integer piiAccessCount;
 }

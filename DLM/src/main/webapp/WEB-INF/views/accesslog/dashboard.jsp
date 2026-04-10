@@ -25,6 +25,22 @@
             <div class="stat-value">${stats.activeSourceCount != null ? stats.activeSourceCount : 0} / ${stats.totalSourceCount != null ? stats.totalSourceCount : 0}</div>
             <div class="stat-label">모니터링 시스템</div>
         </div>
+        <div class="stat-card" id="hashVerifyCard">
+            <div class="stat-card-header">
+                <div class="stat-icon ${stats.hashVerifyStatus == 'INVALID' ? 'danger' : stats.hashVerifyStatus == 'VALID' ? 'success' : 'warning'}">
+                    <i class="fas ${stats.hashVerifyStatus == 'INVALID' ? 'fa-shield-xmark' : stats.hashVerifyStatus == 'VALID' ? 'fa-shield-check' : 'fa-shield-halved'}"></i>
+                </div>
+            </div>
+            <div class="stat-value" style="font-size:1.1rem;">
+                <c:choose>
+                    <c:when test="${stats.hashVerifyStatus == 'VALID'}">정상</c:when>
+                    <c:when test="${stats.hashVerifyStatus == 'INVALID'}">위변조 탐지</c:when>
+                    <c:otherwise>미검증</c:otherwise>
+                </c:choose>
+            </div>
+            <div class="stat-label">무결성 검증</div>
+            <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px;">${stats.lastHashVerifyTime != null ? stats.lastHashVerifyTime : '검증 이력 없음'}</div>
+        </div>
     </div>
 
     <!-- Charts Row -->

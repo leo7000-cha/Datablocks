@@ -128,6 +128,14 @@
         .pagination-wrap a, .pagination-wrap span { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; margin: 0 4px; font-size: 0.85rem; color: #64748b; text-decoration: none; transition: all 0.2s; }
         .pagination-wrap a:hover { background: #f1f5f9; }
         .pagination-wrap .active-page { background: var(--monitor-primary); color: #fff; }
+
+        /* Toggle Switch */
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: all 0.3s; }
+        .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .toggle-switch input:checked + .toggle-slider { background: var(--monitor-primary); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body>

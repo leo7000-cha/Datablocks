@@ -126,7 +126,23 @@
                     </div>
                     <div class="jm-field">
                         <label class="jm-label">Calendar</label>
-                        <div class="jm-readonly"><c:out value="${piijob.calendar}"/></div>
+                        <div class="jm-readonly">
+                            <c:choose>
+                                <c:when test="${piijob.calendar eq 'ALLDAYS'}"><spring:message code="etc.cal_alldays" text="매일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEKDAYS'}"><spring:message code="etc.cal_weekdays" text="평일(월~금)"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEKEND'}"><spring:message code="etc.cal_weekend" text="주말(토,일)"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_MON'}"><spring:message code="etc.cal_mon" text="매주 월요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_TUE'}"><spring:message code="etc.cal_tue" text="매주 화요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_WED'}"><spring:message code="etc.cal_wed" text="매주 수요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_THU'}"><spring:message code="etc.cal_thu" text="매주 목요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_FRI'}"><spring:message code="etc.cal_fri" text="매주 금요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_SAT'}"><spring:message code="etc.cal_sat" text="매주 토요일"/></c:when>
+                                <c:when test="${piijob.calendar eq 'WEEK_SUN'}"><spring:message code="etc.cal_sun" text="매주 일요일"/></c:when>
+                                <c:when test="${piijob.calendar eq '2ND_SAT'}"><spring:message code="etc.cal_2nd_sat" text="격주 토요일"/></c:when>
+                                <c:when test="${piijob.calendar eq '2ND_SUN'}"><spring:message code="etc.cal_2nd_sun" text="격주 일요일"/></c:when>
+                                <c:otherwise><c:out value="${piijob.calendar}"/></c:otherwise>
+                            </c:choose>
+                        </div>
                     </div>
                 </div>
                 <div class="jm-inline">

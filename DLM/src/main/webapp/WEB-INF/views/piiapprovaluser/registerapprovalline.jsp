@@ -134,7 +134,7 @@
                 },
                 success: function (result, data) {
                     if (result == "success") {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         goBackToList();
                     } else {
                         $("#errormodalbody").html(result);

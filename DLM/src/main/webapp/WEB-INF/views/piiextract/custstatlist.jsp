@@ -317,11 +317,11 @@
         var search6 = $('#filter_search6').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (search6 == "QUARTERLY" && isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -366,11 +366,11 @@
             e.preventDefault();
             e.stopPropagation();
             if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-                alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+                dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
                 return;
             }
             if (isEmpty($('#checkin_reason').val())) {
-                alert("Enter request reason for CHECK-IN ");
+                dlmAlert("Enter request reason for CHECK-IN ");
                 return;
             }
             doubleSubmitFlag = true;
@@ -389,11 +389,11 @@
         var search6 = $('#filter_search6').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (search6 == "QUARTERLY" && isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -438,11 +438,11 @@
         var search6 = $('#filter_search6').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (search6 == "QUARTERLY" && isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -472,7 +472,7 @@
             success: function (data, textStatus, jqXHR) {
                 ingHide();
                 if (data == "success") {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(pagenum);
                 } else {
                     $("#errormodalbody").html(data);
@@ -529,31 +529,32 @@
     });
 
     function executePurge() {
-        if (!confirm('영구파기/복원 완료 레코드를 정리합니다.\n보존 기간이 경과한 레코드만 삭제됩니다.\n\n실행하시겠습니까?')) return;
-        ingShow();
-        $.ajax({
-            type: "POST",
-            url: "/piiextract/purge",
-            contentType: "application/json; charset=UTF-8",
-            beforeSend: function (xhr) {
-                xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-            },
-            success: function (data) {
-                ingHide();
-                var result = (typeof data === 'string') ? JSON.parse(data) : data;
-                if (result.status === 'OK') {
-                    alert('퍼지 완료: ' + result.message);
-                    searchAction(1);
-                } else {
-                    $("#errormodalbody").html('<div class="alert alert-danger">' + result.message + '</div>');
+        showConfirm('영구파기/복원 완료 레코드를 정리합니다.\n보존 기간이 경과한 레코드만 삭제됩니다.\n\n실행하시겠습니까?', function() {
+            ingShow();
+            $.ajax({
+                type: "POST",
+                url: "/piiextract/purge",
+                contentType: "application/json; charset=UTF-8",
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                },
+                success: function (data) {
+                    ingHide();
+                    var result = (typeof data === 'string') ? JSON.parse(data) : data;
+                    if (result.status === 'OK') {
+                        dlmAlert('퍼지 완료: ' + result.message);
+                        searchAction(1);
+                    } else {
+                        $("#errormodalbody").html('<div class="alert alert-danger">' + result.message + '</div>');
+                        $("#errormodal").modal("show");
+                    }
+                },
+                error: function (req, err) {
+                    ingHide();
+                    $("#errormodalbody").html('<div class="alert alert-danger">퍼지 요청 실패: ' + req.status + '</div>');
                     $("#errormodal").modal("show");
                 }
-            },
-            error: function (req, err) {
-                ingHide();
-                $("#errormodalbody").html('<div class="alert alert-danger">퍼지 요청 실패: ' + req.status + '</div>');
-                $("#errormodal").modal("show");
-            }
+            });
         });
     }
 
@@ -572,11 +573,11 @@
         var search6 = $('#filter_search6').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (search6 == "QUARTERLY" && isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 

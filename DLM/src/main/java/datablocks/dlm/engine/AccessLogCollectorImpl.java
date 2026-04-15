@@ -55,7 +55,13 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
     @Override
     public int collect(AccessLogSourceVO source) {
-        LogUtil.log("INFO", "AccessLogCollector collect: " + source.getSourceName());
+        LogUtil.log("INFO", "AccessLogCollector collect: " + source.getSourceName() + " [" + source.getSourceType() + "]");
+
+        // WAS_AGENT 소스는 Agent가 직접 Push하므로 Scheduler 수집 대상이 아님
+        if ("WAS_AGENT".equalsIgnoreCase(source.getSourceType())) {
+            LogUtil.log("DEBUG", "Skipping WAS_AGENT source (agent-push): " + source.getSourceName());
+            return 0;
+        }
 
         int collectedCount = 0;
         String startTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -69,7 +75,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
             PiiDatabaseVO dbInfo = databaseService.get(source.getDbName());
             if (dbInfo == null) {
                 LogUtil.log("ERROR", "Database not found: " + source.getDbName());
-                recordCollectStatus(source.getSourceId(), startTime, 0, "FAIL", "Database not found: " + source.getDbName());
+                recordCollectStatus(source.getSourceId(), startTime, 0, "FAIL", "Database not found: " + source.getDbName(), null);
                 return 0;
             }
 
@@ -82,8 +88,13 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                     dbInfo.getDbuser(), decryptedPwd);
 
             try {
-                // 3. DB별 Audit Log 조회
-                List<AccessLogVO> logs = queryAuditLog(conn, dbInfo.getDbtype(), source, lastOffset);
+                // 3. 수집 방식에 따른 분기
+                List<AccessLogVO> logs;
+                if ("DB_DAC".equalsIgnoreCase(source.getSourceType())) {
+                    logs = queryDacLog(conn, dbInfo.getDbtype(), source, lastOffset);
+                } else {
+                    logs = queryAuditLog(conn, dbInfo.getDbtype(), source, lastOffset);
+                }
                 collectedCount = logs.size();
 
                 // 4. 배치 INSERT
@@ -91,9 +102,16 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                     accessLogService.registerAccessLogBatch(logs);
                 }
 
-                // 5. 수집 상태 업데이트
-                String newOffset = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                recordCollectStatus(source.getSourceId(), startTime, collectedCount, "SUCCESS", null);
+                // 5. 수집 상태 업데이트 — 마지막 access_time을 오프셋으로 저장 (증분 수집)
+                String newOffset = null;
+                if (!logs.isEmpty()) {
+                    // 마지막 레코드의 access_time을 다음 수집의 시작점으로 사용
+                    String lastAccessTime = logs.get(logs.size() - 1).getAccessTime();
+                    newOffset = lastAccessTime != null ? lastAccessTime : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                } else {
+                    newOffset = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                }
+                recordCollectStatus(source.getSourceId(), startTime, collectedCount, "SUCCESS", null, newOffset);
                 accessLogMapper.updateSourceCollectInfo(source.getSourceId(), newOffset, collectedCount);
                 accessLogMapper.updateSourceStatus(source.getSourceId(), "RUNNING", null);
 
@@ -105,7 +123,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
         } catch (Exception e) {
             logger.error("Collection failed for source: " + source.getSourceName(), e);
-            recordCollectStatus(source.getSourceId(), startTime, 0, "FAIL", e.getMessage());
+            recordCollectStatus(source.getSourceId(), startTime, 0, "FAIL", e.getMessage(), null);
             accessLogMapper.updateSourceStatus(source.getSourceId(), "ERROR", e.getMessage());
         }
 
@@ -162,6 +180,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                 log.setTargetDb(source.getDbName());
                 log.setTargetTable(rs.getString("target_table"));
                 log.setSqlText(rs.getString("sql_text"));
+                log.setCollectType("DB_AUDIT");
                 log.setAccessChannel("DB_DIRECT");
                 log.setResultCode("SUCCESS");
                 logs.add(log);
@@ -379,14 +398,133 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
     }
 
     /**
+     * DB접근제어(DB_DAC) 솔루션 접속기록 조회
+     * - 사용자가 작성한 SELECT문을 직접 실행
+     * - SELECT문은 표준 컬럼 alias를 사용해야 함:
+     *   access_time(필수), user_account, user_name, department, client_ip,
+     *   action_type, target_table, sql_text, result_code
+     * - 증분 수집: #{LAST_OFFSET} 치환자를 통해 마지막 수집 시점 이후만 조회
+     */
+    private List<AccessLogVO> queryDacLog(Connection conn, String dbType, AccessLogSourceVO source, String lastOffset) {
+        List<AccessLogVO> logs = new ArrayList<>();
+
+        String selectSql = source.getDacSelectSql();
+        if (selectSql == null || selectSql.trim().isEmpty()) {
+            LogUtil.log("ERROR", "DAC source missing SELECT statement: " + source.getSourceName());
+            return logs;
+        }
+
+        try {
+            // #{LAST_OFFSET} 치환 — 증분 수집 지원
+            String sql = selectSql.trim();
+            if (lastOffset != null && !lastOffset.isEmpty()) {
+                sql = sql.replace("#{LAST_OFFSET}", "'" + lastOffset.replace("'", "''") + "'");
+            } else {
+                // 최초 수집: 조건을 항상 참으로 치환
+                sql = sql.replace("#{LAST_OFFSET}", "'1970-01-01 00:00:00'");
+            }
+
+            LogUtil.log("DEBUG", "DAC query: " + sql);
+
+            Statement stmt = conn.createStatement();
+            stmt.setFetchSize(1000);
+            ResultSet rs = stmt.executeQuery(sql);
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            Set<String> colNames = new java.util.HashSet<>();
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                colNames.add(meta.getColumnLabel(i).toLowerCase());
+            }
+
+            while (rs.next()) {
+                AccessLogVO log = new AccessLogVO();
+                log.setSourceSystemId(source.getSourceId());
+                log.setTargetDb(source.getDbName());
+                log.setCollectType("DB_DAC");
+
+                // 필수: access_time — 없으면 행 스킵
+                if (colNames.contains("access_time")) {
+                    String at = rs.getString("access_time");
+                    if (at == null || at.trim().isEmpty()) continue;
+                    log.setAccessTime(at);
+                } else {
+                    continue; // access_time alias 없으면 수집 불가
+                }
+                // 선택: 표준 alias 기반 자동 매핑
+                if (colNames.contains("user_account")) log.setUserAccount(rs.getString("user_account"));
+                if (colNames.contains("user_name")) log.setUserName(rs.getString("user_name"));
+                if (colNames.contains("department")) log.setDepartment(rs.getString("department"));
+                if (colNames.contains("client_ip")) log.setClientIp(rs.getString("client_ip"));
+                if (colNames.contains("action_type")) {
+                    log.setActionType(normalizeActionType(rs.getString("action_type")));
+                } else {
+                    log.setActionType("OTHER");
+                }
+                if (colNames.contains("target_table")) log.setTargetTable(rs.getString("target_table"));
+                if (colNames.contains("sql_text")) log.setSqlText(rs.getString("sql_text"));
+                if (colNames.contains("result_code")) {
+                    log.setResultCode(normalizeResultCode(rs.getString("result_code")));
+                } else {
+                    log.setResultCode("SUCCESS");
+                }
+                if (colNames.contains("access_channel")) log.setAccessChannel(rs.getString("access_channel"));
+                if (colNames.contains("target_schema")) log.setTargetSchema(rs.getString("target_schema"));
+
+                logs.add(log);
+            }
+
+            rs.close();
+            stmt.close();
+
+            // PII 자동 분류 (SQL텍스트가 있는 경우)
+            for (AccessLogVO log : logs) {
+                enrichWithPiiInfo(log, source);
+            }
+
+            LogUtil.log("INFO", "DAC collected " + logs.size() + " records from " + source.getSourceName());
+
+        } catch (Exception e) {
+            logger.error("DAC log query failed for source: " + source.getSourceName(), e);
+        }
+
+        return logs;
+    }
+
+    /**
+     * DAC 솔루션별 다양한 action_type 값을 DLM 표준으로 정규화
+     */
+    private String normalizeActionType(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "OTHER";
+        String upper = raw.trim().toUpperCase();
+        if (upper.contains("SELECT") || upper.equals("1") || upper.equals("QUERY") || upper.equals("READ")) return "SELECT";
+        if (upper.contains("UPDATE") || upper.equals("2") || upper.equals("MODIFY")) return "UPDATE";
+        if (upper.contains("DELETE") || upper.equals("3") || upper.equals("REMOVE")) return "DELETE";
+        if (upper.contains("INSERT") || upper.equals("4") || upper.equals("CREATE") || upper.equals("ADD")) return "INSERT";
+        if (upper.contains("EXPORT") || upper.contains("DOWNLOAD")) return "EXPORT";
+        return upper;
+    }
+
+    /**
+     * DAC 솔루션별 결과 코드를 DLM 표준으로 정규화
+     */
+    private String normalizeResultCode(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "SUCCESS";
+        String upper = raw.trim().toUpperCase();
+        if (upper.contains("SUCCESS") || upper.equals("0") || upper.equals("Y") || upper.equals("ALLOW") || upper.equals("PERMIT")) return "SUCCESS";
+        if (upper.contains("FAIL") || upper.equals("1") || upper.equals("N") || upper.equals("ERROR")) return "FAIL";
+        if (upper.contains("DENY") || upper.contains("DENIED") || upper.contains("BLOCK") || upper.contains("REJECT")) return "DENIED";
+        return upper;
+    }
+
+    /**
      * 수집 상태 기록
      */
-    private void recordCollectStatus(String sourceId, String startTime, int count, String status, String errorMsg) {
+    private void recordCollectStatus(String sourceId, String startTime, int count, String status, String errorMsg, String lastOffset) {
         AccessLogCollectStatusVO collectStatus = new AccessLogCollectStatusVO();
         collectStatus.setSourceId(sourceId);
         collectStatus.setCollectStart(startTime);
         collectStatus.setCollectEnd(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         collectStatus.setCollectedCount(count);
+        collectStatus.setLastOffset(lastOffset);
         collectStatus.setStatus(status);
         collectStatus.setErrorMsg(errorMsg);
         accessLogMapper.insertCollectStatus(collectStatus);

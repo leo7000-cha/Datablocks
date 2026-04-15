@@ -20,5 +20,6 @@ public class LkPiiScrTypeVO {
 	private String encdecfunctype;
 	private String encfunc;
 	private String decfunc;
+	private String visible;  // 인벤토리 표시 여부 (Y/N)
 
 }

@@ -288,7 +288,7 @@
             var approverid = form.find('[name="approverid"]').val().trim();
 
             if (!approverid) {
-                alert('<spring:message code="msg.selectapprover" text="Please select an approver"/>');
+                dlmAlert('<spring:message code="msg.selectapprover" text="Please select an approver"/>');
                 return;
             }
 
@@ -316,7 +316,7 @@
                         $('#registerModal').modal('hide');
                         $('.modal-backdrop').remove();
                         $('body').removeClass('modal-open').css('padding-right', '');
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         setTimeout(function() {
                             searchAction(1);
                         }, 500);
@@ -339,7 +339,7 @@
             var approverid = form.find('[name="approverid"]').val().trim();
 
             if (!approverid) {
-                alert('<spring:message code="msg.selectapprover" text="Please select an approver"/>');
+                dlmAlert('<spring:message code="msg.selectapprover" text="Please select an approver"/>');
                 return;
             }
 
@@ -371,7 +371,7 @@
                         $('#modifyModal').modal('hide');
                         $('.modal-backdrop').remove();
                         $('body').removeClass('modal-open').css('padding-right', '');
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         setTimeout(function() {
                             searchAction(1);
                         }, 500);
@@ -390,50 +390,48 @@
 
         // Delete
         $('#btnDelete').on('click', function () {
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>')) {
-                return;
-            }
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>', function() {
+                var form = $('#modifyForm');
+                var formData = {
+                    aprvlineid: form.find('[name="aprvlineid"]').val(),
+                    approvalid: form.find('[name="approvalid"]').val(),
+                    approvalname: form.find('[name="approvalname"]').val(),
+                    approverid: form.find('[name="approverid_old"]').val(),
+                    approvername: form.find('[name="approvername_old"]').val(),
+                    seq: form.find('[name="seq"]').val()
+                };
 
-            var form = $('#modifyForm');
-            var formData = {
-                aprvlineid: form.find('[name="aprvlineid"]').val(),
-                approvalid: form.find('[name="approvalid"]').val(),
-                approvalname: form.find('[name="approvalname"]').val(),
-                approverid: form.find('[name="approverid_old"]').val(),
-                approvername: form.find('[name="approvername_old"]').val(),
-                seq: form.find('[name="seq"]').val()
-            };
-
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piiapprovaluser/remove",
-                data: JSON.stringify(formData),
-                contentType: "application/json; charset=UTF-8",
-                dataType: "text",
-                beforeSend: function (xhr) {
-                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-                },
-                success: function (data) {
-                    ingHide();
-                    if (data == "success") {
-                        $('#modifyModal').modal('hide');
-                        $('.modal-backdrop').remove();
-                        $('body').removeClass('modal-open').css('padding-right', '');
-                        $("#GlobalSuccessMsgModal").modal("show");
-                        setTimeout(function() {
-                            searchAction(1);
-                        }, 500);
-                    } else {
-                        $("#errormodalbody").html(data);
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piiapprovaluser/remove",
+                    data: JSON.stringify(formData),
+                    contentType: "application/json; charset=UTF-8",
+                    dataType: "text",
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                    },
+                    success: function (data) {
+                        ingHide();
+                        if (data == "success") {
+                            $('#modifyModal').modal('hide');
+                            $('.modal-backdrop').remove();
+                            $('body').removeClass('modal-open').css('padding-right', '');
+                            showToast("처리가 완료되었습니다.", false);
+                            setTimeout(function() {
+                                searchAction(1);
+                            }, 500);
+                        } else {
+                            $("#errormodalbody").html(data);
+                            $("#errormodal").modal("show");
+                        }
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
                         $("#errormodal").modal("show");
                     }
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+                });
             });
         });
     });

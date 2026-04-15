@@ -32,7 +32,7 @@ public class HomeController {
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String home(Locale locale, Model model) {
-        logger.info("[PERF] GET / → redirect to /hub");
+        LogUtil.log("INFO", "GET / → redirect to /hub");
         LogUtil.log("INFO", "Welcome DATABLOCKS X-One", locale);
 
         Date date = new Date();
@@ -54,7 +54,7 @@ public class HomeController {
     @RequestMapping(value = "/hub", method = RequestMethod.GET)
     @PreAuthorize("isAuthenticated()")
     public String hub(Model model) {
-        logger.info("[PERF] GET /hub → rendering hub.jsp");
+        LogUtil.log("INFO", "GET /hub → rendering hub.jsp");
         model.addAttribute("moduleXpurge", !"N".equalsIgnoreCase(EnvConfig.getConfig("MODULE_XPURGE")));
         model.addAttribute("moduleXgen", !"N".equalsIgnoreCase(EnvConfig.getConfig("MODULE_XGEN")));
         model.addAttribute("moduleXscan", !"N".equalsIgnoreCase(EnvConfig.getConfig("MODULE_XSCAN")));

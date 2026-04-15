@@ -26,4 +26,8 @@ public interface LkPiiScrTypeMapper {
 	
 	public int getTotalCount(Criteria cri);
 
+	public List<LkPiiScrTypeVO> getListAll();
+
+	public int updateVisible(@Param("piicode") String piicode, @Param("visible") String visible);
+
 }

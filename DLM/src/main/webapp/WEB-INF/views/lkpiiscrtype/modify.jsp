@@ -148,7 +148,7 @@
                 <tbody>
                 <tr>
                     <th><spring:message code="col.piicode" text="Piicode"/></th>
-                    <td><input readonly type="text" name='piicode' value='<c:out value="${lkpiiscrtype.piicode}" escapeXml="false"/>'></td>
+                    <td><input type="text" name='piicode' value='<c:out value="${lkpiiscrtype.piicode}" escapeXml="false"/>'></td>
                 </tr>
                 <tr>
                     <th><spring:message code="col.piigradename" text="PII Grade"/></th>
@@ -250,6 +250,15 @@
                     <th><spring:message code="col.decfunc" text="Decrypt Function"/></th>
                     <td><input type="text" name='decfunc' value='<c:out value="${lkpiiscrtype.decfunc}"/>'></td>
                 </tr>
+                <tr>
+                    <th>사용여부</th>
+                    <td>
+                        <select name="visible" style="width: 80px;">
+                            <option value="Y" <c:if test="${lkpiiscrtype.visible ne 'N'}">selected</c:if>>Y</option>
+                            <option value="N" <c:if test="${lkpiiscrtype.visible eq 'N'}">selected</c:if>>N</option>
+                        </select>
+                    </td>
+                </tr>
                 </tbody>
             </table>
             <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
@@ -321,7 +330,7 @@
             var piicode = $('#lkpiiscrtype_modify_form [name="piicode"]').val();
 
             if (piicode != piicode_original) {
-                alert("<spring:message code="col.piicode" text="Piicode"/> should be same from '" + piicode_original + "'");
+                dlmAlert("<spring:message code="col.piicode" text="Piicode"/> should be same from '" + piicode_original + "'");
                 return;
             }
 
@@ -329,7 +338,7 @@
             for (var i = 0; i < requiredFields.length; i++) {
                 var val = $('#lkpiiscrtype_modify_form [name="' + requiredFields[i] + '"]').val();
                 if (!val || val.trim() === '') {
-                    alert(requiredFields[i] + " is mandatory");
+                    dlmAlert(requiredFields[i] + " is mandatory");
                     $('#lkpiiscrtype_modify_form [name="' + requiredFields[i] + '"]').focus();
                     return;
                 }
@@ -353,7 +362,7 @@
                     $('.modal-backdrop').remove();
                     refreshList();
                     setTimeout(function() {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                     }, 300);
                 }
             });
@@ -368,7 +377,7 @@
             var piicode = $('#lkpiiscrtype_modify_form [name="piicode"]').val();
 
             if (piicode == piicode_original) {
-                alert("<spring:message code="col.piicode" text="Piicode"/> should be different from '" + piicode_original + "'");
+                dlmAlert("<spring:message code="col.piicode" text="Piicode"/> should be different from '" + piicode_original + "'");
                 return;
             }
 
@@ -376,7 +385,7 @@
             for (var i = 0; i < requiredFields.length; i++) {
                 var val = $('#lkpiiscrtype_modify_form [name="' + requiredFields[i] + '"]').val();
                 if (!val || val.trim() === '') {
-                    alert(requiredFields[i] + " is mandatory");
+                    dlmAlert(requiredFields[i] + " is mandatory");
                     $('#lkpiiscrtype_modify_form [name="' + requiredFields[i] + '"]').focus();
                     return;
                 }
@@ -400,7 +409,7 @@
                     $('.modal-backdrop').remove();
                     refreshList();
                     setTimeout(function() {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                     }, 300);
                 }
             });
@@ -411,31 +420,29 @@
             e.preventDefault();
             e.stopPropagation();
 
-            if (!confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>")) {
-                return;
-            }
-
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/lkpiiscrtype/remove",
-                dataType: "html",
-                data: $("#lkpiiscrtype_modify_form").serialize(),
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (data) {
-                    ingHide();
-                    $('#detailModal').modal('hide');
-                    $('body').removeClass('modal-open');
-                    $('.modal-backdrop').remove();
-                    refreshList();
-                    setTimeout(function() {
-                        $("#GlobalSuccessMsgModal").modal("show");
-                    }, 300);
-                }
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/lkpiiscrtype/remove",
+                    dataType: "html",
+                    data: $("#lkpiiscrtype_modify_form").serialize(),
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    },
+                    success: function (data) {
+                        ingHide();
+                        $('#detailModal').modal('hide');
+                        $('body').removeClass('modal-open');
+                        $('.modal-backdrop').remove();
+                        refreshList();
+                        setTimeout(function() {
+                            showToast("처리가 완료되었습니다.", false);
+                        }, 300);
+                    }
+                });
             });
         });
 

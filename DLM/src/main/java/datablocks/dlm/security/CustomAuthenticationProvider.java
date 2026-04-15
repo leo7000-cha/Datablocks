@@ -265,6 +265,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 		/* 최종 리턴 시킬 새로 만든 Authentication 객체 */
 		Authentication newAuth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
+		LogUtil.log("INFO", "authenticate SUCCESS - userId=" + userId + ", authorities=" + newAuth.getAuthorities());
 		return newAuth;
 	}
 

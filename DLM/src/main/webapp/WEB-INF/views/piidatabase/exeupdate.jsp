@@ -550,7 +550,7 @@
 
             var db = $('#db').val();
             if (!db) {
-                alert("Please select a database!");
+                dlmAlert("Please select a database!");
                 actionExecuted = false;
                 return;
             }
@@ -606,7 +606,7 @@
 
             var db = $('#db').val();
             if (!db) {
-                alert("Please select a database!");
+                dlmAlert("Please select a database!");
                 actionExecuted = false;
                 return;
             }
@@ -619,8 +619,8 @@
             var url = "/piidatabase/exeupdate_download_excel?pagenum=1&amount=100000";
             url += "&search1=" + encodeURIComponent(db);
             url += "&search2=" + encodeURIComponent(amho);
-            url += "&search3=SELECT";
-            url += "&search4=" + encodeURIComponent(splitter);
+            url += "&search3=" + encodeURIComponent(splitter);
+            url += "&search4=SELECT";
             url += "&search5=" + encodeURIComponent(maxrowcnt);
             url += "&search6=" + encodeURIComponent(sqlstr);
 

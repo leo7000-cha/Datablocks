@@ -375,7 +375,7 @@ public class PiiDatabaseController {
     }
 
 
-    @PostMapping("exeupdate_download_excel")
+    @PostMapping("/exeupdate_download_excel")
     @PreAuthorize("isAuthenticated()")
     public String exeupdate_download_excel(Criteria cri, Locale locale, Model model, HttpServletRequest request) {
         LogUtil.log("INFO", "/exeupdate - " + cri.toString());

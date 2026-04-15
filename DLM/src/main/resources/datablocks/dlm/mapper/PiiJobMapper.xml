@@ -171,10 +171,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</update>
 	<update id="approve">
 		update cotdl.tbl_piijob
-		   set 
+		   set
 			   phase= 'CHECKIN',
 			   upddate= NOW()
 		 where jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR}
+	</update>
+	<update id="forceTogglePhase">
+		update cotdl.tbl_piijob
+		   set phase = CASE WHEN phase = 'CHECKIN' THEN 'CHECKOUT' ELSE 'CHECKIN' END,
+		       upddate = NOW()
+		 where jobid = #{jobid, jdbcType=VARCHAR} and version = #{version, jdbcType=VARCHAR}
 	</update>
 	<update id="setold">
 		update cotdl.tbl_piijob

@@ -82,11 +82,19 @@ fi
 
 # --- 방화벽 설정 ---
 if systemctl is-active firewalld &>/dev/null; then
-    log "방화벽 포트 오픈 (8080, 8000)..."
+    log "방화벽 포트 오픈 (8080, 8000) — firewalld..."
     firewall-cmd --permanent --add-port=8080/tcp 2>/dev/null || true
     firewall-cmd --permanent --add-port=8000/tcp 2>/dev/null || true
     firewall-cmd --reload 2>/dev/null || true
     log "방화벽 포트 오픈 완료"
+elif systemctl is-active iptables &>/dev/null; then
+    log "방화벽 포트 오픈 (8080, 8000) — iptables..."
+    iptables -I INPUT -p tcp --dport 8080 -j ACCEPT 2>/dev/null || true
+    iptables -I INPUT -p tcp --dport 8000 -j ACCEPT 2>/dev/null || true
+    service iptables save 2>/dev/null || true
+    log "방화벽 포트 오픈 완료"
+else
+    warn "방화벽 서비스가 감지되지 않습니다. 포트 8080, 8000 접근 가능 여부 확인 필요"
 fi
 
 # --- 확인 ---

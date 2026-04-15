@@ -166,8 +166,8 @@
                     $("#errormodal").modal("show");
                 },
                 success: function (data) { ingHide();
-                    alert("Successful!");
-                    alert(data);
+                    dlmAlert("Successful!");
+                    //alert(data);
                     elementResult.html(data); //받아온 data 실행
                     //elementResult.text(Parse_data); //받아온 data 실행
                 }

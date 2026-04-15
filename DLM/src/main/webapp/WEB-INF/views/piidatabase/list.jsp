@@ -1248,7 +1248,7 @@
                 success: function (data) {
                     ingHide();
                     closeModal('#registerModal');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -1278,7 +1278,7 @@
                 success: function (data) {
                     ingHide();
                     closeModal('#modifyModal');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -1299,27 +1299,25 @@
             var form = $('#modifyForm');
             var db = form.find('[name="db"]').val();
 
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure you want to delete"/> ' + db + '?')) {
-                return;
-            }
-
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piidatabase/remove",
-                data: { db: db, "${_csrf.parameterName}": "${_csrf.token}" },
-                dataType: "html",
-                success: function (data) {
-                    ingHide();
-                    closeModal('#modifyModal');
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() { searchAction(); }, 500);
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure you want to delete"/> ' + db + '?', function() {
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piidatabase/remove",
+                    data: { db: db, "${_csrf.parameterName}": "${_csrf.token}" },
+                    dataType: "html",
+                    success: function (data) {
+                        ingHide();
+                        closeModal('#modifyModal');
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() { searchAction(); }, 500);
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });
@@ -1350,26 +1348,26 @@
         var dbuser = form.find('[name="dbuser"]').val();
         var pwd = form.find('[name="pwd"]').val();
 
-        if (!db) { alert('DB Name is required'); form.find('[name="db"]').focus(); return false; }
-        if (!hostname) { alert('Hostname is required'); form.find('[name="hostname"]').focus(); return false; }
-        if (!port) { alert('Port is required'); form.find('[name="port"]').focus(); return false; }
-        if (!dbuser) { alert('DB User is required'); form.find('[name="dbuser"]').focus(); return false; }
-        if (isRegister && !pwd) { alert('Password is required'); form.find('[name="pwd"]').focus(); return false; }
+        if (!db) { dlmAlert('DB Name is required'); form.find('[name="db"]').focus(); return false; }
+        if (!hostname) { dlmAlert('Hostname is required'); form.find('[name="hostname"]').focus(); return false; }
+        if (!port) { dlmAlert('Port is required'); form.find('[name="port"]').focus(); return false; }
+        if (!dbuser) { dlmAlert('DB User is required'); form.find('[name="dbuser"]').focus(); return false; }
+        if (isRegister && !pwd) { dlmAlert('Password is required'); form.find('[name="pwd"]').focus(); return false; }
 
         if (dbtype === 'ORACLE') {
             if (id_type !== 'SID' && id_type !== 'SERVICENAME') {
-                alert('SID or Service Name is required for Oracle');
+                dlmAlert('SID or Service Name is required for Oracle');
                 form.find('[name="id_type"]').val('SERVICENAME').focus();
                 return false;
             }
-            if (!id) { alert('SID or Service Name value is required for Oracle'); form.find('[name="id"]').focus(); return false; }
+            if (!id) { dlmAlert('SID or Service Name value is required for Oracle'); form.find('[name="id"]').focus(); return false; }
         }
 
         if ((dbtype === 'MYSQL' || dbtype === 'MARIADB' || dbtype === 'DB2')) {
             if (id_type !== 'DBNAME') {
                 form.find('[name="id_type"]').val('DBNAME');
             }
-            if (!id) { alert('DBNAME value is required for ' + dbtype); form.find('[name="id"]').focus(); return false; }
+            if (!id) { dlmAlert('DBNAME value is required for ' + dbtype); form.find('[name="id"]').focus(); return false; }
         }
 
         return true;
@@ -1402,7 +1400,7 @@
         };
 
         if (!data.hostname || !data.port || !data.dbuser) {
-            alert('Please fill in Hostname, Port, and DB User');
+            dlmAlert('Please fill in Hostname, Port, and DB User');
             return;
         }
 

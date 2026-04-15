@@ -1303,17 +1303,15 @@
 <script type="text/javascript">
     function handlePagitypedetailChange(val) {
         if (val === "Y") {
-            const confirmed = confirm(
+            showConfirm(
                 "⚠️ 'Y'를 선택하면 해당 테이블의 인덱스,FK가 자동으로 DROP 후 CREATE 됩니다.\n" +
                 "이 작업은 다른 사용자의 업무와 처리 성능에 영향을 줄 수 있으므로, 빈번히 사용되는 테이블의 경우 반드시 사전 공지가 필요합니다.\n\n" +
-                "계속 진행하시겠습니까?"
+                "계속 진행하시겠습니까?",
+                null,
+                function() {
+                    document.getElementById("pagitypedetail").value = "";
+                }
             );
-
-            if (!confirmed) {
-                // 사용자가 취소했을 경우 기본값으로 돌리기
-                document.getElementById("pagitypedetail").value = "";
-                return;
-            }
         }
     }
     function modifyColumnString(input) {
@@ -1443,7 +1441,7 @@
                 success: function (data) {
                     ingHide();
                     $("#" + stepid).trigger("click");
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     //loadAction();
 
                 }
@@ -1516,7 +1514,7 @@
             e.preventDefault();e.stopPropagation();
 
             if ($('#jobget_global_phase').val() != "CHECKOUT") {
-                alert("Job's status is not CHECKOUT");
+                dlmAlert("Job's status is not CHECKOUT");
                 return;
             }
             var seq3 = $('#piisteptable_modify_form [name="seq3"]').val();
@@ -1573,17 +1571,17 @@
             var amount = $('#searchForm [name="amount"]').val();
 
             if (isEmpty(search4)) {
-                alert("Check Table information (DB)");
+                dlmAlert("Check Table information (DB)");
                 return;
             }
             ;
             if (isEmpty(search5)) {
-                alert("Check Table information (OWNER)");
+                dlmAlert("Check Table information (OWNER)");
                 return;
             }
             ;
             if (isEmpty(search6)) {
-                alert("Check Table information (TABLE_NAME)");
+                dlmAlert("Check Table information (TABLE_NAME)");
                 return;
             }
             ;
@@ -1710,7 +1708,7 @@
     diologStepTableWaitAction = function () {
 
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
         var serchkeyno1 = $('#piisteptable_modify_form [name=jobid]').val();
@@ -1772,7 +1770,7 @@
     diologMetaTableAction = function () {
         //e.preventDefault();e.stopPropagation();
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
 
@@ -1814,7 +1812,7 @@
     diologStepTableUpdateAction = function () {
         //e.preventDefault();e.stopPropagation();
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
         var jobid = $('#piisteptable_modify_form [name=jobid]').val();
@@ -1831,17 +1829,17 @@
         var amount = $('#searchForm [name="amount"]').val();
 
         if (isEmpty(search4)) {
-            alert("Check Table information (DB)");
+            dlmAlert("Check Table information (DB)");
             return;
         }
         ;
         if (isEmpty(search5)) {
-            alert("Check Table information (OWNER)");
+            dlmAlert("Check Table information (OWNER)");
             return;
         }
         ;
         if (isEmpty(search6)) {
-            alert("Check Table information (TABLE_NAME)");
+            dlmAlert("Check Table information (TABLE_NAME)");
             return;
         }
         ;
@@ -1906,7 +1904,7 @@
     diologSearchTableAction = function (searchmode) {
 
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
 
@@ -2010,155 +2008,155 @@
             });
         }
         if (existTableflag) {
-            alert("This table is already registered");
+            dlmAlert("This table is already registered");
             return;
         }
         var jobtype = $('#piijob_modify_form [name="jobtype"]').val();
 
 
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "KEYMAP" && isEmpty($('#piisteptable_modify_form [name="keymap_id"]').val())) {
-            alert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
+            dlmAlert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
             $('#piisteptable_modify_form [name="keymap_id"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "KEYMAP" && isEmpty($('#piisteptable_modify_form [name="key_name"]').val())) {
-            alert('<spring:message code="col.key_name" text="Key_Name"/> is mandatory');
+            dlmAlert('<spring:message code="col.key_name" text="Key_Name"/> is mandatory');
             $('#piisteptable_modify_form [name="key_name"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "KEYMAP" && isEmpty($('#piisteptable_modify_form [name="key_cols"]').val())) {
-            alert('<spring:message code="col.key_cols" text="Key_Cols"/> is mandatory');
+            dlmAlert('<spring:message code="col.key_cols" text="Key_Cols"/> is mandatory');
             $('#piisteptable_modify_form [name="key_cols"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="jobid"]').val())) {
-            alert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
+            dlmAlert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
             $('#piisteptable_modify_form [name="jobid"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="version"]').val())) {
-            alert('<spring:message code="col.version" text="Version"/> is mandatory');
+            dlmAlert('<spring:message code="col.version" text="Version"/> is mandatory');
             $('#piisteptable_modify_form [name="version"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="stepid"]').val())) {
-            alert('<spring:message code="col.stepid" text="Stepid"/> is mandatory');
+            dlmAlert('<spring:message code="col.stepid" text="Stepid"/> is mandatory');
             $('#piisteptable_modify_form [name="stepid"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="db"]').val())) {
-            alert('<spring:message code="col.db" text="DB"/> is mandatory');
+            dlmAlert('<spring:message code="col.db" text="DB"/> is mandatory');
             $('#piisteptable_modify_form [name="db"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="owner"]').val())) {
-            alert('<spring:message code="col.owner" text="Owner"/> is mandatory');
+            dlmAlert('<spring:message code="col.owner" text="Owner"/> is mandatory');
             $('#piisteptable_modify_form [name="owner"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="table_name"]').val())) {
-            alert('<spring:message code="col.table_name" text="Table_Name"/> is mandatory');
+            dlmAlert('<spring:message code="col.table_name" text="Table_Name"/> is mandatory');
             $('#piisteptable_modify_form [name="table_name"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="exetype"]').val())) {
-            alert('<spring:message code="col.exetype" text="Exetype"/> is mandatory');
+            dlmAlert('<spring:message code="col.exetype" text="Exetype"/> is mandatory');
             $('#piisteptable_modify_form [name="exetype"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="seq1"]').val())) {
-            alert('<spring:message code="col.seq1" text="Seq1"/> is mandatory');
+            dlmAlert('<spring:message code="col.seq1" text="Seq1"/> is mandatory');
             $('#piisteptable_modify_form [name="seq1"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="seq2"]').val())) {
-            alert('<spring:message code="col.seq2" text="Seq2"/> is mandatory');
+            dlmAlert('<spring:message code="col.seq2" text="Seq2"/> is mandatory');
             $('#piisteptable_modify_form [name="seq2"]').focus();
             return;
         }
         if (isEmpty($('#piisteptable_modify_form [name="seq3"]').val())) {
-            alert('<spring:message code="col.seq3" text="Seq3"/> is mandatory');
+            dlmAlert('<spring:message code="col.seq3" text="Seq3"/> is mandatory');
             $('#piisteptable_modify_form [name="seq3"]').focus();
             return;
         }
         if (jobtype != "ILM" && jobtype != "MIGRATE")
             if ($('#piisteptable_modify_form [name="exetype"]').val() == "DELETE" && isEmpty($('#piisteptable_modify_form [name="where_col"]').val())) {
-                alert('<spring:message code="col.where_col" text="Where_Col"/> is mandatory');
+                dlmAlert('<spring:message code="col.where_col" text="Where_Col"/> is mandatory');
                 $('#piisteptable_modify_form [name="where_col"]').focus();
                 return;
             }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "DELETE" && isEmpty($('#piisteptable_modify_form [name="wherestr"]').val())) {
-            alert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
+            dlmAlert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
             $('#piisteptable_modify_form [name="wherestr"]').focus();
             return;
         }
 
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "SCRAMBLE" && isEmpty($('#piisteptable_modify_form [name="wherestr"]').val())) {
-            alert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
+            dlmAlert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
             $('#piisteptable_modify_form [name="wherestr"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "EXTRACT" && isEmpty($('#piisteptable_modify_form [name="sqlstr"]').val())) {
-            alert('<spring:message code="col.sqlstr" text="Sqlstr"/> is mandatory');
+            dlmAlert('<spring:message code="col.sqlstr" text="Sqlstr"/> is mandatory');
             $('#piisteptable_modify_form [name="sqlstr"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "FINISH" && isEmpty($('#piisteptable_modify_form [name="sqlstr"]').val())) {
-            alert('<spring:message code="col.sqlstr" text="Sqlstr"/> is mandatory');
+            dlmAlert('<spring:message code="col.sqlstr" text="Sqlstr"/> is mandatory');
             $('#piisteptable_modify_form [name="sqlstr"]').focus();
             return;
         }
         if (jobtype != "ILM" && jobtype != "MIGRATE" && jobtype != "SCRAMBLE")
             if ($('#piisteptable_modify_form [name="exetype"]').val() == "DELETE" && isEmpty($('#piisteptable_modify_form [name="where_key_name"]').val())) {
-                alert('<spring:message code="col.where_key_name" text="Where_Key_Name"/> is mandatory');
+                dlmAlert('<spring:message code="col.where_key_name" text="Where_Key_Name"/> is mandatory');
                 $('#piisteptable_modify_form [name="where_key_name"]').focus();
                 return;
             }
 
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "DELETE" && isEmpty($('#piisteptable_modify_form [name="pk_col"]').val())) {
-            alert('<spring:message code="col.pk_col" text="Pk_Col"/> is mandatory');
+            dlmAlert('<spring:message code="col.pk_col" text="Pk_Col"/> is mandatory');
             $('#piisteptable_modify_form [name="pk_col"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "UPDATE" && isEmpty($('#piisteptable_modify_form [name="pk_col"]').val())) {
-            alert('<spring:message code="col.pk_col" text="Pk_Col"/> is mandatory');
+            dlmAlert('<spring:message code="col.pk_col" text="Pk_Col"/> is mandatory');
             $('#piisteptable_modify_form [name="pk_col"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "KEYMAP" && isEmpty($('#piisteptable_modify_form [name="pk_col"]').val())) {
-            alert('<spring:message code="etc.keyname_desc" text="Key Desc"/> is mandatory');
+            dlmAlert('<spring:message code="etc.keyname_desc" text="Key Desc"/> is mandatory');
             $('#piisteptable_modify_form [name="pk_col"]').focus();
             return;
         }
 
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "SCRAMBLE" && isEmpty($('#piisteptable_modify_form [name="pk_col"]').val())) {
-            alert('<spring:message code="etc.hashcol" text="Distribution Key"/> is mandatory');
+            dlmAlert('<spring:message code="etc.hashcol" text="Distribution Key"/> is mandatory');
             $('#piisteptable_modify_form [name="pk_col"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "UPDATE" && isEmpty($('#piisteptable_modify_form [name="where_col"]').val())) {
-            alert('<spring:message code="col.where_col" text="Where_Col"/> is mandatory');
+            dlmAlert('<spring:message code="col.where_col" text="Where_Col"/> is mandatory');
             $('#piisteptable_modify_form [name="where_col"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "UPDATE" && isEmpty($('#piisteptable_modify_form [name="wherestr"]').val())) {
-            alert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
+            dlmAlert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
             $('#piisteptable_modify_form [name="wherestr"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "UPDATE" && isEmpty($('#piisteptable_modify_form [name="where_key_name"]').val())) {
-            alert('<spring:message code="col.where_key_name" text="Where_Key_Name"/> is mandatory');
+            dlmAlert('<spring:message code="col.where_key_name" text="Where_Key_Name"/> is mandatory');
             $('#piisteptable_modify_form [name="where_key_name"]').focus();
             return;
         }
 
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "BROADCAST" && isEmpty($('#piisteptable_modify_form [name="wherestr"]').val())) {
-            alert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
+            dlmAlert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
             $('#piisteptable_modify_form [name="wherestr"]').focus();
             return;
         }
         if ($('#piisteptable_modify_form [name="exetype"]').val() == "MIGRATE" && isEmpty($('#piisteptable_modify_form [name="wherestr"]').val())) {
-            alert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
+            dlmAlert('<spring:message code="col.wherestr" text="Wherestr"/> is mandatory');
             $('#piisteptable_modify_form [name="wherestr"]').focus();
             return;
         }
@@ -2171,7 +2169,7 @@
         if (preceding === "REPLACEINSERT" || preceding === "DELDUPINSERT") {
             // pagitypedetail 값이 N이 아닌 경우
             if (pagitypedetail == "Y") {
-                alert('<spring:message code="msg.validatepk" text="When Data Handling Method is REPLACEINSERT or DELDUPINSERT, Index, FK Disable Flag must be N."/>');
+                dlmAlert('<spring:message code="msg.validatepk" text="When Data Handling Method is REPLACEINSERT or DELDUPINSERT, Index, FK Disable Flag must be N."/>');
                 $('#piisteptable_modify_form [name="pagitypedetail"]').focus();
                 return;
             }
@@ -2246,7 +2244,7 @@
                             }
                         });
                     } else {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                     }
                 } else if (data == 'dup') {
                     $("#errormodalbody").html('<spring:message code="msg.tableisalreadyregisterd" text="The table is already registered!"/>');
@@ -2392,7 +2390,7 @@
                 ingHide();
                 if (data.status === 'OK') {
                     $("#errormodal").modal("hide");
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 } else {
                     var html = '<div class="alert alert-danger">재실행 실패</div>';
                     html += '<div><small>' + (data.message || '') + '</small></div>';
@@ -2471,7 +2469,7 @@
                 ingHide();
                 if (data.status === 'OK') {
                     $("#errormodal").modal("hide");
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 } else {
                     var html = '<div class="alert alert-danger">DDL 실행 실패</div>';
                     html += '<div><small>' + (data.message || '') + '</small></div>';

@@ -308,7 +308,7 @@
             });
 
             if (checkedcnt == 0) {
-                alert("<spring:message code='msg.selecttorestore' text='Please select a processing target'/>");
+                dlmAlert("<spring:message code='msg.selecttorestore' text='Please select a processing target'/>");
                 return;
             }
 
@@ -343,12 +343,12 @@
             e.stopPropagation();
 
             if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-                alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+                dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
                 return;
             }
 
             if (isEmpty($('#checkin_reason').val())) {
-                alert("Enter request reason for CHECK-IN ");
+                dlmAlert("Enter request reason for CHECK-IN ");
                 return;
             }
 
@@ -503,7 +503,7 @@
             success: function (data, textStatus, jqXHR) {
                 ingHide();
                 if (data == "success") {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(pagenum);
                 } else {
                     $("#errormodalbody").html(data);

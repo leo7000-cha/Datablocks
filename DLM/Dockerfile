@@ -38,9 +38,12 @@ RUN groupadd -r dlm && useradd -r -g dlm -d /app -s /sbin/nologin dlm
 # Create required directories (logback → /app/logs 통일)
 RUN mkdir -p /app/logs /app/upload && chown -R dlm:dlm /app
 
-# Copy WAR from builder
+# Copy WAR from builder and explode it
+# → getRealPath()가 정상 동작하도록 WAR를 디스크에 풀어서 실행 (외장 Tomcat과 동일)
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/build/libs/*.war /app/DLM.war
-RUN chown dlm:dlm /app/DLM.war
+RUN mkdir -p /app/DLM && cd /app/DLM && unzip -q /app/DLM.war && rm /app/DLM.war
+RUN chown -R dlm:dlm /app/DLM
 
 USER dlm
 
@@ -62,4 +65,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
     CMD wget --no-verbose --tries=1 -O /dev/null http://localhost:8080/ || exit 1
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/DLM.war"]
+# Exploded WAR에서 WarLauncher로 실행 → getRealPath() 정상 동작
+ENTRYPOINT ["sh", "-c", "cd /app/DLM && java $JAVA_OPTS org.springframework.boot.loader.launch.WarLauncher"]

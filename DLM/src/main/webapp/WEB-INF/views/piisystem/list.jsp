@@ -525,12 +525,12 @@
             var systemName = form.find('[name="system_name"]').val().trim();
 
             if (!systemId) {
-                alert('<spring:message code="msg.enter_system_id" text="Please enter System ID"/>');
+                dlmAlert('<spring:message code="msg.enter_system_id" text="Please enter System ID"/>');
                 form.find('[name="system_id"]').focus();
                 return;
             }
             if (!systemName) {
-                alert('<spring:message code="msg.enter_system_name" text="Please enter System Name"/>');
+                dlmAlert('<spring:message code="msg.enter_system_name" text="Please enter System Name"/>');
                 form.find('[name="system_name"]').focus();
                 return;
             }
@@ -546,7 +546,7 @@
                     $('#registerModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -563,7 +563,7 @@
             var systemName = form.find('[name="system_name"]').val().trim();
 
             if (!systemName) {
-                alert('<spring:message code="msg.enter_system_name" text="Please enter System Name"/>');
+                dlmAlert('<spring:message code="msg.enter_system_name" text="Please enter System Name"/>');
                 form.find('[name="system_name"]').focus();
                 return;
             }
@@ -579,7 +579,7 @@
                     $('#modifyModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -596,32 +596,30 @@
             var systemId = form.find('[name="system_id"]').val();
             var systemName = form.find('[name="system_name"]').val();
 
-            if (!confirm('Are you sure you want to delete "' + systemId + ' (' + systemName + ')"?')) {
-                return;
-            }
-
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piisystem/remove",
-                data: {
-                    system_id: systemId,
-                    "${_csrf.parameterName}": "${_csrf.token}"
-                },
-                dataType: "html",
-                success: function (data) {
-                    ingHide();
-                    $('#modifyModal').modal('hide');
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() { searchAction(); }, 500);
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+            showConfirm('Are you sure you want to delete "' + systemId + ' (' + systemName + ')"?', function() {
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piisystem/remove",
+                    data: {
+                        system_id: systemId,
+                        "${_csrf.parameterName}": "${_csrf.token}"
+                    },
+                    dataType: "html",
+                    success: function (data) {
+                        ingHide();
+                        $('#modifyModal').modal('hide');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open').css('padding-right', '');
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() { searchAction(); }, 500);
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });

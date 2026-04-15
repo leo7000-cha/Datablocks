@@ -22,7 +22,15 @@
              FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY) AS hashVerifyStatus,
             (SELECT DATE_FORMAT(MAX(completed_at), '%Y-%m-%d %H:%i')
              FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY) AS lastHashVerifyTime,
-            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE pii_grade IS NOT NULL AND DATE(access_time) = CURDATE()) AS piiAccessCount
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG WHERE pii_grade IS NOT NULL AND DATE(access_time) = CURDATE()) AS piiAccessCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'NEW') AS alertNewCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'NOTIFIED') AS alertNotifiedCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'JUSTIFIED') AS alertJustifiedCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'RESOLVED') AS alertResolvedCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'DISMISSED') AS alertDismissedCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'RE_JUSTIFY') AS alertReJustifyCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'OVERDUE') AS alertOverdueCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'ESCALATED') AS alertEscalatedCount
     </select>
 
     <select id="selectHourlyAccessTrend" resultType="java.util.HashMap">
@@ -47,12 +55,12 @@
             source_system_id, user_account, user_name, department, access_time, client_ip,
             action_type, target_db, target_schema, target_table, target_columns,
             pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
-            access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
+            collect_type, access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
         ) VALUES (
             #{sourceSystemId}, #{userAccount}, #{userName}, #{department}, #{accessTime}, #{clientIp},
             #{actionType}, #{targetDb}, #{targetSchema}, #{targetTable}, #{targetColumns},
             #{piiTypeCodes}, #{piiGrade}, #{affectedRows}, #{searchCondition}, #{sqlText},
-            #{accessChannel}, #{sessionId}, #{resultCode}, #{hashValue}, #{prevHash}, NOW(),
+            #{collectType}, #{accessChannel}, #{sessionId}, #{resultCode}, #{hashValue}, #{prevHash}, NOW(),
             DATE_FORMAT(#{accessTime}, '%Y%m%d')
         )
     </insert>
@@ -62,7 +70,7 @@
             source_system_id, user_account, user_name, department, access_time, client_ip,
             action_type, target_db, target_schema, target_table, target_columns,
             pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
-            access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
+            collect_type, access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
         ) VALUES
         <foreach collection="list" item="item" separator=",">
         (
@@ -70,7 +78,7 @@
             #{item.accessTime}, #{item.clientIp}, #{item.actionType}, #{item.targetDb},
             #{item.targetSchema}, #{item.targetTable}, #{item.targetColumns},
             #{item.piiTypeCodes}, #{item.piiGrade}, #{item.affectedRows}, #{item.searchCondition},
-            #{item.sqlText}, #{item.accessChannel}, #{item.sessionId}, #{item.resultCode},
+            #{item.sqlText}, #{item.collectType}, #{item.accessChannel}, #{item.sessionId}, #{item.resultCode},
             #{item.hashValue}, #{item.prevHash}, NOW(), DATE_FORMAT(#{item.accessTime}, '%Y%m%d')
         )
         </foreach>
@@ -85,7 +93,7 @@
         a.target_columns AS targetColumns, a.pii_type_codes AS piiTypeCodes,
         a.pii_grade AS piiGrade, a.affected_rows AS affectedRows,
         a.search_condition AS searchCondition, a.sql_text AS sqlText,
-        a.access_channel AS accessChannel, a.session_id AS sessionId,
+        a.collect_type AS collectType, a.access_channel AS accessChannel, a.session_id AS sessionId,
         a.result_code AS resultCode, a.hash_value AS hashValue,
         a.prev_hash AS prevHash, a.collected_at AS collectedAt,
         a.partition_key AS partitionKey
@@ -110,6 +118,7 @@
             <if test="search8 != null and search8 != ''">AND a.access_time &lt;= #{search8}</if>
             <if test="search9 != null and search9 != ''">AND a.client_ip LIKE CONCAT('%', #{search9}, '%')</if>
             <if test="search10 != null and search10 != ''">AND a.result_code = #{search10}</if>
+            <if test="search11 != null and search11 != ''">AND a.collect_type = #{search11}</if>
             <if test="keyword != null and keyword != ''">
                 AND (a.user_account LIKE CONCAT('%', #{keyword}, '%')
                      OR a.user_name LIKE CONCAT('%', #{keyword}, '%')
@@ -141,18 +150,25 @@
     <insert id="insertSource" parameterType="datablocks.dlm.domain.AccessLogSourceVO">
         INSERT INTO COTDL.TBL_ACCESS_LOG_SOURCE (
             source_id, source_name, source_type, db_name, db_type, hostname, port,
-            schema_name, description, collect_interval, table_filter, exclude_accounts, is_active, status, reg_user_id
+            schema_name, agent_id, description, collect_interval, table_filter, exclude_accounts,
+            dac_select_sql,
+            is_active, status, reg_user_id
         ) VALUES (
             #{sourceId}, #{sourceName}, #{sourceType}, #{dbName}, #{dbType}, #{hostname}, #{port},
-            #{schemaName}, #{description}, #{collectInterval}, #{tableFilter}, #{excludeAccounts}, #{isActive}, 'STOPPED', #{regUserId}
+            #{schemaName}, #{agentId}, #{description}, #{collectInterval}, #{tableFilter}, #{excludeAccounts},
+            #{dacSelectSql},
+            #{isActive}, 'STOPPED', #{regUserId}
         )
     </insert>
 
     <sql id="sourceColumns">
         source_id AS sourceId, source_name AS sourceName, source_type AS sourceType,
         db_name AS dbName, db_type AS dbType, hostname, port, schema_name AS schemaName,
+        agent_id AS agentId, agent_last_heartbeat AS agentLastHeartbeat, agent_status AS agentStatus,
         description, collect_interval AS collectInterval, table_filter AS tableFilter,
-        exclude_accounts AS excludeAccounts, is_active AS isActive, status,
+        exclude_accounts AS excludeAccounts,
+        dac_select_sql AS dacSelectSql,
+        is_active AS isActive, status,
         last_collect_time AS lastCollectTime, total_collected AS totalCollected,
         error_msg AS errorMsg, reg_user_id AS regUserId, reg_date AS regDate,
         upd_user_id AS updUserId, upd_date AS updDate
@@ -160,6 +176,10 @@
 
     <select id="selectSource" resultType="datablocks.dlm.domain.AccessLogSourceVO">
         SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE source_id = #{sourceId}
+    </select>
+
+    <select id="selectSourceByDbName" resultType="datablocks.dlm.domain.AccessLogSourceVO">
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE db_name = #{dbName} LIMIT 1
     </select>
 
     <select id="selectSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
@@ -193,10 +213,12 @@
             hostname = #{hostname},
             port = #{port},
             schema_name = #{schemaName},
+            agent_id = #{agentId},
             description = #{description},
             collect_interval = #{collectInterval},
             table_filter = #{tableFilter},
             exclude_accounts = #{excludeAccounts},
+            dac_select_sql = #{dacSelectSql},
             is_active = #{isActive},
             upd_user_id = #{updUserId}
         WHERE source_id = #{sourceId}
@@ -248,6 +270,35 @@
     </select>
 
     <!-- ========== Alert ========== -->
+    <sql id="alertColumns">
+        a.alert_id AS alertId, a.rule_id AS ruleId, a.rule_code AS ruleCode,
+        a.severity, a.alert_title AS alertTitle, a.alert_detail AS alertDetail,
+        a.target_user_id AS targetUserId, a.target_user_name AS targetUserName,
+        a.related_log_ids AS relatedLogIds, a.detected_time AS detectedTime,
+        a.status, a.resolved_by AS resolvedBy, a.resolved_time AS resolvedTime,
+        a.resolve_comment AS resolveComment, a.reg_date AS regDate, a.upd_date AS updDate,
+        a.notification_sent_at AS notificationSentAt, a.notification_token AS notificationToken,
+        a.token_expires_at AS tokenExpiresAt, a.target_user_email AS targetUserEmail,
+        a.justification, a.justification_summary AS justificationSummary,
+        a.justified_at AS justifiedAt, a.justified_by AS justifiedBy,
+        a.approver_id AS approverId, a.approval_comment AS approvalComment,
+        a.approved_at AS approvedAt, a.sla_deadline AS slaDeadline,
+        a.escalation_level AS escalationLevel
+    </sql>
+    <sql id="alertListColumns">
+        a.alert_id AS alertId, a.rule_id AS ruleId, a.rule_code AS ruleCode,
+        a.severity, a.alert_title AS alertTitle,
+        a.target_user_id AS targetUserId, a.target_user_name AS targetUserName,
+        a.detected_time AS detectedTime, a.status,
+        a.resolved_by AS resolvedBy, a.resolved_time AS resolvedTime,
+        a.reg_date AS regDate, a.upd_date AS updDate,
+        a.notification_sent_at AS notificationSentAt,
+        a.token_expires_at AS tokenExpiresAt, a.target_user_email AS targetUserEmail,
+        a.justification_summary AS justificationSummary,
+        a.justified_at AS justifiedAt, a.justified_by AS justifiedBy,
+        a.approver_id AS approverId, a.approved_at AS approvedAt,
+        a.sla_deadline AS slaDeadline, a.escalation_level AS escalationLevel
+    </sql>
     <insert id="insertAlert" parameterType="datablocks.dlm.domain.AccessLogAlertVO" useGeneratedKeys="true" keyProperty="alertId">
         INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT (
             rule_id, rule_code, severity, alert_title, alert_detail,
@@ -259,7 +310,7 @@
     </insert>
 
     <select id="selectAlert" resultType="datablocks.dlm.domain.AccessLogAlertVO">
-        SELECT a.*, r.rule_name AS ruleName
+        SELECT <include refid="alertColumns"/>, r.rule_name AS ruleName
         FROM COTDL.TBL_ACCESS_LOG_ALERT a
         LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
         WHERE a.alert_id = #{alertId}
@@ -269,6 +320,8 @@
         <where>
             <if test="search11 != null and search11 != ''">AND a.status = #{search11}</if>
             <if test="search12 != null and search12 != ''">AND a.severity = #{search12}</if>
+            <if test="search13 != null and search13 != ''">AND a.rule_code = #{search13}</if>
+            <if test="search2 != null and search2 != ''">AND a.target_user_name LIKE CONCAT('%', #{search2}, '%')</if>
             <if test="search7 != null and search7 != ''">AND a.detected_time >= #{search7}</if>
             <if test="search8 != null and search8 != ''">AND a.detected_time &lt;= #{search8}</if>
             <if test="keyword != null and keyword != ''">
@@ -279,7 +332,7 @@
     </sql>
 
     <select id="selectAlertList" resultType="datablocks.dlm.domain.AccessLogAlertVO">
-        SELECT a.*, r.rule_name AS ruleName
+        SELECT <include refid="alertListColumns"/>, r.rule_name AS ruleName
         FROM COTDL.TBL_ACCESS_LOG_ALERT a
         LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
         <include refid="alertSearchCondition"/>
@@ -294,7 +347,7 @@
     </select>
 
     <select id="selectLatestAlerts" resultType="datablocks.dlm.domain.AccessLogAlertVO">
-        SELECT a.*, r.rule_name AS ruleName
+        SELECT <include refid="alertListColumns"/>, r.rule_name AS ruleName
         FROM COTDL.TBL_ACCESS_LOG_ALERT a
         LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
         ORDER BY a.detected_time DESC
@@ -307,6 +360,111 @@
             resolved_by = #{resolvedBy},
             resolved_time = NOW(),
             resolve_comment = #{resolveComment}
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <update id="bulkUpdateAlertStatus">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = #{status},
+            resolved_by = #{resolvedBy},
+            resolved_time = NOW(),
+            resolve_comment = #{resolveComment}
+        WHERE alert_id IN
+        <foreach collection="alertIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="bulkUpdateAlertApproval">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = 'RESOLVED',
+            approver_id = #{approverId},
+            approval_comment = #{approvalComment},
+            approved_at = NOW(),
+            resolved_by = #{approverId},
+            resolved_time = NOW(),
+            resolve_comment = #{approvalComment},
+            escalation_level = escalation_level
+        WHERE alert_id IN
+        <foreach collection="alertIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND status = 'JUSTIFIED'
+    </update>
+
+    <!-- ========== Justification Workflow ========== -->
+    <select id="selectAlertByToken" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT <include refid="alertColumns"/>, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        WHERE a.notification_token = #{token}
+    </select>
+
+    <update id="updateAlertNotification">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = 'NOTIFIED',
+            notification_sent_at = NOW(),
+            notification_token = #{token},
+            token_expires_at = #{tokenExpiresAt},
+            target_user_email = #{targetUserEmail},
+            sla_deadline = #{slaDeadline}
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <update id="updateAlertJustification">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = 'JUSTIFIED',
+            justification = #{justification},
+            justification_summary = LEFT(#{justification}, 500),
+            justified_at = NOW(),
+            justified_by = #{justifiedBy}
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <update id="updateAlertApproval">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = #{status},
+            approver_id = #{approverId},
+            approval_comment = #{approvalComment},
+            approved_at = NOW(),
+            <if test="status == 'RESOLVED'">
+                resolved_by = #{approverId},
+                resolved_time = NOW(),
+                resolve_comment = #{approvalComment},
+            </if>
+            <if test="status == 'RE_JUSTIFY'">
+                notification_token = #{newToken},
+                token_expires_at = #{newTokenExpiresAt},
+                justification = NULL,
+                justification_summary = NULL,
+                justified_at = NULL,
+            </if>
+            escalation_level = escalation_level
+        WHERE alert_id = #{alertId}
+    </update>
+
+    <select id="selectOverdueAlerts" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT <include refid="alertColumns"/>, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        WHERE a.status = 'NOTIFIED'
+          AND a.sla_deadline IS NOT NULL
+          AND a.sla_deadline &lt; NOW()
+    </select>
+
+    <select id="selectEscalationAlerts" resultType="datablocks.dlm.domain.AccessLogAlertVO">
+        SELECT <include refid="alertColumns"/>, r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT a
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON a.rule_id = r.rule_id
+        WHERE a.status = 'OVERDUE'
+          AND a.sla_deadline IS NOT NULL
+          AND DATE_ADD(a.sla_deadline, INTERVAL 24 HOUR) &lt; NOW()
+    </select>
+
+    <update id="updateAlertEscalation">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = #{status},
+            escalation_level = #{escalationLevel}
         WHERE alert_id = #{alertId}
     </update>
 
@@ -475,14 +633,188 @@
         )
     </insert>
 
+    <!-- ========== Agent Heartbeat ========== -->
+    <update id="updateAgentHeartbeat">
+        UPDATE COTDL.TBL_ACCESS_LOG_SOURCE SET
+            agent_last_heartbeat = NOW(),
+            agent_status = #{agentStatus}
+        WHERE agent_id = #{agentId}
+    </update>
+
+    <select id="selectSourceByAgentId" resultType="datablocks.dlm.domain.AccessLogSourceVO">
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE agent_id = #{agentId}
+    </select>
+
+    <!-- ========== Audit Policy ========== -->
+    <select id="selectMetaPiiTables" resultType="map">
+        SELECT owner, table_name AS tableName,
+               COUNT(*) AS piiColumnCount,
+               GROUP_CONCAT(DISTINCT column_name ORDER BY column_name) AS piiColumns,
+               GROUP_CONCAT(DISTINCT piitype ORDER BY piitype) AS piiTypes,
+               MAX(CASE WHEN audit_yn = 'Y' THEN 'Y' ELSE 'N' END) AS auditYn
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{dbName}
+          AND piitype IS NOT NULL AND piitype != '' AND piitype != 'notpii'
+        GROUP BY owner, table_name
+        ORDER BY owner, table_name
+    </select>
+
+    <!-- Audit 대상 테이블 저장 -->
+    <update id="updateAuditTarget">
+        UPDATE COTDL.TBL_METATABLE
+        SET audit_yn = #{auditYn}, upddate = NOW()
+        WHERE db = #{dbName} AND owner = #{owner} AND table_name = #{tableName}
+          AND piitype IS NOT NULL AND piitype != '' AND piitype != 'notpii'
+    </update>
+
+    <!-- Audit 대상 일괄 초기화 -->
+    <update id="clearAuditTargets">
+        UPDATE COTDL.TBL_METATABLE
+        SET audit_yn = NULL, upddate = NOW()
+        WHERE db = #{dbName} AND audit_yn = 'Y'
+    </update>
+
+    <!-- ========== BCI Target ========== -->
+    <select id="selectBciTargets" resultType="datablocks.dlm.domain.BciTargetVO">
+        SELECT target_id AS targetId, db_name AS dbName, owner, table_name AS tableName,
+               target_type AS targetType, description, is_active AS isActive,
+               reg_user_id AS regUserId, DATE_FORMAT(reg_date, '%Y-%m-%d %H:%i') AS regDate
+        FROM COTDL.TBL_ACCESS_LOG_BCI_TARGET
+        WHERE db_name = #{dbName}
+        ORDER BY owner, table_name
+    </select>
+
+    <insert id="insertBciTarget">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_BCI_TARGET
+            (target_id, db_name, owner, table_name, target_type, description, is_active, reg_user_id, reg_date)
+        VALUES (#{targetId}, #{dbName}, #{owner}, #{tableName}, #{targetType}, #{description}, 'Y', #{regUserId}, NOW())
+        ON DUPLICATE KEY UPDATE
+            target_type = VALUES(target_type), description = VALUES(description),
+            is_active = 'Y', upd_user_id = VALUES(reg_user_id), upd_date = NOW()
+    </insert>
+
+    <delete id="deleteBciTarget">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_BCI_TARGET WHERE target_id = #{targetId}
+    </delete>
+
+    <update id="clearBciTargets">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_BCI_TARGET WHERE db_name = #{dbName}
+    </update>
+
+    <!-- Agent 정책용: BCI 대상 테이블의 PII 컬럼 조회 -->
+    <select id="selectBciPolicyColumns" resultType="map">
+        SELECT m.table_name AS tableName, m.column_name AS columnName,
+               m.piitype AS piiType, m.piigrade AS piiGrade, m.owner,
+               t.target_type AS targetType
+        FROM COTDL.TBL_ACCESS_LOG_BCI_TARGET t
+        LEFT JOIN COTDL.TBL_METATABLE m
+            ON t.db_name = m.db AND t.owner = m.owner AND t.table_name = m.table_name
+        WHERE t.db_name = #{dbName} AND t.is_active = 'Y'
+        ORDER BY t.owner, t.table_name, m.column_name
+    </select>
+
+    <!-- MetaTable 전체 테이블 목록 (BCI 대상 선택용, PII + 비PII 포함) -->
+    <select id="selectAllTablesForBci" resultType="map">
+        SELECT owner, table_name AS tableName,
+               COUNT(CASE WHEN piitype IS NOT NULL AND piitype != '' AND piitype != 'notpii' THEN 1 END) AS piiColumnCount,
+               COUNT(*) AS totalColumnCount
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{dbName}
+        GROUP BY owner, table_name
+        ORDER BY owner, table_name
+    </select>
+
+    <!-- ========== Exclude SQL Patterns ========== -->
+    <select id="selectExcludeSqlPatterns" resultType="map">
+        SELECT pattern_id AS patternId, source_type AS sourceType, pattern, match_type AS matchType,
+               description, is_active AS isActive,
+               DATE_FORMAT(reg_date, '%Y-%m-%d %H:%i') AS regDate
+        FROM COTDL.TBL_ACCESS_LOG_EXCLUDE_SQL
+        <where>
+            <if test="sourceType != null and sourceType != ''">
+                AND source_type = #{sourceType}
+            </if>
+        </where>
+        ORDER BY source_type, pattern_id
+    </select>
+
+    <insert id="insertExcludeSqlPattern">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_EXCLUDE_SQL (source_type, pattern, match_type, description, is_active, reg_user_id)
+        VALUES (#{sourceType}, #{pattern}, #{matchType}, #{description}, 'Y', #{regUserId})
+    </insert>
+
+    <update id="updateExcludeSqlPattern">
+        UPDATE COTDL.TBL_ACCESS_LOG_EXCLUDE_SQL
+        SET pattern = #{pattern}, match_type = #{matchType}, description = #{description},
+            is_active = #{isActive}
+        WHERE pattern_id = #{patternId}
+    </update>
+
+    <delete id="deleteExcludeSqlPattern">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_EXCLUDE_SQL WHERE pattern_id = #{patternId}
+    </delete>
+
     <!-- ========== Scheduler ========== -->
     <select id="selectActiveSourceList" resultType="datablocks.dlm.domain.AccessLogSourceVO">
-        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y'
+        SELECT <include refid="sourceColumns"/> FROM COTDL.TBL_ACCESS_LOG_SOURCE WHERE is_active = 'Y' AND status = 'RUNNING'
     </select>
 
     <!-- ========== Alert Count ========== -->
     <select id="selectNewAlertCount" resultType="int">
-        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'NEW'
+        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status IN ('NEW','NOTIFIED','JUSTIFIED','OVERDUE','ESCALATED','RE_JUSTIFY')
+    </select>
+
+    <!-- 규칙+사용자별 미처리 알림 일괄 DISMISSED -->
+    <update id="dismissByRuleAndUser">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT SET
+            status = 'DISMISSED',
+            resolved_by = #{resolvedBy},
+            resolved_time = NOW(),
+            resolve_comment = #{comment}
+        WHERE rule_id = #{ruleId}
+          AND target_user_id = #{targetUserId}
+          AND status IN ('NEW','NOTIFIED','OVERDUE','ESCALATED')
+    </update>
+
+    <!-- ========== Compliance Stats (법규 준수현황) ========== -->
+    <select id="getComplianceStats" resultType="datablocks.dlm.domain.AccessLogStatVO">
+        SELECT
+            /* 제8조2항: 보관기간 (년) */
+            COALESCE(
+                (SELECT CAST(config_value AS UNSIGNED)
+                 FROM COTDL.TBL_ACCESS_LOG_CONFIG WHERE config_key = 'RETENTION_PERIOD_YEARS' LIMIT 1),
+                0
+            ) AS retentionYears,
+            /* 제8조3항: 이번 달 해시 검증 횟수 */
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
+             WHERE DATE_FORMAT(completed_at, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')) AS thisMonthHashVerifyCount,
+            /* 최근 점검 일자 */
+            (SELECT DATE_FORMAT(MAX(completed_at), '%Y-%m-%d')
+             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY) AS lastMonthlyReviewDate,
+            /* 제8조4항: 위변조 탐지 건수 */
+            (SELECT COALESCE(SUM(invalid_records), 0)
+             FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY WHERE status = 'INVALID') AS invalidHashCount,
+            /* 활성 탐지 규칙 */
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE is_active = 'Y') AS activeRuleCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE) AS totalRuleCount,
+            /* 기한 초과 / 에스컬레이션 */
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'OVERDUE') AS overdueAlertCount,
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'ESCALATED') AS escalatedAlertCount,
+            /* 소명 완료 후 승인 대기 */
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_ALERT WHERE status = 'JUSTIFIED') AS justifiedWaitingCount,
+            /* 이번 달 다운로드 건수 */
+            (SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_DOWNLOAD
+             WHERE DATE_FORMAT(reg_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')) AS thisMonthDownloadCount,
+            /* 접속기록 최초/최종 일자 */
+            (SELECT DATE_FORMAT(MIN(access_time), '%Y-%m-%d') FROM COTDL.TBL_ACCESS_LOG) AS oldestAccessDate,
+            (SELECT DATE_FORMAT(MAX(access_time), '%Y-%m-%d') FROM COTDL.TBL_ACCESS_LOG) AS latestAccessDate
+    </select>
+
+    <!-- ========== Member Email Lookup ========== -->
+    <select id="selectMemberEmail" resultType="java.util.HashMap">
+        SELECT USERID as userId, USERNAME as userName, EMAIL as email, MANAGER_ID as managerId
+        FROM COTDL.TBL_MEMBER
+        WHERE USERID = #{userId}
     </select>
 
     <!-- ========== Detection: VOLUME ========== -->
@@ -554,7 +886,7 @@
         SELECT a.user_account AS userAccount,
                a.user_name AS userName,
                a.client_ip AS clientIp,
-               a.log_id AS logId
+               GROUP_CONCAT(DISTINCT a.log_id ORDER BY a.log_id LIMIT 10) AS logIds
         FROM COTDL.TBL_ACCESS_LOG a
         WHERE a.access_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
           AND a.client_ip NOT IN (
@@ -586,8 +918,9 @@
     <select id="detectInactiveAccount" resultType="java.util.HashMap">
         SELECT a.user_account AS userAccount,
                a.user_name AS userName,
-               a.log_id AS logId,
-               a.access_time AS accessTime
+               MIN(a.log_id) AS logId,
+               MIN(a.access_time) AS accessTime,
+               COUNT(*) AS accessCount
         FROM COTDL.TBL_ACCESS_LOG a
         WHERE a.access_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
           AND a.user_account NOT IN (
@@ -597,6 +930,170 @@
                 AND access_time &lt; DATE_SUB(NOW(), INTERVAL 1 HOUR)
           )
         GROUP BY a.user_account, a.user_name
+    </select>
+
+    <!-- ========== Alert Suppression (알림 예외 규칙) ========== -->
+    <sql id="suppressionColumns">
+        s.suppression_id AS suppressionId, s.rule_id AS ruleId, s.rule_code AS ruleCode,
+        s.target_user_id AS targetUserId, s.suppression_type AS suppressionType,
+        s.reason, s.severity_at_time AS severityAtTime, s.source_alert_id AS sourceAlertId,
+        s.approved_by AS approvedBy, s.approved_at AS approvedAt,
+        s.effective_from AS effectiveFrom, s.effective_until AS effectiveUntil,
+        s.review_cycle_days AS reviewCycleDays,
+        s.last_reviewed_at AS lastReviewedAt, s.last_reviewed_by AS lastReviewedBy,
+        s.next_review_at AS nextReviewAt, s.review_comment AS reviewComment,
+        s.is_active AS isActive,
+        s.deactivated_by AS deactivatedBy, s.deactivated_at AS deactivatedAt,
+        s.deactivate_reason AS deactivateReason,
+        s.reg_user_id AS regUserId, s.reg_date AS regDate,
+        s.upd_user_id AS updUserId, s.upd_date AS updDate
+    </sql>
+
+    <insert id="insertSuppression" parameterType="datablocks.dlm.domain.AlertSuppressionVO"
+            useGeneratedKeys="true" keyProperty="suppressionId">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION (
+            rule_id, rule_code, target_user_id, suppression_type, reason,
+            severity_at_time, source_alert_id,
+            approved_by, approved_at, effective_from, effective_until,
+            review_cycle_days, next_review_at, is_active, reg_user_id
+        ) VALUES (
+            #{ruleId}, #{ruleCode}, #{targetUserId}, #{suppressionType}, #{reason},
+            #{severityAtTime}, #{sourceAlertId},
+            #{approvedBy}, NOW(), NOW(), #{effectiveUntil},
+            #{reviewCycleDays},
+            DATE_ADD(NOW(), INTERVAL #{reviewCycleDays} DAY),
+            'Y', #{regUserId}
+        )
+    </insert>
+
+    <select id="selectSuppression" resultType="datablocks.dlm.domain.AlertSuppressionVO">
+        SELECT <include refid="suppressionColumns"/>,
+               r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION s
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON s.rule_id = r.rule_id
+        WHERE s.suppression_id = #{suppressionId}
+    </select>
+
+    <select id="selectSuppressionList" resultType="datablocks.dlm.domain.AlertSuppressionVO">
+        SELECT <include refid="suppressionColumns"/>,
+               r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION s
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON s.rule_id = r.rule_id
+        <where>
+            <if test="search11 != null and search11 != ''">
+                AND s.is_active = #{search11}
+            </if>
+            <if test="search12 != null and search12 != ''">
+                AND s.rule_id = #{search12}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND s.target_user_id LIKE CONCAT('%', #{search2}, '%')
+            </if>
+        </where>
+        ORDER BY s.is_active DESC, s.reg_date DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectSuppressionTotal" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION s
+        <where>
+            <if test="search11 != null and search11 != ''">
+                AND s.is_active = #{search11}
+            </if>
+            <if test="search12 != null and search12 != ''">
+                AND s.rule_id = #{search12}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND s.target_user_id LIKE CONCAT('%', #{search2}, '%')
+            </if>
+        </where>
+    </select>
+
+    <update id="updateSuppressionReview">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION SET
+            last_reviewed_at = NOW(),
+            last_reviewed_by = #{reviewedBy},
+            review_comment = #{reviewComment},
+            next_review_at = #{nextReviewAt}
+        WHERE suppression_id = #{suppressionId}
+    </update>
+
+    <update id="deactivateSuppression">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION SET
+            is_active = 'N',
+            deactivated_by = #{deactivatedBy},
+            deactivated_at = NOW(),
+            deactivate_reason = #{deactivateReason}
+        WHERE suppression_id = #{suppressionId}
+    </update>
+
+    <update id="extendSuppression">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION SET
+            effective_until = #{effectiveUntil},
+            upd_user_id = #{updUserId}
+        WHERE suppression_id = #{suppressionId}
+    </update>
+
+    <select id="countActiveSuppression" resultType="int">
+        SELECT COUNT(*)
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION
+        WHERE rule_id = #{ruleId}
+          AND is_active = 'Y'
+          AND effective_from &lt;= NOW()
+          AND effective_until >= NOW()
+          AND (target_user_id IS NULL OR target_user_id = #{targetUserId})
+    </select>
+
+    <select id="selectActiveSuppressionByRuleAndUser" resultType="datablocks.dlm.domain.AlertSuppressionVO">
+        SELECT <include refid="suppressionColumns"/>,
+               r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION s
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON s.rule_id = r.rule_id
+        WHERE s.rule_id = #{ruleId}
+          AND s.is_active = 'Y'
+          AND s.effective_until >= NOW()
+          AND (s.target_user_id IS NULL OR s.target_user_id = #{targetUserId})
+        ORDER BY s.effective_until DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectSuppressionsDueForReview" resultType="datablocks.dlm.domain.AlertSuppressionVO">
+        SELECT <include refid="suppressionColumns"/>,
+               r.rule_name AS ruleName
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION s
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT_RULE r ON s.rule_id = r.rule_id
+        WHERE s.is_active = 'Y'
+          AND s.next_review_at IS NOT NULL
+          AND s.next_review_at &lt;= NOW()
+    </select>
+
+    <update id="deactivateExpiredSuppressions">
+        UPDATE COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION SET
+            is_active = 'N',
+            deactivated_by = 'system',
+            deactivated_at = NOW(),
+            deactivate_reason = '유효기간 만료 자동 비활성화'
+        WHERE is_active = 'Y'
+          AND effective_until &lt; NOW()
+    </update>
+
+    <!-- ========== Suppression Audit Log ========== -->
+    <insert id="insertSuppressionAudit">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION_AUDIT (
+            suppression_id, action_type, action_detail, action_by
+        ) VALUES (
+            #{suppressionId}, #{actionType}, #{actionDetail}, #{actionBy}
+        )
+    </insert>
+
+    <select id="selectSuppressionAuditList" resultType="java.util.HashMap">
+        SELECT audit_id AS auditId, suppression_id AS suppressionId,
+               action_type AS actionType, action_detail AS actionDetail,
+               action_by AS actionBy, action_at AS actionAt
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION_AUDIT
+        WHERE suppression_id = #{suppressionId}
+        ORDER BY action_at DESC
     </select>
 
 </mapper>

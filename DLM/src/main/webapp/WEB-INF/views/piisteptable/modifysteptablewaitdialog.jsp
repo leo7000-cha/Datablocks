@@ -322,7 +322,6 @@
             },
             success: function (data, textStatus, jqXHR) {ingHide();
                 //$('#content_home').html(data);
-                //$("#GlobalSuccessMsgModal").modal("show");
                 //searchAction(1);
                 $('#steptablewaitmodify tr').each(function () {
                     $(this).remove();
@@ -330,7 +329,7 @@
                 $('#steptablewaitbody tr').each(function () { //alert("<tr style='border: none;'><td style='border: none;'>"+$(this).children().eq(3).text()+"</td></tr>");
                     $("#steptablewaitmodify").append("<tr style='border: none;'><td style='border: none;'>" + $(this).children().eq(3).text() + "</td></tr>");
                 });
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 $("#dialogsteptablewaitlist").modal("hide");
             },
             error: function (request, error) { ingHide();

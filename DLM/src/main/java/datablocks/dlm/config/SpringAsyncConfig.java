@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
@@ -19,6 +21,15 @@ public class SpringAsyncConfig {
 
     protected Logger logger = LoggerFactory.getLogger(SpringAsyncConfig.class);
     protected Logger errorLogger = LoggerFactory.getLogger("error");
+
+    @Bean
+    public TaskScheduler taskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2);
+        scheduler.setThreadNamePrefix("Scheduler-");
+        scheduler.initialize();
+        return scheduler;
+    }
 
     @Bean(name = "threadPoolTaskExecutor", destroyMethod = "destroy")
     public Executor threadPoolTaskExecutor() {

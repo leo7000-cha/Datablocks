@@ -64,7 +64,12 @@
                     </div>
                     <div class="jm-field" style="flex:0.5;">
                         <label class="jm-label">Phase</label>
-                        <div class="jm-readonly"><c:out value="${piijob.phase}"/></div>
+                        <sec:authorize access="hasRole('ROLE_ADMIN')">
+                            <div class="jm-readonly" id="phaseToggle" style="cursor:pointer;" title="더블클릭으로 Phase 변경"><c:out value="${piijob.phase}"/></div>
+                        </sec:authorize>
+                        <sec:authorize access="!hasRole('ROLE_ADMIN')">
+                            <div class="jm-readonly"><c:out value="${piijob.phase}"/></div>
+                        </sec:authorize>
                     </div>
                 </div>
             </div>
@@ -125,6 +130,15 @@
                         </div>
                     </div>
                     <div class="jm-field">
+                        <label class="jm-label">Confirm</label>
+                        <div class="toggle-container" style="margin-top:2px;">
+                            <label class="switch"><input type="checkbox" class="toggle-switch" disabled <c:if test="${piijob.confirmflag eq 'Y'}">checked</c:if>><span class="slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+                <c:if test="${piijob.runtype ne 'IRREGULAR'}">
+                <div class="jm-inline">
+                    <div class="jm-field">
                         <label class="jm-label">Calendar</label>
                         <div class="jm-readonly">
                             <c:choose>
@@ -144,19 +158,12 @@
                             </c:choose>
                         </div>
                     </div>
-                </div>
-                <div class="jm-inline">
                     <div class="jm-field">
                         <label class="jm-label">Time</label>
                         <div class="jm-readonly"><c:out value="${piijob.time}"/></div>
                     </div>
-                    <div class="jm-field">
-                        <label class="jm-label">Confirm</label>
-                        <div class="toggle-container" style="margin-top:2px;">
-                            <label class="switch"><input type="checkbox" class="toggle-switch" disabled <c:if test="${piijob.confirmflag eq 'Y'}">checked</c:if>><span class="slider"></span></label>
-                        </div>
-                    </div>
                 </div>
+                </c:if>
             </div>
         </div>
 

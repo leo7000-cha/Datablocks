@@ -42,7 +42,12 @@
                     </div>
                     <div class="jm-field" style="flex:0.5;">
                         <label class="jm-label">Phase</label>
-                        <div class="jm-readonly"><c:out value="${piijob.phase}"/></div>
+                        <sec:authorize access="hasRole('ROLE_ADMIN')">
+                            <div class="jm-readonly" id="phaseToggle" style="cursor:pointer;" title="더블클릭으로 Phase 변경"><c:out value="${piijob.phase}"/></div>
+                        </sec:authorize>
+                        <sec:authorize access="!hasRole('ROLE_ADMIN')">
+                            <div class="jm-readonly"><c:out value="${piijob.phase}"/></div>
+                        </sec:authorize>
                     </div>
                 </div>
             </div>
@@ -102,12 +107,21 @@
                 <div class="jm-inline">
                     <div class="jm-field">
                         <label class="jm-label">Runtype</label>
-                        <select class="jm-select" name="runtype">
+                        <select class="jm-select" name="runtype" id="runtypeSelect" onchange="toggleScheduleRow()">
                             <option value="REGULAR" <c:if test="${piijob.runtype eq 'REGULAR'}">selected</c:if>><spring:message code="etc.regular" text="정기"/></option>
                             <option value="IRREGULAR" <c:if test="${piijob.runtype eq 'IRREGULAR'}">selected</c:if>><spring:message code="etc.irregular" text="비정기"/></option>
                             <option value="DLM_BATCH" <c:if test="${piijob.runtype eq 'DLM_BATCH'}">selected</c:if>><spring:message code="etc.dlmbatch" text="Batch"/></option>
                         </select>
                     </div>
+                    <div class="jm-field">
+                        <label class="jm-label">Confirm</label>
+                        <div class="toggle-container" style="margin-top:2px;">
+                            <label class="switch"><input type="checkbox" class="toggle-switch" id="confirmflag_checkbox" <c:if test="${piijob.confirmflag eq 'Y'}">checked</c:if> onchange="document.getElementById('confirmflag_hidden').value = this.checked ? 'Y' : 'N';"><span class="slider"></span></label>
+                            <input type="hidden" name="confirmflag" id="confirmflag_hidden" value="<c:out value="${piijob.confirmflag}" default="N"/>">
+                        </div>
+                    </div>
+                </div>
+                <div class="jm-inline" id="scheduleRow" style="${piijob.runtype eq 'IRREGULAR' ? 'display:none;' : ''}">
                     <div class="jm-field">
                         <label class="jm-label">Calendar</label>
                         <select class="jm-select" name="calendar">
@@ -126,22 +140,14 @@
                             <option value="2ND_SUN" <c:if test="${piijob.calendar eq '2ND_SUN'}">selected</c:if>><spring:message code="etc.cal_2nd_sun" text="격주 일요일"/></option>
                         </select>
                     </div>
-                </div>
-                <div class="jm-inline">
                     <div class="jm-field">
                         <label class="jm-label">Time</label>
                         <input type="text" class="jm-input" id='time' name='time' value='<c:out value="${piijob.time}"/>' placeholder="HH:MM" readonly>
                     </div>
-                    <div class="jm-field">
-                        <label class="jm-label">Confirm</label>
-                        <div class="toggle-container" style="margin-top:2px;">
-                            <label class="switch"><input type="checkbox" class="toggle-switch" id="confirmflag_checkbox" <c:if test="${piijob.confirmflag eq 'Y'}">checked</c:if> onchange="document.getElementById('confirmflag_hidden').value = this.checked ? 'Y' : 'N';"><span class="slider"></span></label>
-                            <input type="hidden" name="confirmflag" id="confirmflag_hidden" value="<c:out value="${piijob.confirmflag}" default="N"/>">
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
+        <script>function toggleScheduleRow() { $('#scheduleRow').toggle($('#runtypeSelect').val() !== 'IRREGULAR'); }</script>
 
         <!-- 담당자 카드 (좁게) -->
         <div class="jm-card jm-card-narrow jm-card-owner">
@@ -418,63 +424,63 @@
             e.preventDefault();e.stopPropagation();
             var jobtype = $('#piijob_modify_form [name="jobtype"]').val();
             if (isEmpty($('#piijob_modify_form [name="jobid"]').val())) {
-                alert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
                 $('#piijob_modify_form [name="jobid"]').focus(); return;
             }
             if (isEmpty($('#piijob_modify_form [name="jobname"]').val())) {
-                alert('<spring:message code="col.jobname" text="Jobname"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobname" text="Jobname"/> is mandatory');
                 $('#piijob_modify_form [name="jobname"]').focus(); return;
             }
             if (jobtype == "PII" && isEmpty($('#piijob_modify_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_modify_form [name="system"]').focus(); return;
             }
             if (jobtype == "TDM" && isEmpty($('#piijob_modify_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_modify_form [name="system"]').focus(); return;
             }
             if (jobtype == "ILM" && isEmpty($('#piijob_modify_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_modify_form [name="system"]').focus(); return;
             }
             if (jobtype == "MIGRATE" && isEmpty($('#piijob_modify_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_modify_form [name="system"]').focus(); return;
             }
             if (jobtype == "PII" && isEmpty($('#piijob_modify_form [name="policy_id"]').val())) {
-                alert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
+                dlmAlert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
                 $('#piijob_modify_form [name="policy_id"]').focus(); return;
             }
             if (jobtype == "PII" && isEmpty($('#piijob_modify_form [name="keymap_id"]').val())) {
-                alert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
+                dlmAlert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
                 $('#piijob_modify_form [name="keymap_id"]').focus(); return;
             }
             if (isEmpty($('#piijob_modify_form [name="jobtype"]').val())) {
-                alert('<spring:message code="col.jobtype" text="Jobtype"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobtype" text="Jobtype"/> is mandatory');
                 $('#piijob_modify_form [name="jobtype"]').focus(); return;
             }
             if (isEmpty($('#piijob_modify_form [name="runtype"]').val())) {
-                alert('<spring:message code="col.runtype" text="Runtype"/> is mandatory');
+                dlmAlert('<spring:message code="col.runtype" text="Runtype"/> is mandatory');
                 $('#piijob_modify_form [name="runtype"]').focus(); return;
             }
             if ($('#piijob_modify_form [name="runtype"]').val() == "REGULAR" && isEmpty($('#piijob_modify_form [name="calendar"]').val())) {
-                alert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
+                dlmAlert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
                 $('#piijob_modify_form [name="calendar"]').focus(); return;
             }
             if ($('#piijob_modify_form [name="runtype"]').val() == "REGULAR" && isEmpty($('#piijob_modify_form [name="time"]').val())) {
-                alert('<spring:message code="col.time" text="Time"/> is mandatory');
+                dlmAlert('<spring:message code="col.time" text="Time"/> is mandatory');
                 $('#piijob_modify_form [name="calendar"]').focus(); return;
             }
             if (jobtype == "PII" && !isEmpty($('#piijob_modify_form [name="calendar"]').val()) && isEmpty($('#piijob_modify_form [name="time"]').val())) {
-                alert('<spring:message code="col.time" text="Time"/> is mandatory');
+                dlmAlert('<spring:message code="col.time" text="Time"/> is mandatory');
                 $('#piijob_modify_form [name="time"]').focus(); return;
             }
             if (isEmpty($('#piijob_modify_form [name="job_owner_id1"]').val())) {
-                alert('<spring:message code="col.job_owner_id1" text="Job_Owner_Id1"/> is mandatory');
+                dlmAlert('<spring:message code="col.job_owner_id1" text="Job_Owner_Id1"/> is mandatory');
                 $('#piijob_modify_form [name="job_owner_id1"]').focus(); return;
             }
             if (isEmpty($('#piijob_modify_form [name="job_owner_name1"]').val())) {
-                alert('<spring:message code="col.job_owner_name1" text="Job_Owner_Name1"/> is mandatory');
+                dlmAlert('<spring:message code="col.job_owner_name1" text="Job_Owner_Name1"/> is mandatory');
                 $('#piijob_modify_form [name="job_owner_name1"]').focus(); return;
             }
 

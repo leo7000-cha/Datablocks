@@ -57,6 +57,11 @@
                 <button data-oper='search' class="btn btn-filter-search">
                     <i class="fas fa-search"></i> <spring:message code="btn.search" text="Search"/>
                 </button>
+                <sec:authorize access="hasAnyRole('ROLE_ADMIN')">
+                    <button data-oper='register' class="btn btn-filter-register">
+                        <i class="fas fa-plus"></i> <spring:message code="btn.register" text="Register"/>
+                    </button>
+                </sec:authorize>
             </div>
         </div>
     </div>
@@ -74,6 +79,7 @@
                     <th><spring:message code="col.piigroupname" text="Piigroupname"/></th>
                     <th class="th-hidden"><spring:message code="col.piitypeid" text="Piitypeid"/></th>
                     <th><spring:message code="col.piitypename" text="Piitypename"/></th>
+                    <th class="text-center" style="width: 90px;">사용여부</th>
                     <th><spring:message code="col.scrtype" text="Scrtype"/></th>
                     <th><spring:message code="col.scrmethod" text="Scrmethod"/></th>
                     <th><spring:message code="col.scrcategory" text="Scrcategory"/></th>
@@ -95,6 +101,16 @@
                         <td><c:out value="${lkpiiscrtype.piigroupname}"/></td>
                         <td class="td-hidden"><c:out value="${lkpiiscrtype.piitypeid}"/></td>
                         <td><c:out value="${lkpiiscrtype.piitypename}"/></td>
+                        <td class="text-center">
+                            <span class="visible-toggle" data-piicode="${lkpiiscrtype.piicode}" data-visible="${lkpiiscrtype.visible}"
+                                  style="cursor: pointer; font-size: 1.6em; line-height: 1;" title="클릭하여 사용여부 전환"
+                                  onclick="toggleVisible(this)">
+                                <c:choose>
+                                    <c:when test="${lkpiiscrtype.visible == 'Y'}"><i class="fas fa-toggle-on" style="color: #22c55e;"></i></c:when>
+                                    <c:otherwise><i class="fas fa-toggle-off" style="color: #d1d5db;"></i></c:otherwise>
+                                </c:choose>
+                            </span>
+                        </td>
                         <td><c:out value="${lkpiiscrtype.scrtype}"/></td>
                         <td><c:out value="${lkpiiscrtype.scrmethod}"/></td>
                         <td><c:out value="${lkpiiscrtype.scrcategory}"/></td>
@@ -260,5 +276,37 @@
     // Refresh list (called after save/delete)
     refreshList = function () {
         searchAction();
+    }
+
+    // Toggle visible (인벤토리 표시 여부)
+    function toggleVisible(el) {
+        var $el = $(el);
+        var piicode = $el.data('piicode');
+        var currentVisible = $el.data('visible');
+        var newVisible = (currentVisible === 'Y') ? 'N' : 'Y';
+        var csrfToken = $('meta[name="_csrf"]').attr('content') || $('input[name="_csrf"]').val();
+        var csrfHeader = $('meta[name="_csrf_header"]').attr('content') || 'X-CSRF-TOKEN';
+
+        $.ajax({
+            type: 'POST',
+            url: '/lkpiiscrtype/api/toggle-visible',
+            data: { piicode: piicode, visible: newVisible },
+            beforeSend: function(xhr) {
+                if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
+            },
+            success: function(response) {
+                if (response.success) {
+                    $el.data('visible', newVisible);
+                    if (newVisible === 'Y') {
+                        $el.html('<i class="fas fa-toggle-on" style="color: #22c55e;"></i>');
+                    } else {
+                        $el.html('<i class="fas fa-toggle-off" style="color: #d1d5db;"></i>');
+                    }
+                }
+            },
+            error: function() {
+                dlmAlert('변경 실패');
+            }
+        });
     }
 </script>

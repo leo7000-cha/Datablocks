@@ -122,7 +122,7 @@
                 xhr.setRequestHeader(csrfHeader, csrfToken);
             },
             success: function (result) {
-                alert(result);
+                dlmAlert(result);
             }
         }); //$.ajax
 
@@ -135,12 +135,12 @@
     function checkExtension(fileName, fileSize) {
 
         if (fileSize >= maxSize) {
-            alert("File Size Limit Exceeded!");
+            dlmAlert("File Size Limit Exceeded!");
             return false;
         }
 
         if (regex.test(fileName)) {
-            alert("This type of file cannot be uploaded!");
+            dlmAlert("This type of file cannot be uploaded!");
             return false;
         }
         return true;

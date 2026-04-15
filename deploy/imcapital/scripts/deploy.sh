@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==============================================================================
 # DLM 배포 스크립트 — iM캐피탈
-# 환경: Rocky 9, MariaDB 호스트 OS 직접 설치
+# 환경: CentOS 7, MariaDB 호스트 OS 직접 설치
 # ==============================================================================
 set -euo pipefail
 
@@ -162,7 +162,8 @@ if docker exec dlm-app sh -c 'cat < /dev/tcp/host.docker.internal/3306' &>/dev/n
     log "MariaDB 연결: 성공"
 else
     warn "MariaDB 연결 실패 — bind-address 또는 방화벽 확인 필요"
-    warn "  firewall-cmd --add-port=3306/tcp --permanent && firewall-cmd --reload"
+    warn "  firewalld: firewall-cmd --add-port=3306/tcp --permanent && firewall-cmd --reload"
+    warn "  iptables:  iptables -I INPUT -p tcp --dport 3306 -j ACCEPT && service iptables save"
 fi
 
 echo ""

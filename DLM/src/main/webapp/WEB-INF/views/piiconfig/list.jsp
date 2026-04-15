@@ -980,7 +980,7 @@
             var cfgkey = form.find('[name="cfgkey"]').val().trim();
 
             if (!cfgkey) {
-                alert('<spring:message code="msg.enterkey" text="Please enter config key"/>');
+                dlmAlert('<spring:message code="msg.enterkey" text="Please enter config key"/>');
                 return;
             }
 
@@ -995,7 +995,7 @@
                     $('#registerModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -1027,7 +1027,7 @@
                     $('#modifyModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() { searchAction(); }, 500);
                 },
                 error: function (request, error) {
@@ -1040,47 +1040,45 @@
 
         // Delete
         $('#btnDelete').on('click', function () {
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>')) {
-                return;
-            }
-
-            var cfgkey = $('#modifyForm [name="cfgkey"]').val();
-            if (!cfgkey) {
-                alert('Config key not found!');
-                return;
-            }
-
-            console.log('Deleting config key:', cfgkey);
-
-            // Create a form and submit
-            var deleteForm = $('<form>', {
-                'method': 'POST',
-                'action': '/piiconfig/remove'
-            });
-            deleteForm.append($('<input>', {type: 'hidden', name: 'cfgkey', value: cfgkey}));
-            deleteForm.append($('<input>', {type: 'hidden', name: '${_csrf.parameterName}', value: '${_csrf.token}'}));
-
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piiconfig/remove",
-                data: deleteForm.serialize(),
-                dataType: "html",
-                success: function (data) {
-                    console.log('Delete success');
-                    ingHide();
-                    $('#modifyModal').modal('hide');
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() { searchAction(); }, 500);
-                },
-                error: function (request, error) {
-                    console.log('Delete error:', request.status, request.responseText);
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>', function() {
+                var cfgkey = $('#modifyForm [name="cfgkey"]').val();
+                if (!cfgkey) {
+                    dlmAlert('Config key not found!');
+                    return;
                 }
+
+                console.log('Deleting config key:', cfgkey);
+
+                // Create a form and submit
+                var deleteForm = $('<form>', {
+                    'method': 'POST',
+                    'action': '/piiconfig/remove'
+                });
+                deleteForm.append($('<input>', {type: 'hidden', name: 'cfgkey', value: cfgkey}));
+                deleteForm.append($('<input>', {type: 'hidden', name: '${_csrf.parameterName}', value: '${_csrf.token}'}));
+
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piiconfig/remove",
+                    data: deleteForm.serialize(),
+                    dataType: "html",
+                    success: function (data) {
+                        console.log('Delete success');
+                        ingHide();
+                        $('#modifyModal').modal('hide');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open').css('padding-right', '');
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() { searchAction(); }, 500);
+                    },
+                    error: function (request, error) {
+                        console.log('Delete error:', request.status, request.responseText);
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });
@@ -1243,7 +1241,7 @@
             },
             success: function (data) {
                 ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
             }
         });
     }

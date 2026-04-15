@@ -223,6 +223,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		]]>
 	</select>
 
+	<delete id="deleteMasterKeymapByOrderId">
+		DELETE FROM cotdl.tbl_piimasterkeymap WHERE orderid = #{orderid}
+	</delete>
+
 	<select id="getCombinedTestDataStatus" resultType="datablocks.dlm.domain.TestDataCombinedStatusVO">
 		<![CDATA[
 		   SELECT

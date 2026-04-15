@@ -712,7 +712,6 @@
                 //alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
             },
             success: function (data) { ingHide();
-                //$("#GlobalSuccessMsgModal").modal("show");
                 //$('#sqlmsg').html(data);
                 //$('#sqlstr').html(data);
                 $('#moredetail').html(data);

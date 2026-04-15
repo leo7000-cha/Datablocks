@@ -209,7 +209,7 @@
             var aprvlineid = form.find('[name="aprvlineid"]').val().trim();
 
             if (!aprvlineid) {
-                alert('<spring:message code="msg.enteraprvlineid" text="Please enter approval line ID"/>');
+                dlmAlert('<spring:message code="msg.enteraprvlineid" text="Please enter approval line ID"/>');
                 return;
             }
 
@@ -234,7 +234,7 @@
                         $('#registerModal').modal('hide');
                         $('.modal-backdrop').remove();
                         $('body').removeClass('modal-open').css('padding-right', '');
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         setTimeout(function() {
                             searchAction(1);
                         }, 500);
@@ -259,46 +259,44 @@
             var checkbox = $("input:checkbox[name=chkBox]:checked");
 
             if (checkbox.length === 0) {
-                alert("<spring:message code='msg.selecttosend' text='Select Approval line to remove'/>");
+                dlmAlert("<spring:message code='msg.selecttosend' text='Select Approval line to remove'/>");
                 return;
             }
 
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>')) {
-                return;
-            }
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>', function() {
+                var param = [];
+                checkbox.each(function (i) {
+                    var tr = $(this).closest('tr');
+                    var td = tr.children();
+                    var data = {
+                        aprvlineid: td.eq(2).text().trim()
+                    };
+                    param.push(data);
+                });
 
-            var param = [];
-            checkbox.each(function (i) {
-                var tr = $(this).closest('tr');
-                var td = tr.children();
-                var data = {
-                    aprvlineid: td.eq(2).text().trim()
-                };
-                param.push(data);
-            });
-
-            ingShow();
-            $.ajax({
-                url: "/piiapprovaluser/removeline",
-                dataType: "text",
-                contentType: "application/json; charset=UTF-8",
-                type: "POST",
-                data: JSON.stringify(param),
-                beforeSend: function (xhr) {
-                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-                },
-                success: function (data, textStatus, jqXHR) {
-                    ingHide();
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() {
-                        searchAction(1);
-                    }, 500);
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+                ingShow();
+                $.ajax({
+                    url: "/piiapprovaluser/removeline",
+                    dataType: "text",
+                    contentType: "application/json; charset=UTF-8",
+                    type: "POST",
+                    data: JSON.stringify(param),
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                    },
+                    success: function (data, textStatus, jqXHR) {
+                        ingHide();
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() {
+                            searchAction(1);
+                        }, 500);
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });

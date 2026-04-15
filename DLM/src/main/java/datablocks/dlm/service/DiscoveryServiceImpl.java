@@ -37,6 +37,9 @@ public class DiscoveryServiceImpl implements DiscoveryService {
     @Autowired
     private PiiDatabaseService databaseService;
 
+    @Autowired
+    private org.springframework.context.ApplicationContext applicationContext;
+
     // ========== Dashboard ==========
     @Override
     public DiscoveryStatVO getDashboardStats() {
@@ -136,8 +139,8 @@ public class DiscoveryServiceImpl implements DiscoveryService {
         // 4. Job의 마지막 실행 정보 업데이트
         mapper.updateJobLastExecution(jobId, executionId);
 
-        // 5. 스캔 엔진 실행 (비동기 - 별도 스레드에서 실행)
-        executeEngineAsync(job, dbInfo, executionId);
+        // 5. 스캔 엔진 실행 (비동기 - Spring 프록시를 통해 호출하여 @Async 적용)
+        applicationContext.getBean(DiscoveryServiceImpl.class).executeEngineAsync(job, dbInfo, executionId);
 
         return executionId;
     }
@@ -177,8 +180,8 @@ public class DiscoveryServiceImpl implements DiscoveryService {
         // 4. 기존 Execution 상태를 PENDING으로 리셋 (동일 executionId 재사용)
         mapper.updateExecutionStatus(executionId, "PENDING", 0);
 
-        // 5. 스캔 엔진 실행 (비동기 - 기존 executionId → 완료된 테이블 자동 스킵)
-        executeEngineAsync(job, dbInfo, executionId);
+        // 5. 스캔 엔진 실행 (비동기 - Spring 프록시를 통해 호출하여 @Async 적용)
+        applicationContext.getBean(DiscoveryServiceImpl.class).executeEngineAsync(job, dbInfo, executionId);
 
         return executionId;
     }
@@ -584,18 +587,89 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                         + ", column=" + result.getColumnName());
             }
         } else if ("EXCLUDED".equals(status)) {
-            // EXCLUDED: VAL2 초기화
-            int clearCount = mapper.clearMetaVal2(
+            // EXCLUDED: MetaTable val2='EXCLUDED' 세팅 (다음 스캔에서 스킵)
+            int excludeCount = mapper.updateMetaTableExcluded(
                     result.getDbName(),
                     schemaName,
                     result.getTableName(),
                     result.getColumnName()
             );
-            LogUtil.log("INFO", "Cleared Meta VAL2: " + result.getTableName() + "." + result.getColumnName()
-                    + " (updated " + clearCount + " rows)");
+            LogUtil.log("INFO", "MetaTable EXCLUDED: " + result.getTableName() + "." + result.getColumnName()
+                    + " (updated " + excludeCount + " rows)");
         }
 
         LogUtil.log("INFO", "Registered to PII Registry: " + result.getTableName() + "." + result.getColumnName() + " -> " + status);
+    }
+
+    @Override
+    public List<datablocks.dlm.domain.MetaTableVO> getMetaTablePiiColumns(Criteria cri) {
+        return mapper.selectMetaTablePiiColumns(cri);
+    }
+
+    @Override
+    public int getMetaTablePiiColumnsTotal(Criteria cri) {
+        return mapper.selectMetaTablePiiColumnsTotal(cri);
+    }
+
+    @Override
+    public int getMetaTablePiiCount(String type) {
+        return mapper.selectMetaTablePiiCount(type);
+    }
+
+    @Override
+    public List<datablocks.dlm.domain.MetaTableVO> getMetaTableAllColumns(Criteria cri) {
+        return mapper.selectMetaTableAllColumns(cri);
+    }
+
+    @Override
+    public int getMetaTableAllColumnsTotal(Criteria cri) {
+        return mapper.selectMetaTableAllColumnsTotal(cri);
+    }
+
+    @Override
+    @Transactional
+    public void updateMetaTablePiiDirect(String db, String schema, String table, String column,
+                                          String piiTypeCode, String piiGrade, String encryptFlag, String scrambleType) {
+        LogUtil.log("INFO", "Direct MetaTable PII update: " + table + "." + column + " piiType=" + piiTypeCode);
+        String schemaName = schema != null ? schema : "";
+        mapper.updateMetaTablePiiSettings(db, schemaName, table, column,
+                piiTypeCode, piiGrade, encryptFlag, scrambleType);
+    }
+
+    @Override
+    @Transactional
+    public void confirmWithSettings(String resultId, String userId,
+                                     String piiTypeCode, String piiGrade, String encryptFlag,
+                                     String scrambleType) {
+        LogUtil.log("INFO", "Discovery confirmWithSettings: " + resultId
+                + " piiType=" + piiTypeCode + " encrypt=" + encryptFlag + " scramble=" + scrambleType);
+
+        // 1. Scan Result 조회
+        DiscoveryScanResultVO result = mapper.selectScanResult(resultId);
+        if (result == null) {
+            throw new IllegalArgumentException("Scan result not found: " + resultId);
+        }
+
+        // 2. Scan Result 상태 업데이트 (CONFIRMED)
+        String schemaName = result.getSchemaName() != null ? result.getSchemaName() : "";
+        mapper.updateScanResultConfirmByColumn(
+                result.getDbName(), schemaName,
+                result.getTableName(), result.getColumnName(),
+                "CONFIRMED", userId);
+
+        // 3. MetaTable 직접 업데이트 (최종 마스터 — Registry 거치지 않음)
+        mapper.updateMetaTablePiiSettings(
+                result.getDbName(), schemaName,
+                result.getTableName(), result.getColumnName(),
+                piiTypeCode, piiGrade, encryptFlag, scrambleType);
+
+        // 4. MetaTable val2에도 탐지 결과 기록
+        mapper.syncPiiRegistryToMetaDomain(
+                result.getDbName(), schemaName,
+                result.getTableName(), result.getColumnName(),
+                result.getPiiTypeName(), result.getScore());
+
+        LogUtil.log("INFO", "MetaTable PII settings updated: " + result.getTableName() + "." + result.getColumnName());
     }
 
     @Override

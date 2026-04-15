@@ -255,14 +255,13 @@
             },
             success: function (data, textStatus, jqXHR) {ingHide();
                 //$('#content_home').html(data);
-                //$("#GlobalSuccessMsgModal").modal("show");
                 //searchAction(1);
                 $('#jobwaitmodify').empty();
                 $('#jobwaitbody tr').each(function () {
                     $("#jobwaitmodify").append("<span class='jm-wait-tag'>" + $(this).children().eq(1).text() + "</span>");
                 });
 
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 $("#dialogjobwaitlist").modal("hide");
             },
             error: function (request, error) { ingHide();

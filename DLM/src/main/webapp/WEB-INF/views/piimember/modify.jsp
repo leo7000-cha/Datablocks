@@ -117,7 +117,7 @@
                 },
                 success: function (result) {
                     ingHide();
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() {
                         // Go to dashboard
                         $.ajax({

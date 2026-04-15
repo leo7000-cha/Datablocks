@@ -27,6 +27,7 @@ public interface TestDataMapper {
 	public int getTotalCount(Criteria cri);
 	public int getMaxTestdataid();
 	public List<MasterKeymapVO> getListMasterKeymap(@Param("new_orderid") int new_orderid);
+	public int deleteMasterKeymapByOrderId(@Param("orderid") int orderid);
 	List<TestDataCombinedStatusVO> getCombinedTestDataStatus(
 			@Param("startDate") String startDate,
 			@Param("endDate") String endDate

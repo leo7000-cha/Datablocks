@@ -399,7 +399,7 @@
                 $('#piisteptable_modify_form [name="sqlstr"]').val(sqlstr);
             },
             error: function(request, status, error) {
-                alert("자동적재 대상에 테이블이 아닙니다. \n'4.EXE_TRANSFORM' 스탭내에 등록된 테이블만 업데이트 가능합니다.");
+                dlmAlert("자동적재 대상에 테이블이 아닙니다. \n'4.EXE_TRANSFORM' 스탭내에 등록된 테이블만 업데이트 가능합니다.");
             }
         });
     }

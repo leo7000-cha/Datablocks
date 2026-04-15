@@ -875,18 +875,13 @@
                 <span><spring:message code="memu.meta_configuration" text="데이터 거버넌스"/></span>
             </a>
             <div class="dropdown-menu">
-                <a class="dropdown-item" href='javascript:void(0)' id='2020'>
-                    <span class="menu-icon"><i class="fas fa-database"></i></span>
-                    <spring:message code="memu.tablemata_mgmt" text="데이터 인벤토리"/>
-                </a>
-                <a class="dropdown-item" href='javascript:void(0)' id='2030'>
-                    <span class="menu-icon"><i class="fas fa-shield-alt"></i></span>
-                    <spring:message code="memu.lkpiiscr_mgmt" text="민감정보 분류·보호 정책"/>
-                </a>
-                <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href='javascript:void(0)' id='2040'>
                     <span class="menu-icon"><i class="fas fa-magnifying-glass-chart"></i></span>
                     <spring:message code="menu.discovery" text="개인정보 자동 탐지"/> <i class="fas fa-external-link-alt" style="font-size:0.55rem; opacity:0.4; margin-left:4px;"></i>
+                </a>
+                <a class="dropdown-item" href='javascript:void(0)' id='2020'>
+                    <span class="menu-icon"><i class="fas fa-database"></i></span>
+                    <spring:message code="memu.tablemata_mgmt" text="데이터 인벤토리"/>
                 </a>
             </div>
         </li>

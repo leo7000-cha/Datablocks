@@ -223,16 +223,14 @@
         <sec:authentication property="principal.member.userid" var="userid"/>
         <c:if test="${userid ne 'admin' }">
         if("<c:out value='${needtochangepwd}'/>" == "INI"){
-            if(!confirm("<spring:message code="etc.pwdfirst" text="Your password is in the reset state. Would you like to change it now?"/>")){
-            }else{
+            showConfirm("<spring:message code="etc.pwdfirst" text="Your password is in the reset state. Would you like to change it now?"/>", function(){
                 searchAction_pwd("<c:out value='${userid}'/>");
-            }
+            });
         }
         if("<c:out value='${needtochangepwd}'/>" == "EXPIRED"){
-            if(!confirm("<spring:message code="etc.pwdreset" text="Your password has expired 6 months after the last change. Would you like to change it now?"/>")){
-            }else{
+            showConfirm("<spring:message code="etc.pwdreset" text="Your password has expired 6 months after the last change. Would you like to change it now?"/>", function(){
                 searchAction_pwd("<c:out value='${userid}'/>");
-            }
+            });
         }
         </c:if>
     });

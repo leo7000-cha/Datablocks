@@ -424,7 +424,7 @@ $(document).ready(function() {
 		var td = tr.children();
 		
 		if(td.eq(2).text() == ''){
-			alert("Select Keymap !!");
+			dlmAlert("Select Keymap !!");
 			return;
 		}
 		$('#piisteptable_modify_form [name="where_key_name"]').val(td.eq(2).text());//key_name

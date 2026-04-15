@@ -77,6 +77,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="keyword != null and keyword != ''">
                 AND (r.table_name LIKE #{keyword} OR r.column_name LIKE #{keyword})
             </if>
+            <if test="search7 != null and search7 != ''">
+                AND r.encryption_status = #{search7}
+            </if>
         </trim>
     </sql>
 
@@ -324,13 +327,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         UPDATE COTDL.TBL_DISCOVERY_SCAN_EXECUTION
         SET status = #{status},
             <if test="progress != null">progress = #{progress},</if>
-            <if test="status == 'RUNNING'">start_time = NOW(),</if>
+            <if test="status == 'RUNNING'">start_time = COALESCE(start_time, NOW()),</if>
             <if test="status == 'COMPLETED' or status == 'FAILED' or status == 'CANCELLED'">
                 end_time = NOW(),
                 duration_ms = TIMESTAMPDIFF(SECOND, start_time, NOW()) * 1000,
             </if>
             reg_date = reg_date
         WHERE execution_id = #{executionId}
+          <!-- RUNNING 진행률 업데이트 시 이미 완료된 실행을 덮어쓰지 않도록 보호 -->
+          <if test="status == 'RUNNING'">AND status IN ('PENDING', 'RUNNING')</if>
     </update>
 
     <update id="updateExecutionFailed">
@@ -370,6 +375,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             score, meta_score, pattern_score, ai_score,
             meta_match, pattern_match, ai_match,
             matched_rule, matched_pattern, sample_data,
+            encryption_status, encryption_method, encryption_ratio,
             confirm_status, reg_date
         ) VALUES (
             #{resultId}, #{jobId}, #{executionId}, #{dbName}, #{schemaName}, #{tableName}, #{columnName},
@@ -377,6 +383,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{score}, #{metaScore}, #{patternScore}, #{aiScore},
             #{metaMatch}, #{patternMatch}, #{aiMatch},
             #{matchedRule}, #{matchedPattern}, #{sampleData},
+            #{encryptionStatus}, #{encryptionMethod}, #{encryptionRatio},
             #{confirmStatus}, NOW()
         )
     </insert>
@@ -391,6 +398,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             r.score, r.meta_score AS metaScore, r.pattern_score AS patternScore, r.ai_score AS aiScore,
             r.meta_match AS metaMatch, r.pattern_match AS patternMatch, r.ai_match AS aiMatch,
             r.matched_rule AS matchedRule, r.matched_pattern AS matchedPattern, r.sample_data AS sampleData,
+            r.encryption_status AS encryptionStatus, r.encryption_method AS encryptionMethod, r.encryption_ratio AS encryptionRatio,
             r.confirm_status AS confirmStatus, r.confirmed_by AS confirmedBy,
             DATE_FORMAT(r.confirmed_date, '%Y-%m-%d %H:%i:%s') AS confirmedDate,
             DATE_FORMAT(r.reg_date, '%Y-%m-%d %H:%i:%s') AS regDate,
@@ -406,7 +414,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             r.db_name AS dbName, r.schema_name AS schemaName, r.table_name AS tableName, r.column_name AS columnName,
             r.data_type AS dataType, r.pii_type_code AS piiTypeCode, r.pii_type_name AS piiTypeName,
             r.score, r.meta_match AS metaMatch, r.pattern_match AS patternMatch, r.ai_match AS aiMatch,
-            r.sample_data AS sampleData, r.confirm_status AS confirmStatus,
+            r.sample_data AS sampleData,
+            r.encryption_status AS encryptionStatus, r.encryption_method AS encryptionMethod, r.encryption_ratio AS encryptionRatio,
+            r.confirm_status AS confirmStatus,
             r.confirmed_by AS confirmedBy,
             DATE_FORMAT(r.confirmed_date, '%Y-%m-%d %H:%i') AS confirmedDate,
             DATE_FORMAT(r.reg_date, '%Y-%m-%d') AS regDate,
@@ -416,7 +426,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_EXECUTION e ON r.execution_id = e.execution_id
         LEFT JOIN COTDL.TBL_DISCOVERY_SCAN_JOB_V2 j ON r.job_id = j.job_id
         <include refid="criteria_scanResult"/>
-        ORDER BY r.score DESC, r.reg_date DESC
+        ORDER BY CASE WHEN r.encryption_status != 'NONE' AND r.score = 0 THEN 1 ELSE 0 END DESC,
+                 r.score DESC, r.reg_date DESC
         LIMIT #{offset}, #{amount}
     </select>
 
@@ -723,18 +734,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             registry_id, db_name, schema_name, table_name, column_name,
             data_type, column_comment,
             pii_type_code, pii_type_name, detection_method, confidence_score, sample_data,
+            encryption_status, encryption_method, encryption_ratio,
             first_detected_date, first_detected_execution_id, first_detected_result_id,
             status, registered_by, registered_date, remarks, created_date
         ) VALUES (
             #{registryId}, #{dbName}, #{schemaName}, #{tableName}, #{columnName},
             #{dataType}, #{columnComment},
             #{piiTypeCode}, #{piiTypeName}, #{detectionMethod}, #{confidenceScore}, #{sampleData},
+            #{encryptionStatus}, #{encryptionMethod}, #{encryptionRatio},
             #{firstDetectedDate}, #{firstDetectedExecutionId}, #{firstDetectedResultId},
             COALESCE(#{status}, 'CONFIRMED'), #{registeredBy}, NOW(), #{remarks}, NOW()
         )
         ON DUPLICATE KEY UPDATE
             pii_type_code = VALUES(pii_type_code),
             pii_type_name = VALUES(pii_type_name),
+            encryption_status = VALUES(encryption_status),
+            encryption_method = VALUES(encryption_method),
+            encryption_ratio = VALUES(encryption_ratio),
             status = VALUES(status),
             updated_by = VALUES(registered_by),
             updated_date = NOW(),
@@ -751,6 +767,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             r.pii_type_code AS piiTypeCode, COALESCE(p.pii_type_name, r.pii_type_name) AS piiTypeName,
             r.detection_method AS detectionMethod, r.confidence_score AS confidenceScore,
             r.sample_data AS sampleData,
+            r.encryption_status AS encryptionStatus, r.encryption_method AS encryptionMethod, r.encryption_ratio AS encryptionRatio,
             DATE_FORMAT(r.first_detected_date, '%Y-%m-%d %H:%i') AS firstDetectedDate,
             r.first_detected_execution_id AS firstDetectedExecutionId,
             r.first_detected_result_id AS firstDetectedResultId,
@@ -776,6 +793,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             r.pii_type_code AS piiTypeCode, COALESCE(p.pii_type_name, r.pii_type_name) AS piiTypeName,
             r.detection_method AS detectionMethod, r.confidence_score AS confidenceScore,
             r.sample_data AS sampleData,
+            r.encryption_status AS encryptionStatus, r.encryption_method AS encryptionMethod, r.encryption_ratio AS encryptionRatio,
             r.status,
             r.registered_by AS registeredBy,
             DATE_FORMAT(r.registered_date, '%Y-%m-%d %H:%i') AS registeredDate,
@@ -843,6 +861,86 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
         WHERE db_name = #{dbName}
           AND status IN ('CONFIRMED', 'EXCLUDED')
+    </select>
+
+    <!-- MetaTable 기반 PII 확정 + 오탐 제외 컬럼 키 (스캔 스킵용) -->
+    <select id="selectMetaTablePiiColumnKeys" resultType="string">
+        SELECT CONCAT(UPPER(db), '.', UPPER(COALESCE(owner, '')), '.', UPPER(table_name), '.', UPPER(column_name))
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{dbName}
+          AND (piitype IS NOT NULL OR val2 = 'EXCLUDED')
+    </select>
+
+    <!-- MetaTable 기반 PII 컬럼 목록 (columns 페이지용) -->
+    <sql id="criteria_metaPiiColumns">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search7 == 'PII'">AND piitype IS NOT NULL</if>
+            <if test="search7 == 'EXCLUDED_VAL2'">AND val2 = 'EXCLUDED'</if>
+            <if test="search1 != null and search1 != ''">AND db = #{search1}</if>
+            <if test="search2 != null and search2 != ''">AND owner LIKE #{search2}</if>
+            <if test="filterTable != null and filterTable != ''">AND table_name LIKE #{filterTable}</if>
+            <if test="filterColumn != null and filterColumn != ''">AND column_name LIKE #{filterColumn}</if>
+        </trim>
+    </sql>
+
+    <select id="selectMetaTablePiiColumns" resultType="datablocks.dlm.domain.MetaTableVO">
+        SELECT db, owner, table_name, column_name, data_type, piitype, piigrade,
+               encript_flag, scramble_type, val2, val3,
+               DATE_FORMAT(upddate, '%Y-%m-%d %H:%i') as upddate, upduserid
+        FROM COTDL.TBL_METATABLE
+        <include refid="criteria_metaPiiColumns"/>
+        ORDER BY db, owner, table_name, column_name
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectMetaTablePiiColumnsTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_METATABLE
+        <include refid="criteria_metaPiiColumns"/>
+    </select>
+
+    <select id="selectMetaTablePiiCount" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_METATABLE
+        <choose>
+            <when test="type == 'PII'">WHERE piitype IS NOT NULL</when>
+            <when test="type == 'EXCLUDED_VAL2'">WHERE val2 = 'EXCLUDED'</when>
+        </choose>
+    </select>
+
+    <!-- MetaTable 전체 컬럼 조회 (인벤토리 동일 - columns 페이지용) -->
+    <sql id="criteria_metaAll">
+        <trim prefix="WHERE 1=1" suffix="">
+            <if test="search1 != null">AND db = #{search1}</if>
+            <if test="search2 != null">AND owner = #{search2}</if>
+            <if test="search3 != null">AND table_name LIKE #{search3}</if>
+            <if test="search4 != null">AND column_name LIKE #{search4}</if>
+            <if test="search5 == 'Y'.toString()">AND encript_flag = 'Y'</if>
+            <if test="search7 == 'PII'">AND piitype IS NOT NULL</if>
+            <if test="search7 == 'NOTPII'">AND piitype IS NULL</if>
+            <if test="search7 != null and search7 != 'PII' and search7 != 'NOTPII'">AND piitype = #{search7}</if>
+            <if test="search8 == 'Y'.toString()">AND scramble_type IS NOT NULL</if>
+            <if test="search8 == 'N'.toString()">AND scramble_type IS NULL</if>
+            <if test="search10 != null">AND column_comment LIKE #{search10}</if>
+            <if test="search15 == 'Y'.toString()">AND val3 IS NOT NULL AND val3 != ''</if>
+            <if test="search15 == 'N'.toString()">AND (val3 IS NULL OR val3 = '')</if>
+            <if test="search16 == 'Y'.toString()">AND val2 IS NOT NULL AND val2 LIKE '%|%'</if>
+            <if test="search16 == 'N'.toString()">AND (val2 IS NULL OR (val2 NOT LIKE '%|%' AND val2 != 'EXCLUDED'))</if>
+            <if test="search16 == 'EXCLUDED'.toString()">AND val2 = 'EXCLUDED'</if>
+        </trim>
+    </sql>
+
+    <select id="selectMetaTableAllColumns" resultType="datablocks.dlm.domain.MetaTableVO">
+        SELECT db, owner, table_name, column_name, column_comment, column_id, pk_yn,
+               data_type, data_length, domain, val2, encript_flag, piigrade, piitype,
+               scramble_type, val3, DATE_FORMAT(upddate, '%Y/%m/%d') as upddate
+        FROM COTDL.TBL_METATABLE
+        <include refid="criteria_metaAll"/>
+        ORDER BY db, owner, table_name, column_id
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectMetaTableAllColumnsTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_METATABLE
+        <include refid="criteria_metaAll"/>
     </select>
 
     <!-- 스캔 엔진용: 등록된 PII 컬럼 상세 목록 -->
@@ -931,6 +1029,47 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="clearMetaVal2">
         UPDATE COTDL.TBL_METATABLE
         SET val2 = NULL,
+            upddate = NOW()
+        WHERE db = #{dbName}
+          AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </update>
+
+    <!-- Audit Policy 스크립트용: CONFIRMED PII 테이블 목록 (DB별 스키마.테이블 그룹) -->
+    <select id="selectConfirmedPiiTables" resultType="map">
+        SELECT db_name AS dbName, schema_name AS schemaName, table_name AS tableName,
+               GROUP_CONCAT(DISTINCT column_name ORDER BY column_name) AS piiColumns,
+               GROUP_CONCAT(DISTINCT pii_type_code ORDER BY pii_type_code) AS piiTypes,
+               COUNT(*) AS columnCount
+        FROM COTDL.TBL_DISCOVERY_PII_REGISTRY
+        WHERE status = 'CONFIRMED'
+        <if test="dbName != null and dbName != ''">
+            AND db_name = #{dbName}
+        </if>
+        GROUP BY db_name, schema_name, table_name
+        ORDER BY db_name, schema_name, table_name
+    </select>
+
+    <!-- PII 확정 시 MetaTable piitype/encrit_flag/scramble_type 업데이트 -->
+    <!-- 오탐 제외: MetaTable val2='EXCLUDED' 세팅 -->
+    <update id="updateMetaTableExcluded">
+        UPDATE COTDL.TBL_METATABLE
+        SET val2 = 'EXCLUDED',
+            upddate = NOW()
+        WHERE db = #{dbName}
+          AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')
+          AND table_name = #{tableName}
+          AND column_name = #{columnName}
+    </update>
+
+    <update id="updateMetaTablePiiSettings">
+        UPDATE COTDL.TBL_METATABLE
+        SET piitype = #{piiTypeCode},
+            piigrade = #{piiGrade},
+            encript_flag = #{encryptFlag},
+            scramble_type = #{scrambleType},
+            val3 = DATE_FORMAT(NOW(), '%Y/%m/%d'),
             upddate = NOW()
         WHERE db = #{dbName}
           AND COALESCE(owner, '') = COALESCE(#{schemaName}, '')

@@ -188,7 +188,7 @@
                 checkedcnt++;
             }
             if (checkedcnt == 0) {
-                alert("Select a Order for recovery");
+                dlmAlert("Select a Order for recovery");
                 return;
             }
 
@@ -203,7 +203,7 @@
                 },
                 success: function (data, textStatus, jqXHR) {ingHide();
                     if (data == "success") {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         searchAction(1);
                     } else {
                         $("#errormodalbody").html(data);

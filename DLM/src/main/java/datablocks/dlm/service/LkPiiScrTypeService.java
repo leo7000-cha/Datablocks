@@ -17,11 +17,13 @@ public interface LkPiiScrTypeService {
 
 	public List<LkPiiScrTypeVO> getList();
 
+	public List<LkPiiScrTypeVO> getListAll();
+
 	public List<LkPiiScrTypeVO> getList(Criteria cri);
 
 	//추가
 	public int getTotal(Criteria cri);
-	
 
+	public void updateVisible(String piicode, String visible);
 
 }

@@ -10,10 +10,14 @@
     <result property="userid" column="userid"/>
     <result property="userpw" column="userpw"/>
     <result property="userName" column="username"/>
+    <result property="enabled" column="enabled" javaType="boolean"/>
     <result property="regDate" column="regdate"/>
     <result property="updateDate" column="updatedate"/>
+    <result property="email" column="email"/>
+    <result property="managerId" column="manager_id"/>
+    <result property="position" column="position"/>
     <collection property="authList" resultMap="authMap">
-    </collection> 
+    </collection>
   </resultMap>
   
   <resultMap type="datablocks.dlm.domain.AuthVO" id="authMap">
@@ -22,10 +26,10 @@
   </resultMap>
   
   <select id="read" resultMap="memberMap">
-	SELECT 
-	  mem.userid,  userpw, username, enabled, regdate, updatedate, auth
-	FROM 
-	  cotdl.tbl_member mem LEFT OUTER JOIN cotdl.tbl_member_auth auth on mem.userid = auth.userid 
+	SELECT
+	  mem.userid, userpw, username, enabled, regdate, updatedate, email, manager_id, position, auth
+	FROM
+	  cotdl.tbl_member mem LEFT OUTER JOIN cotdl.tbl_member_auth auth on mem.userid = auth.userid
 	WHERE mem.userid = #{userid}
   </select>
 

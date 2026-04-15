@@ -142,6 +142,7 @@
                         <option value="">-</option>
                         <option value="Y" <c:if test="${pageMaker.cri.search16 eq 'Y'}">selected</c:if>><spring:message code="etc.detected" text="탐지됨"/></option>
                         <option value="N" <c:if test="${pageMaker.cri.search16 eq 'N'}">selected</c:if>><spring:message code="etc.notdetected" text="미탐지"/></option>
+                        <option value="EXCLUDED" <c:if test="${pageMaker.cri.search16 eq 'EXCLUDED'}">selected</c:if>>오탐제외</option>
                     </select>
                 </div>
                 <div class="policy-filter-item">
@@ -249,6 +250,11 @@
                                         <i class="fas fa-shield-alt" style="font-size: 10px;"></i>
                                         <span class="pii-type">${piiParts[0]}</span>
                                         <span class="pii-score" style="background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 8px; font-size: 10px;">${piiParts[1]}</span>
+                                    </span>
+                                </c:when>
+                                <c:when test="${metatable.val2 == 'EXCLUDED'}">
+                                    <span style="background: #fef2f2; color: #dc2626; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; border: 1px solid #fecaca;">
+                                        <i class="fas fa-ban" style="font-size: 10px;"></i> 오탐제외
                                     </span>
                                 </c:when>
                                 <c:otherwise>
@@ -524,16 +530,16 @@
 
             formData.append("uploadFile", files[0]);
             if (files.length == 0) {
-                alert("Choose the upload file");
+                dlmAlert("Choose the upload file");
                 return false;
             } else if (files.length > 1) {
-                alert("Choose only one file");
+                dlmAlert("Choose only one file");
                 return false;
             }
 
             for (var i = 0; i < files.length; i++) {
                 if (!$('#uploadFileInput').val().toUpperCase().endsWith(".XLS") && !$('#uploadFileInput').val().toUpperCase().endsWith(".XLSX")) {
-                    alert("Only EXCEL file type can be uploaded.");
+                    dlmAlert("Only EXCEL file type can be uploaded.");
                     return false;
                 }
                 formData.append("uploadFile", files[i]);
@@ -612,7 +618,7 @@
                 },
                 success: function (data, textStatus, jqXHR) {
                     ingHide();
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(1);
                 },
                 error: function (request, error) {

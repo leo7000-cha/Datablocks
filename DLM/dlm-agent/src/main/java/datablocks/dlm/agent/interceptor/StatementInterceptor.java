@@ -1,6 +1,7 @@
 package datablocks.dlm.agent.interceptor;
 
 import datablocks.dlm.agent.AgentConfig;
+import datablocks.dlm.agent.analyzer.PiiPolicyCache;
 import datablocks.dlm.agent.analyzer.SqlAnalyzer;
 import datablocks.dlm.agent.buffer.LogBuffer;
 import datablocks.dlm.agent.context.UserContext;
@@ -13,11 +14,12 @@ import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaModule;
 
 import java.security.ProtectionDomain;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Statement.execute*() 메서드를 ByteBuddy Advice로 가로채기.
- * SQL 텍스트 + 실행시간 + 사용자 정보를 캡처하여 LogBuffer에 추가.
+ * 감사 대상 테이블에 접근하는 SQL만 캡처하여 LogBuffer에 추가.
  */
 public class StatementInterceptor {
 
@@ -70,6 +72,15 @@ public class StatementInterceptor {
                 AgentConfig config = AgentConfig.getInstance();
                 if (config != null && shouldExclude(sql, config)) return;
 
+                // 감사 대상 테이블 필터링: SQL에서 테이블 추출 후 대상 여부 확인
+                PiiPolicyCache cache = PiiPolicyCache.getInstance();
+                Map<String, Set<String>> tableColumns = SqlAnalyzer.extractColumns(sql);
+                if (cache != null && cache.getTargetTableCount() > 0) {
+                    if (!cache.hasAnyTargetTable(tableColumns.keySet())) return;
+                } else if (cache != null && cache.getTargetTableCount() == 0) {
+                    return; // 감사 대상 미등록 → 캡처 안 함
+                }
+
                 long elapsed = (System.nanoTime() - startTime) / 1_000_000; // ms
 
                 UserContext ctx = UserContext.current();
@@ -90,8 +101,8 @@ public class StatementInterceptor {
                 entry.setSuccess(thrown == null);
                 entry.setActionType(SqlAnalyzer.detectActionType(sql));
 
-                // PII 분석 (경량)
-                SqlAnalyzer.enrichPiiInfo(entry);
+                // PII 분석 (이미 추출한 tableColumns 활용)
+                SqlAnalyzer.enrichPiiInfoFromParsed(entry, tableColumns);
 
                 // 비동기 버퍼에 추가 (논블로킹)
                 LogBuffer.getInstance().offer(entry);

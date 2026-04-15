@@ -44,11 +44,12 @@ public class CommonController {
     }
 
     @GetMapping("/customLogin")
-    public void loginInput(String error, String logout, Model model, HttpSession session) {
+    public void loginInput(String error, String logout, Model model, HttpSession session,
+                           jakarta.servlet.http.HttpServletRequest request) {
 
         LogUtil.log("INFO", "/customLogin error: " + error);
         LogUtil.log("INFO", "/customLogin logout: " + logout);
-        LogUtil.log("INFO", "/customLogin model: " + model.toString());
+        LogUtil.log("INFO", "/customLogin sessionId=" + session.getId() + ", isNew=" + session.isNew() + ", remoteAddr=" + request.getRemoteAddr());
 
         if (error != null) {
             String errorMessage = getLoginErrorMessage(session);

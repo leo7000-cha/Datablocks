@@ -192,7 +192,7 @@
             $('#steptableupdatebody tr').each(function () {
                 if (jQuery.trim(td.eq(2).text()) == jQuery.trim($(this).children().eq(1).text())) {
                     existflag = false;
-                    alert(jQuery.trim(td.eq(2).text()) + " has already been applied ");
+                    dlmAlert(jQuery.trim(td.eq(2).text()) + " has already been applied ");
                     return false;
 
                 }
@@ -360,7 +360,7 @@
 
                     $("#steptableupdatemodify").append("<tr style='border: none;'><td style='border: none;'>" + td.eq(1).text() + " = </td><td style='border: none;'>" + updateval + "</td></tr>");
                 });
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 $("#dialogordertableupdatelist").modal("hide");
             },
             error: function (request, error) { ingHide();

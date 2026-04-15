@@ -25,6 +25,7 @@ public interface PiiJobMapper {
 	public void checkin(@Param("jobid") String jobid,@Param("version") String version);
 	public int reject(PiiApprovalReqVO approvalreqVO);
 	public int approve(PiiApprovalReqVO approvalreqVO);
+	public int forceTogglePhase(@Param("jobid") String jobid, @Param("version") String version);
 	public int setold(PiiApprovalReqVO approvalreqVO);
 	//public PiiJobVO read(PiiJobVO PiiJob);
 	public PiiJobVO read(@Param("jobid") String jobid,@Param("version") String version);

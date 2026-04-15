@@ -12,11 +12,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/lkpiiscrtype/*")
@@ -102,8 +103,23 @@ public class LkPiiScrTypeController {
         return "redirect:/lkpiiscrtype/list";
     }
 
-
-
+    @PostMapping("/api/toggle-visible")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> toggleVisible(
+            @RequestParam("piicode") String piicode,
+            @RequestParam("visible") String visible) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            service.updateVisible(piicode, visible);
+            result.put("success", true);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(500).body(result);
+        }
+    }
 
 }
 

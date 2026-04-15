@@ -53,7 +53,7 @@ public class LogShipper implements Runnable {
         heartbeatThread.setDaemon(true);
         heartbeatThread.start();
 
-        System.out.println("[DLM-Agent] LogShipper started: batchSize=" + batchSize
+        System.out.println("[XAudit-Agent] LogShipper started: batchSize=" + batchSize
                 + ", flushInterval=" + flushIntervalMs + "ms");
     }
 
@@ -115,11 +115,11 @@ public class LogShipper implements Runnable {
             if (status >= 200 && status < 300) {
                 return true;
             } else {
-                System.err.println("[DLM-Agent] Log send failed: HTTP " + status);
+                System.err.println("[XAudit-Agent] Log send failed: HTTP " + status);
                 return false;
             }
         } catch (Exception e) {
-            System.err.println("[DLM-Agent] Log send error: " + e.getMessage());
+            System.err.println("[XAudit-Agent] Log send error: " + e.getMessage());
             return false;
         } finally {
             if (conn != null) conn.disconnect();

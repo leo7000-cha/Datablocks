@@ -84,6 +84,13 @@ public class SqlAnalyzer {
      */
     public static void enrichPiiInfo(AccessLogEntry entry) {
         Map<String, Set<String>> tableColumns = extractColumns(entry.getSql());
+        enrichPiiInfoFromParsed(entry, tableColumns);
+    }
+
+    /**
+     * PII 정보 보강 — 이미 파싱된 tableColumns 재사용
+     */
+    public static void enrichPiiInfoFromParsed(AccessLogEntry entry, Map<String, Set<String>> tableColumns) {
         PiiPolicyCache cache = PiiPolicyCache.getInstance();
 
         if (cache == null || tableColumns.isEmpty()) {

@@ -166,7 +166,7 @@
                 var td = row.children();
 
                 if(td.eq(11).text().trim() == "Wait")
-                {alert("Wait condition can not be recovered");return;}
+                {dlmAlert("Wait condition can not be recovered");return;}
 
                 var data = {
                     recoveryid     	:null,
@@ -188,7 +188,7 @@
                 param.push(data);
                 checkedcnt++;
             }
-            if(checkedcnt == 0) {alert("Select a Order for recovery");return;}
+            if(checkedcnt == 0) {dlmAlert("Select a Order for recovery");return;}
 
             $.ajax({
                 url         :   "/piirecovery/orderregister",
@@ -202,7 +202,7 @@
                 },
                 success: function(data, textStatus, jqXHR)
                 {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(1);
                 },
                 error: function(request, error){ ingHide();

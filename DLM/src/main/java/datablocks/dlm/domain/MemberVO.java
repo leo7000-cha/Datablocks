@@ -17,4 +17,8 @@ public class MemberVO {
 	private Date updateDate;
 	private List<AuthVO> authList;
 
+	private String email;
+	private String managerId;
+	private String position;
+
 }

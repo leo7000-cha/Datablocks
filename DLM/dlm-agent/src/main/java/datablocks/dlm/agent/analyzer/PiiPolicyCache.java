@@ -10,13 +10,19 @@ import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * DLM 서버에서 PII 정책을 주기적으로 동기화하여 캐싱.
  * Agent 내에서 SQL의 컬럼이 PII인지 판단하는 데 사용.
+ *
+ * 핵심 원칙: 감사 대상 테이블(targetTables)에 등록된 테이블의 SQL만 캡처.
+ * 미등록 시 어떤 SQL도 캡처하지 않음 (안전).
  */
 public class PiiPolicyCache {
 
@@ -24,6 +30,9 @@ public class PiiPolicyCache {
 
     // key: "TABLE.COLUMN" (대문자) → PiiInfo
     private volatile Map<String, PiiInfo> policy = new ConcurrentHashMap<>();
+
+    // 감사 대상 테이블 목록 (대문자). 이 Set에 포함된 테이블의 SQL만 캡처.
+    private volatile Set<String> targetTables = Collections.emptySet();
 
     private volatile boolean initialized = false;
     private Thread syncThread;
@@ -63,6 +72,33 @@ public class PiiPolicyCache {
     }
 
     /**
+     * 해당 테이블이 감사 대상인지 확인.
+     * targetTables가 비어있으면 false (감사 대상 미등록 → 캡처 안 함).
+     */
+    public boolean isTargetTable(String tableName) {
+        if (tableName == null || targetTables.isEmpty()) return false;
+        return targetTables.contains(tableName.toUpperCase());
+    }
+
+    /**
+     * SQL이 접근하는 테이블 중 감사 대상이 하나라도 있는지 확인.
+     */
+    public boolean hasAnyTargetTable(Set<String> tableNames) {
+        if (tableNames == null || tableNames.isEmpty() || targetTables.isEmpty()) return false;
+        for (String t : tableNames) {
+            if (targetTables.contains(t.toUpperCase())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * 감사 대상 테이블 수.
+     */
+    public int getTargetTableCount() {
+        return targetTables.size();
+    }
+
+    /**
      * DLM 서버에서 PII 정책 동기화.
      * GET {serverUrl}/api/agent/policy?agentId={agentId}
      */
@@ -94,12 +130,13 @@ public class PiiPolicyCache {
                     }
                 }
                 parseAndUpdate(sb.toString());
-                System.out.println("[DLM-Agent] Policy synced: " + policy.size() + " PII columns");
+                System.out.println("[XAudit-Agent] Policy synced: " + targetTables.size()
+                        + " target tables, " + policy.size() + " PII columns");
             } else {
-                System.err.println("[DLM-Agent] Policy sync failed: HTTP " + status);
+                System.err.println("[XAudit-Agent] Policy sync failed: HTTP " + status);
             }
         } catch (Exception e) {
-            System.err.println("[DLM-Agent] Policy sync error: " + e.getMessage());
+            System.err.println("[XAudit-Agent] Policy sync error: " + e.getMessage());
         } finally {
             if (conn != null) conn.disconnect();
         }
@@ -107,26 +144,55 @@ public class PiiPolicyCache {
 
     /**
      * JSON 응답 파싱하여 캐시 갱신.
-     * 응답 형식: [{"table":"CUSTOMER","column":"NAME","piitype":"3_1_name","piigrade":"1"}, ...]
+     * 응답 형식 (BCI_TARGET 모드):
+     *   {"mode":"BCI_TARGET","targetTables":["TB_USER","TB_ORDER"],
+     *    "columns":[{"table":"TB_USER","column":"NAME","piitype":"3_1_name","piigrade":"1"}, ...]}
+     * 응답 형식 (NO_TARGET 모드):
+     *   {"mode":"NO_TARGET","targetTables":[],"columns":[]}
      */
+    @SuppressWarnings("unchecked")
     private void parseAndUpdate(String json) {
         try {
             Gson gson = new Gson();
-            Type listType = new TypeToken<List<PolicyEntry>>() {}.getType();
-            List<PolicyEntry> entries = gson.fromJson(json, listType);
+            Map<String, Object> response = gson.fromJson(json, Map.class);
+            if (response == null) return;
 
+            // 1. targetTables 파싱 (감사 대상 테이블)
+            Set<String> newTargets = new HashSet<>();
+            Object targetsObj = response.get("targetTables");
+            if (targetsObj instanceof List) {
+                for (Object t : (List<Object>) targetsObj) {
+                    if (t != null) newTargets.add(t.toString().toUpperCase());
+                }
+            }
+            targetTables = newTargets;
+
+            // 2. PII 컬럼 정보 파싱
             Map<String, PiiInfo> newPolicy = new ConcurrentHashMap<>();
-            if (entries != null) {
-                for (PolicyEntry entry : entries) {
-                    if (entry.table != null && entry.column != null && entry.piitype != null) {
-                        String key = (entry.table + "." + entry.column).toUpperCase();
-                        newPolicy.put(key, new PiiInfo(entry.piitype, entry.piigrade));
+            Object columnsObj = response.get("columns");
+            if (columnsObj instanceof List) {
+                for (Object item : (List<Object>) columnsObj) {
+                    if (item instanceof Map) {
+                        Map<String, Object> col = (Map<String, Object>) item;
+                        String table = col.get("table") != null ? col.get("table").toString() : null;
+                        String column = col.get("column") != null ? col.get("column").toString() : null;
+                        String piitype = col.get("piitype") != null ? col.get("piitype").toString() : null;
+                        String piigrade = col.get("piigrade") != null ? col.get("piigrade").toString() : null;
+                        if (table != null && column != null && piitype != null) {
+                            String key = (table + "." + column).toUpperCase();
+                            newPolicy.put(key, new PiiInfo(piitype, piigrade));
+                        }
                     }
                 }
             }
             policy = newPolicy;
+
+            // 레거시 응답 호환 (columns가 최상위 배열인 경우)
+            if (columnsObj == null && response.containsKey("table")) {
+                // 단일 엔트리 형식 → 리스트 미사용 (폴백 없음, 무시)
+            }
         } catch (Exception e) {
-            System.err.println("[DLM-Agent] Policy parse error: " + e.getMessage());
+            System.err.println("[XAudit-Agent] Policy parse error: " + e.getMessage());
         }
     }
 
@@ -149,13 +215,4 @@ public class PiiPolicyCache {
         public String getPiiGrade() { return piiGrade; }
     }
 
-    /**
-     * DLM 서버 응답 JSON 매핑용
-     */
-    private static class PolicyEntry {
-        String table;
-        String column;
-        String piitype;
-        String piigrade;
-    }
 }

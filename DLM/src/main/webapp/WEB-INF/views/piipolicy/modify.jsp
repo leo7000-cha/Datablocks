@@ -291,12 +291,12 @@
             var arc_del_deadline_unit = $('#piipolicy_modify_form [name="arc_del_deadline_unit"]').val();
 
             if (isEmpty(del_deadline) || isEmpty(del_deadline_unit)) {
-                alert("<spring:message code="msg.policy_del_deadline" text="Del_deadline is mandatory"/>");
+                dlmAlert("<spring:message code="msg.policy_del_deadline" text="Del_deadline is mandatory"/>");
                 return;
             }
 
             if (archive_flag == "Y" && (isEmpty(arc_del_deadline) || isEmpty(arc_del_deadline_unit))) {
-                alert("<spring:message code="msg.policy_arc_del_deadline" text="Arc_del_deadline is mandatory"/>");
+                dlmAlert("<spring:message code="msg.policy_arc_del_deadline" text="Arc_del_deadline is mandatory"/>");
                 return;
             }
 
@@ -322,7 +322,7 @@
                 },
                 success: function (data) {
                     ingHide();
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 }
             });
         });
@@ -409,7 +409,7 @@
                         },
                         success: function (data) {
                             $('#content_home').html(data);
-                            $("#GlobalSuccessMsgModal").modal("show");
+                            showToast("처리가 완료되었습니다.", false);
                         }
                     });
                 }
@@ -456,13 +456,13 @@
 
     function requestApproval() {
         if ($('#piipolicy_modify_form [name="phase"]').val() != "CHECKOUT") {
-            alert("The policy is not Checkout status");
+            dlmAlert("The policy is not Checkout status");
             return;
         }
 
         var aprvlineid = $('input[name="aprvlineid"]:checked').val();
         if (isEmpty(aprvlineid)) {
-            alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+            dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
             return;
         }
 
@@ -485,7 +485,7 @@
             success: function (data) {
                 ingHide();
                 $('#content_home').html(data);
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
             }
         });
     }

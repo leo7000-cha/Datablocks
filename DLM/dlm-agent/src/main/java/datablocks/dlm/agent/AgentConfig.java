@@ -37,7 +37,7 @@ public class AgentConfig {
             try (FileInputStream fis = new FileInputStream(agentArgs)) {
                 props.load(fis);
             } catch (Exception e) {
-                System.err.println("[DLM-Agent] Failed to load config: " + agentArgs + " - " + e.getMessage());
+                System.err.println("[XAudit-Agent] Failed to load config: " + agentArgs + " - " + e.getMessage());
             }
         }
 
@@ -62,11 +62,19 @@ public class AgentConfig {
     // ── 사용자 식별 ──
 
     public String getUserIdHeader() {
-        return props.getProperty("dlm.user.header", null);
+        return getNonEmpty("dlm.user.header");
     }
 
     public String getUserIdSessionAttr() {
-        return props.getProperty("dlm.user.session-attr", null);
+        return getNonEmpty("dlm.user.session-attr");
+    }
+
+    public String getUserNameHeader() {
+        return getNonEmpty("dlm.user.name-header");
+    }
+
+    public String getUserNameSessionAttr() {
+        return getNonEmpty("dlm.user.name-session-attr");
     }
 
     // ── 성능 튜닝 ──
@@ -106,6 +114,14 @@ public class AgentConfig {
     }
 
     // ── 유틸 ──
+
+    /**
+     * 빈 문자열("")이면 null 반환. 설정 파일에서 key= (값 없음) 시 안전.
+     */
+    private String getNonEmpty(String key) {
+        String val = props.getProperty(key);
+        return (val != null && !val.trim().isEmpty()) ? val.trim() : null;
+    }
 
     private int getInt(String key, int defaultValue) {
         try {

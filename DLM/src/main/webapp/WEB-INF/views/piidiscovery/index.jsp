@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge; chrome=1"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>X-One 개인정보 탐지</title>
+    <title>X-Scan 개인정보 탐지</title>
 
     <!-- Fonts -->
     <link href="/resources/vendor/fontawesome-free-6.1.1-web/css/all.min.css" rel="stylesheet" type="text/css">
@@ -538,6 +538,12 @@
                         </a>
                     </div>
                     <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="piipolicy">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>개인정보 분류</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
                         <a href="javascript:void(0)" class="nav-link" data-page="settings">
                             <i class="fas fa-gear"></i>
                             <span>환경설정</span>
@@ -955,6 +961,7 @@
                     'results': '탐지 결과',
                     'columns': '개인정보 컬럼',
                     'rules': '탐지 규칙',
+                    'piipolicy': '개인정보 분류',
                     'settings': '환경설정'
                 };
                 $('#pageTitle').text(titles[page] || page);
@@ -1082,7 +1089,7 @@
             var dbName = $('#targetDb').val();
             if (!dbName) {
                 if (showAlert !== false) {
-                    alert(i18n.selectDbFirst);
+                    dlmAlert(i18n.selectDbFirst);
                 }
                 return;
             }
@@ -1279,11 +1286,11 @@
 
             // Validation
             if (!formData.jobName) {
-                alert('Job name is required');
+                dlmAlert('Job name is required');
                 return;
             }
             if (!formData.targetDb) {
-                alert('Target database is required');
+                dlmAlert('Target database is required');
                 return;
             }
 
@@ -1320,11 +1327,11 @@
                         // Navigate to jobs page
                         $('.nav-link[data-page="jobs"]').click();
                     } else {
-                        alert('Error: ' + result.message);
+                        dlmAlert('Error: ' + result.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error ' + (isEdit ? 'updating' : 'creating') + ' scan job: ' + error);
+                    dlmAlert('Error ' + (isEdit ? 'updating' : 'creating') + ' scan job: ' + error);
                 }
             });
         }
@@ -1355,11 +1362,11 @@
                         if (result.success) {
                             loadPageContent('jobs');
                         } else {
-                            alert('Error: ' + result.message);
+                            dlmAlert('Error: ' + result.message);
                         }
                     },
                     error: function(xhr, status, error) {
-                        alert('Error deleting scan job: ' + error);
+                        dlmAlert('Error deleting scan job: ' + error);
                     }
                 });
             });
@@ -1376,11 +1383,11 @@
                     if (result.success) {
                         loadPageContent('results');
                     } else {
-                        alert('Error: ' + result.message);
+                        dlmAlert('Error: ' + result.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error confirming result: ' + error);
+                    dlmAlert('Error confirming result: ' + error);
                 }
             });
         }
@@ -1627,11 +1634,11 @@
                         if (result.success) {
                             // Status will be updated via polling
                         } else {
-                            alert('Error: ' + result.message);
+                            dlmAlert('Error: ' + result.message);
                         }
                     },
                     error: function(xhr, status, error) {
-                        alert('Error cancelling scan: ' + error);
+                        dlmAlert('Error cancelling scan: ' + error);
                     }
                 });
             });
@@ -1651,11 +1658,11 @@
                         // Show progress modal with executionId
                         showProgressModalByExecution(result.executionId);
                     } else {
-                        alert('Error: ' + (result.message || 'Failed to start scan'));
+                        dlmAlert('Error: ' + (result.message || 'Failed to start scan'));
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error executing scan: ' + error);
+                    dlmAlert('Error executing scan: ' + error);
                 }
             });
         }
@@ -1734,11 +1741,11 @@
                         if (result.success) {
                             // Status will be updated via polling
                         } else {
-                            alert('Error: ' + result.message);
+                            dlmAlert('Error: ' + result.message);
                         }
                     },
                     error: function(xhr, status, error) {
-                        alert('Error cancelling scan: ' + error);
+                        dlmAlert('Error cancelling scan: ' + error);
                     }
                 });
             });

@@ -217,11 +217,11 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -313,12 +313,12 @@
             e.stopPropagation();
 
             if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-                alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+                dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
                 return;
             }
 
             if (isEmpty($('#checkin_reason').val())) {
-                alert("Enter request reason for CHECK-IN ");
+                dlmAlert("Enter request reason for CHECK-IN ");
                 return;
             }
 
@@ -346,11 +346,11 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -397,11 +397,11 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(pagenum)) pagenum = 1;
@@ -464,7 +464,7 @@
             success: function (data, textStatus, jqXHR) {
                 ingHide();
                 if (data == "success") {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(pagenum);
                 } else {
                     $("#errormodalbody").html(data);
@@ -485,11 +485,11 @@
         var search5 = $('#filter_search5').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -527,11 +527,11 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -562,7 +562,7 @@
             success: function (data, textStatus, jqXHR) {
                 ingHide();
                 if (data == "success") {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(pagenum);
                 } else {
                     $("#errormodalbody").html(data);

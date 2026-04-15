@@ -44,6 +44,7 @@ public class PiiJobController {
     private final PiiOrderService orderSV;
     private final DmlExecutor dmlExecutor;
     private final ProgOrderHistService progOrderHistService;
+    private final datablocks.dlm.mapper.PiiJobMapper jobMapper;
 
     @GetMapping("/register")
     @PreAuthorize("isAuthenticated()")
@@ -345,6 +346,27 @@ public class PiiJobController {
         rttr.addAttribute("search7", cri.getSearch7());
         rttr.addAttribute("search8", cri.getSearch8());
         return "redirect:/piijob/get";
+    }
+
+    @PostMapping("/api/force-toggle-phase")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> forceTogglePhase(
+            @RequestBody java.util.Map<String, String> body) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        String jobid = body.get("jobid");
+        String version = body.get("version");
+        LogUtil.log("INFO", "ADMIN forceTogglePhase: " + jobid + "-" + version);
+        try {
+            jobMapper.forceTogglePhase(jobid, version);
+            PiiJobVO job = jobService.get(jobid, version);
+            result.put("success", true);
+            result.put("phase", job.getPhase());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/checkin")

@@ -1,260 +1,210 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 
-<!-- 개인정보 컬럼 Content -->
+<!-- 개인정보 컬럼 (데이터 인벤토리) -->
 <div id="columnsContent">
-    <!-- Tab Navigation -->
-    <ul class="nav nav-tabs" style="margin-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-        <li class="nav-item">
-            <a class="nav-link ${currentTab != 'excluded' ? 'active' : ''}" href="javascript:void(0)" onclick="switchTab('confirmed')" style="font-weight: 600; padding: 12px 24px;">
-                <i class="fas fa-check-circle text-success mr-2"></i><spring:message code="discovery.confirmed_pii"/>
-                <span class="badge badge-success" style="margin-left: 8px;" id="tabConfirmedCount">${confirmedCount}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link ${currentTab == 'excluded' ? 'active' : ''}" href="javascript:void(0)" onclick="switchTab('excluded')" style="font-weight: 600; padding: 12px 24px;">
-                <i class="fas fa-ban text-danger mr-2"></i><spring:message code="discovery.excluded_false_positive"/>
-                <span class="badge badge-danger" style="margin-left: 8px;" id="tabExcludedCount">${excludedCount}</span>
-            </a>
-        </li>
-    </ul>
 
-    <!-- Summary Stats (Compact Cards) -->
-    <div class="summary-cards-row">
-        <div class="summary-card summary-card-success">
-            <div class="summary-card-icon">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="summary-card-content">
-                <div class="summary-card-value" id="statConfirmed">${confirmedCount}</div>
-                <div class="summary-card-label"><spring:message code="discovery.confirmed_pii"/></div>
-            </div>
+    <!-- Stats -->
+    <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f1f5f9; border-radius: 8px;">
+            <i class="fas fa-table" style="color: #3b82f6; font-size: 13px;"></i>
+            <span style="font-size: 11px; color: #64748b;">테이블</span>
+            <span style="font-size: 14px; font-weight: 700; color: #1e293b;">${stats.tableCount}</span>
         </div>
-        <div class="summary-card summary-card-danger">
-            <div class="summary-card-icon">
-                <i class="fas fa-ban"></i>
-            </div>
-            <div class="summary-card-content">
-                <div class="summary-card-value" id="statExcluded">${excludedCount}</div>
-                <div class="summary-card-label"><spring:message code="discovery.excluded_false_positive"/></div>
-            </div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f1f5f9; border-radius: 8px;">
+            <i class="fas fa-columns" style="color: #8b5cf6; font-size: 13px;"></i>
+            <span style="font-size: 11px; color: #64748b;">컬럼</span>
+            <span style="font-size: 14px; font-weight: 700; color: #1e293b;">${stats.columnCount}</span>
         </div>
-        <div class="summary-card summary-card-primary">
-            <div class="summary-card-icon">
-                <i class="fas fa-database"></i>
-            </div>
-            <div class="summary-card-content">
-                <div class="summary-card-value" id="statDatabases">-</div>
-                <div class="summary-card-label"><spring:message code="discovery.databases"/></div>
-            </div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: #dcfce7; border-radius: 8px;">
+            <i class="fas fa-check-circle" style="color: #22c55e; font-size: 13px;"></i>
+            <span style="font-size: 11px; color: #64748b;">확인</span>
+            <span style="font-size: 14px; font-weight: 700; color: #16a34a;">${stats.verifiedCount}</span>
         </div>
-        <div class="summary-card summary-card-purple">
-            <div class="summary-card-icon">
-                <i class="fas fa-fingerprint"></i>
-            </div>
-            <div class="summary-card-content">
-                <div class="summary-card-value" id="statPiiTypes">-</div>
-                <div class="summary-card-label"><spring:message code="discovery.pii_types"/></div>
-            </div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: #fef3c7; border-radius: 8px;">
+            <i class="fas fa-clock" style="color: #f59e0b; font-size: 13px;"></i>
+            <span style="font-size: 11px; color: #64748b;">미확인</span>
+            <span style="font-size: 14px; font-weight: 700; color: #d97706;">${stats.unverifiedCount}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: #fce7f3; border-radius: 8px;">
+            <i class="fas fa-user-shield" style="color: #ec4899; font-size: 13px;"></i>
+            <span style="font-size: 11px; color: #64748b;">개인정보</span>
+            <span style="font-size: 14px; font-weight: 700; color: #db2777;">${stats.piiCount}</span>
         </div>
     </div>
 
     <!-- Filter Bar -->
     <div class="content-panel" style="margin-bottom: 20px;">
-        <div class="panel-body" style="padding: 16px 20px;">
-            <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 12px;">
-                <!-- Search Fields -->
-                <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
-                    <select class="form-control form-control-sm filter-field" id="filterDb">
-                        <option value="">데이터베이스</option>
-                    </select>
-                    <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="filterSchema" placeholder="스키마 (%, _)" style="text-transform: uppercase;" title="와일드카드: % = 여러문자, _ = 한문자. 예: %ACTEUR%, ACTEUR">
-                    <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="filterTable" placeholder="테이블 (%, _)" style="text-transform: uppercase;" title="와일드카드: % = 여러문자, _ = 한문자. 예: %ACTEUR%, ACTEUR">
-                    <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="filterColumn" placeholder="컬럼 (%, _)" style="text-transform: uppercase;" title="와일드카드: % = 여러문자, _ = 한문자. 예: %ACTEUR%, ACTEUR">
-                    <select class="form-control form-control-sm filter-field" id="filterPiiType">
-                        <option value="">개인정보 유형</option>
-                    </select>
-                    <button class="btn btn-primary btn-sm filter-btn" onclick="applyFilters()">
-                        <i class="fas fa-search"></i> 검색
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm filter-btn" onclick="clearFilters()">
-                        <i class="fas fa-redo"></i> 초기화
-                    </button>
-                </div>
-                <!-- Action Buttons -->
-                <div class="d-flex align-items-center" style="gap: 8px;">
-                    <span class="text-muted" id="selectedCount" style="display: none; margin-right: 4px;">
-                        <strong id="selectedNum">0</strong> <spring:message code="etc.selected" text="selected"/>
-                    </span>
-                    <button class="btn btn-outline-danger btn-sm action-btn" onclick="removeSelected()" id="btnRemove" disabled>
-                        <i class="fas fa-trash"></i> <spring:message code="discovery.remove"/>
-                    </button>
-                    <button class="btn btn-outline-success btn-sm action-btn" onclick="showAddManualModal()">
-                        <i class="fas fa-plus"></i> <spring:message code="discovery.add"/>
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm action-btn" onclick="exportRegistry()">
-                        <i class="fas fa-file-excel"></i> <spring:message code="discovery.export"/>
-                    </button>
-                </div>
+        <div class="panel-body" style="padding: 14px 20px;">
+            <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                <select class="form-control form-control-sm filter-field" id="colFilterDb" style="width: 120px;">
+                    <option value="">DB</option>
+                </select>
+                <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="colFilterOwner" placeholder="Owner" style="width: 100px; text-transform:uppercase;"
+                       value='<c:out value="${pageMaker.cri.search2}"/>' onkeypress="if(event.keyCode===13){colSearch(1);}">
+                <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="colFilterTable" placeholder="Table (%, _)" style="width: 120px; text-transform:uppercase;"
+                       value='<c:out value="${pageMaker.cri.search3}"/>' onkeypress="if(event.keyCode===13){colSearch(1);}">
+                <input type="text" class="form-control form-control-sm filter-field text-uppercase" id="colFilterColumn" placeholder="Column (%, _)" style="width: 150px;"
+                       value='<c:out value="${pageMaker.cri.search4}"/>' onkeypress="if(event.keyCode===13){colSearch(1);}">
+                <input type="text" class="form-control form-control-sm filter-field" id="colFilterComment" placeholder="Comment" style="width: 120px;"
+                       value='<c:out value="${pageMaker.cri.search10}"/>' onkeypress="if(event.keyCode===13){colSearch(1);}">
+                <select class="form-control form-control-sm filter-field" id="colFilterEncrypt" style="width: 90px;" onchange="colSearch(1);">
+                    <option value="">암호화</option>
+                    <option value="Y" <c:if test="${pageMaker.cri.search5 eq 'Y'}">selected</c:if>>Y</option>
+                </select>
+                <select class="form-control form-control-sm filter-field" id="colFilterPiiType" style="width: 140px;" onchange="colSearch(1);">
+                    <option value="">개인정보타입</option>
+                    <option value="PII" <c:if test="${pageMaker.cri.search7 eq 'PII'}">selected</c:if>>Y</option>
+                    <option value="NOTPII" <c:if test="${pageMaker.cri.search7 eq 'NOTPII'}">selected</c:if>>N</option>
+                    <c:forEach var="item" items="${listlkPiiScrType}">
+                        <option value="${item.piicode}" <c:if test="${pageMaker.cri.search7 eq item.piicode}">selected</c:if>>${item.piitypename}</option>
+                    </c:forEach>
+                </select>
+                <select class="form-control form-control-sm filter-field" id="colFilterScramble" style="width: 100px;" onchange="colSearch(1);">
+                    <option value="">스크램블</option>
+                    <option value="Y" <c:if test="${pageMaker.cri.search8 eq 'Y'}">selected</c:if>>Y</option>
+                    <option value="N" <c:if test="${pageMaker.cri.search8 eq 'N'}">selected</c:if>>N</option>
+                </select>
+                <select class="form-control form-control-sm filter-field" id="colFilterDetection" style="width: 90px;" onchange="colSearch(1);">
+                    <option value="">탐지</option>
+                    <option value="Y" <c:if test="${pageMaker.cri.search16 eq 'Y'}">selected</c:if>>탐지됨</option>
+                    <option value="N" <c:if test="${pageMaker.cri.search16 eq 'N'}">selected</c:if>>미탐지</option>
+                    <option value="EXCLUDED" <c:if test="${pageMaker.cri.search16 eq 'EXCLUDED'}">selected</c:if>>오탐제외</option>
+                </select>
+                <select class="form-control form-control-sm filter-field" id="colFilterVerify" style="width: 70px;" onchange="colSearch(1);">
+                    <option value="">확인</option>
+                    <option value="Y" <c:if test="${pageMaker.cri.search15 eq 'Y'}">selected</c:if>>Y</option>
+                    <option value="N" <c:if test="${pageMaker.cri.search15 eq 'N'}">selected</c:if>>N</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="colSearch(1)"><i class="fas fa-search"></i> 검색</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="colClearFilters()"><i class="fas fa-redo"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- Columns Table -->
+    <!-- Action Bar -->
+    <span id="colVerifyActions" style="display: none; gap: 6px; align-items: center; margin-bottom: 12px;">
+        <span class="text-muted"><strong id="colSelectedNum">0</strong> 건 선택</span>
+        <button class="btn btn-sm" onclick="colVerifySelected()" style="background: #22c55e; color: #fff; border: none; font-weight: 600;">
+            <i class="fas fa-circle-check"></i> 확인처리
+        </button>
+    </span>
+
+    <!-- Table -->
     <div class="content-panel">
-        <div class="panel-header d-flex justify-content-between align-items-center">
-            <div>
-                <h3 class="panel-title" id="tableTitle">
-                    <c:choose>
-                        <c:when test="${currentTab == 'excluded'}">
-                            <i class="fas fa-ban text-danger mr-2"></i><spring:message code="discovery.excluded_columns"/>
-                        </c:when>
-                        <c:otherwise>
-                            <i class="fas fa-check-circle text-success mr-2"></i><spring:message code="discovery.confirmed_pii_columns"/>
-                        </c:otherwise>
-                    </c:choose>
-                </h3>
-                <span style="color: #64748b; font-size: 0.85rem;">
-                    <spring:message code="discovery.total_columns"/>: <strong id="totalCount">${pageMaker.total}</strong>
-                </span>
-            </div>
-            <div class="d-flex align-items-center" style="gap: 8px;">
-                <span class="text-muted" style="font-size: 0.85rem;">표시</span>
-                <select class="form-control form-control-sm" style="width: 70px;" id="pageSize" onchange="changePageSize()">
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                    <option value="100" selected>100</option>
-                </select>
-            </div>
-        </div>
         <div class="panel-body" style="padding: 0;">
-            <div id="columnsTableWrapper">
-                <c:choose>
-                    <c:when test="${not empty columnList}">
-                        <table class="discovery-table" id="columnsTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40px;">
-                                        <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
-                                    </th>
-                                    <th>데이터베이스</th>
-                                    <th>스키마</th>
-                                    <th>테이블</th>
-                                    <th>컬럼</th>
-                                    <th>데이터 타입</th>
-                                    <th>개인정보 유형</th>
-                                    <th>점수</th>
-                                    <th><c:choose><c:when test="${currentTab == 'excluded'}"><spring:message code="discovery.excluded_by"/></c:when><c:otherwise><spring:message code="discovery.confirmed_by"/></c:otherwise></c:choose></th>
-                                    <th><c:choose><c:when test="${currentTab == 'excluded'}"><spring:message code="discovery.excluded_date"/></c:when><c:otherwise><spring:message code="discovery.confirmed_date"/></c:otherwise></c:choose></th>
-                                    <th style="width: 100px;">작업</th>
-                                </tr>
-                            </thead>
-                            <tbody id="columnsBody">
-                                <c:forEach var="col" items="${columnList}">
-                                    <tr data-id="${col.registryId}">
-                                        <td><input type="checkbox" class="col-checkbox" value="${col.registryId}" onclick="updateSelection()"></td>
-                                        <td>${col.dbName}</td>
-                                        <td>${col.schemaName}</td>
-                                        <td><strong>${col.tableName}</strong></td>
-                                        <td><code>${col.columnName}</code></td>
-                                        <td><span class="badge badge-secondary">${col.dataType}</span></td>
-                                        <td><span class="badge badge-info">${col.piiTypeName}</span></td>
-                                        <td>
-                                            <c:choose>
-                                                <c:when test="${col.confidenceScore != null}">
-                                                    <span class="score-badge ${col.confidenceScore >= 80 ? 'high' : (col.confidenceScore >= 50 ? 'medium' : 'low')}">
-                                                        ${col.confidenceScore}%
-                                                    </span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="badge badge-light">MANUAL</span>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </td>
-                                        <td><small>${col.registeredBy}</small></td>
-                                        <td><small>${col.registeredDate}</small></td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-info" title="상세 보기" onclick="showColumnDetail('${col.registryId}')">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
+            <c:choose>
+                <c:when test="${not empty list}">
+                    <table class="discovery-table" id="columnsTable" style="white-space: nowrap;">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="colCheckAll" onclick="colToggleAll()" style="vertical-align:middle; width:15px; height:15px;"></th>
+                                <th>데이터베이스</th>
+                                <th>스키마</th>
+                                <th>테이블</th>
+                                <th>컬럼</th>
+                                <th>컬럼명</th>
+                                <th>데이터 타입</th>
+                                <th>탐지결과</th>
+                                <th>암호화</th>
+                                <th>개인정보 유형</th>
+                                <th>변환타입</th>
+                                <th>확인일</th>
+                                <th>수정일</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <c:forEach var="m" items="${list}">
+                                <tr style="cursor: pointer;"
+                                    data-db="${m.db}" data-schema="${m.owner}" data-table="${m.table_name}" data-column="${m.column_name}"
+                                    data-piitype="${m.piitype}" data-encrypt="${m.encript_flag}" data-scramble="${m.scramble_type}"
+                                    data-datatype="${m.data_type}" data-val2="${m.val2}" data-piitypename="${piiTypeNames[m.piitype]}"
+                                    ondblclick="openPiiSettingModal(this)">
+                                    <td class="text-center" onclick="event.stopPropagation();">
+                                        <c:choose>
+                                            <c:when test="${empty m.val3}">
+                                                <input type="checkbox" class="col-chk" name="colChk" onclick="colCheckChanged()" style="vertical-align:middle; width:15px; height:15px;"
+                                                       data-db="${m.db}" data-owner="${m.owner}" data-table="${m.table_name}" data-column="${m.column_name}">
+                                            </c:when>
+                                            <c:otherwise>&nbsp;</c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td>${m.db}</td>
+                                    <td>${m.owner}</td>
+                                    <td><strong>${m.table_name}</strong></td>
+                                    <td><code>${m.column_name}</code></td>
+                                    <td><small>${m.column_comment}</small></td>
+                                    <td><span class="badge badge-secondary">${m.data_type}</span></td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${not empty m.val2 && fn:contains(m.val2, '|')}">
+                                                <c:set var="piiParts" value="${fn:split(m.val2, '|')}"/>
+                                                <span style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 500;">
+                                                    <i class="fas fa-shield-alt" style="font-size: 9px;"></i>
+                                                    ${piiParts[0]} <span style="background:rgba(255,255,255,0.2); padding:0 4px; border-radius:6px; font-size:9px;">${piiParts[1]}</span>
+                                                </span>
+                                            </c:when>
+                                            <c:when test="${m.val2 == 'EXCLUDED'}">
+                                                <span style="background:#fef2f2; color:#dc2626; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:600; border:1px solid #fecaca;">
+                                                    <i class="fas fa-ban" style="font-size:9px;"></i> 오탐제외
+                                                </span>
+                                            </c:when>
+                                            <c:otherwise><span class="text-muted">-</span></c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td class="text-center">
+                                        <c:if test="${m.encript_flag == 'Y'}"><span class="badge badge-danger">Y</span></c:if>
+                                        <c:if test="${m.encript_flag != 'Y'}"><span class="text-muted">-</span></c:if>
+                                    </td>
+                                    <td>
+                                        <c:if test="${not empty m.piitype}">
+                                            <span class="badge badge-info">
                                                 <c:choose>
-                                                    <c:when test="${currentTab == 'excluded'}">
-                                                        <button class="btn btn-outline-danger" title="삭제" onclick="resetColumn('${col.registryId}')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                        <button class="btn btn-outline-primary" title="PII 확정으로 변경" onclick="changeStatus('${col.registryId}', 'CONFIRMED')">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </c:when>
-                                                    <c:otherwise>
-                                                        <button class="btn btn-outline-danger" title="삭제" onclick="resetColumn('${col.registryId}')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                        <button class="btn btn-outline-warning" title="오탐 제외로 변경" onclick="changeStatus('${col.registryId}', 'EXCLUDED')">
-                                                            <i class="fas fa-ban"></i>
-                                                        </button>
-                                                    </c:otherwise>
+                                                    <c:when test="${piiTypeNames[m.piitype] != null}">${piiTypeNames[m.piitype]}</c:when>
+                                                    <c:otherwise>${m.piitype}</c:otherwise>
                                                 </c:choose>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </c:forEach>
-                            </tbody>
-                        </table>
-                    </c:when>
-                    <c:otherwise>
-                        <div class="empty-state" id="emptyState">
-                            <div class="empty-state-icon">
-                                <i class="fas fa-table-columns"></i>
-                            </div>
-                            <h3><spring:message code="discovery.no_pii_columns"/></h3>
-                            <p><spring:message code="discovery.no_pii_columns_desc"/></p>
-                            <div class="d-flex gap-2 justify-content-center">
-                                <button class="btn-primary-discovery" onclick="loadPageContent('jobs')">
-                                    <i class="fas fa-radar"></i>
-                                    <spring:message code="discovery.start_discovery_scan"/>
-                                </button>
-                                <button class="btn btn-outline-success" onclick="showAddManualModal()">
-                                    <i class="fas fa-plus mr-1"></i>
-                                    <spring:message code="discovery.add"/>
-                                </button>
-                            </div>
-                        </div>
-                    </c:otherwise>
-                </c:choose>
-            </div>
+                                            </span>
+                                        </c:if>
+                                        <c:if test="${empty m.piitype}"><span class="text-muted">-</span></c:if>
+                                    </td>
+                                    <td><small>${m.scramble_type}</small></td>
+                                    <td><small>${m.val3}</small></td>
+                                    <td><small>${m.upddate}</small></td>
+                                </tr>
+                            </c:forEach>
+                        </tbody>
+                    </table>
+                </c:when>
+                <c:otherwise>
+                    <div style="padding: 40px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-database fa-2x"></i>
+                        <p style="margin-top: 12px;">데이터가 없습니다</p>
+                    </div>
+                </c:otherwise>
+            </c:choose>
         </div>
         <!-- Pagination -->
-        <c:if test="${not empty columnList}">
-            <div class="panel-footer" style="padding: 12px 20px; border-top: 1px solid #e2e8f0;">
+        <c:if test="${not empty list}">
+            <div style="padding: 12px 20px; border-top: 1px solid #e2e8f0;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <c:set var="showingFrom" value="${(pageMaker.cri.pagenum - 1) * pageMaker.cri.amount + 1}" />
-                    <c:set var="showingTo" value="${pageMaker.cri.pagenum * pageMaker.cri.amount}" />
-                    <c:if test="${showingTo > pageMaker.total}">
-                        <c:set var="showingTo" value="${pageMaker.total}" />
-                    </c:if>
-                    <span class="text-muted" style="font-size: 0.85rem;">
-                        <strong>${showingFrom}</strong> - <strong>${showingTo}</strong> / <strong>${pageMaker.total}</strong>
-                    </span>
+                    <c:set var="showFrom" value="${(pageMaker.cri.pagenum - 1) * pageMaker.cri.amount + 1}" />
+                    <c:set var="showTo" value="${pageMaker.cri.pagenum * pageMaker.cri.amount}" />
+                    <c:if test="${showTo > pageMaker.total}"><c:set var="showTo" value="${pageMaker.total}" /></c:if>
+                    <span class="text-muted" style="font-size: 0.85rem;"><strong>${showFrom}</strong> - <strong>${showTo}</strong> / <strong>${pageMaker.total}</strong></span>
                     <nav>
-                        <ul class="pagination pagination-sm mb-0" id="paginationUl">
+                        <ul class="pagination pagination-sm mb-0">
                             <c:if test="${pageMaker.prev}">
-                                <li class="page-item">
-                                    <a class="page-link" href="#" onclick="goToPage(${pageMaker.startPage - 1}); return false;">&laquo;</a>
-                                </li>
+                                <li class="page-item"><a class="page-link" href="#" onclick="colGoToPage(${pageMaker.startPage - 1}); return false;">&laquo;</a></li>
                             </c:if>
                             <c:forEach var="num" begin="${pageMaker.startPage}" end="${pageMaker.endPage}">
                                 <li class="page-item ${pageMaker.cri.pagenum == num ? 'active' : ''}">
-                                    <a class="page-link" href="#" onclick="goToPage(${num}); return false;">${num}</a>
+                                    <a class="page-link" href="#" onclick="colGoToPage(${num}); return false;">${num}</a>
                                 </li>
                             </c:forEach>
                             <c:if test="${pageMaker.next}">
-                                <li class="page-item">
-                                    <a class="page-link" href="#" onclick="goToPage(${pageMaker.endPage + 1}); return false;">&raquo;</a>
-                                </li>
+                                <li class="page-item"><a class="page-link" href="#" onclick="colGoToPage(${pageMaker.endPage + 1}); return false;">&raquo;</a></li>
                             </c:if>
                         </ul>
                     </nav>
@@ -264,72 +214,89 @@
     </div>
 </div>
 
-<!-- Add Manual PII Column Modal -->
-<div class="modal fade" id="addManualModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <h5 class="modal-title"><i class="fas fa-plus-circle text-success"></i> <spring:message code="discovery.add_pii_column"/></h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <form id="addManualForm">
-                    <div class="form-group">
-                        <label>데이터베이스 <span class="text-danger">*</span></label>
-                        <select class="form-control" id="manualDbName" name="dbName" required onchange="loadSchemasForManual()">
-                            <option value=""><spring:message code="discovery.select_database"/>...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>스키마 <span class="text-danger">*</span></label>
-                        <select class="form-control" id="manualSchemaName" name="schemaName" required>
-                            <option value=""><spring:message code="discovery.select_schema"/>...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>테이블 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control text-uppercase" id="manualTableName" name="tableName" required placeholder="CUSTOMER" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>컬럼 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control text-uppercase" id="manualColumnName" name="columnName" required placeholder="CUST_SSN" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>데이터 타입</label>
-                        <input type="text" class="form-control text-uppercase" id="manualDataType" name="dataType" placeholder="VARCHAR2(20)" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>개인정보 유형 <span class="text-danger">*</span></label>
-                        <select class="form-control" id="manualPiiType" name="piiTypeCode" required>
-                            <option value=""><spring:message code="discovery.select_pii_type"/>...</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0;">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><spring:message code="discovery.cancel"/></button>
-                <button type="button" class="btn btn-primary" onclick="saveManualColumn()">
-                    <i class="fas fa-plus"></i> <spring:message code="discovery.add_column"/>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+.pii-confirm-box { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.pii-confirm-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-bottom: 1px solid #bbf7d0; font-weight: 600; font-size: 0.95rem; color: #166534; }
+.pii-confirm-header .btn-pii-reset { padding: 3px 10px; font-size: 11px; background: #fff; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; color: #6b7280; }
+.pii-confirm-body { overflow-y: auto; }
+.pii-confirm-body .pc-row { display: flex; border-bottom: 1px solid #e5e7eb; min-height: 30px; background: #fff; }
+.pc-grade { width: 36px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.pc-grade.g1 { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.pc-grade.g2 { background: linear-gradient(135deg, #f97316, #ea580c); }
+.pc-grade.g3 { background: linear-gradient(135deg, #eab308, #ca8a04); }
+.pc-grade.g4 { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.pc-grade.g0 { background: linear-gradient(135deg, #9ca3af, #6b7280); }
+.pc-category { width: 180px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #1e3a5f; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-right: 1px solid #cbd5e1; display: flex; align-items: center; flex-shrink: 0; }
+.pc-items { flex: 1; padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pc-chip { position: relative; }
+.pc-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pc-chip label { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 500; color: #334155; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.pc-chip label:hover { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border-color: #38bdf8; color: #0369a1; }
+.pc-chip input:checked + label { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-color: #1e40af; color: #fff; font-weight: 600; box-shadow: 0 3px 8px rgba(29, 78, 216, 0.35); }
+.th-purple { color: #7c3aed !important; }
+.th-blue { color: #2563eb !important; }
+.th-green { color: #059669 !important; }
+.th-brown { color: #b45309 !important; }
+</style>
 
-<!-- Column Detail Modal -->
-<div class="modal fade" id="columnDetailModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl" role="document" style="max-width: 1300px;">
-        <div class="modal-content">
-            <div class="modal-header" style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <h5 class="modal-title" style="font-size: 1.1rem; font-weight: 600;">
-                    <i class="fas fa-info-circle text-primary"></i> 개인정보 컬럼 상세
-                </h5>
+<!-- PII 설정 모달 -->
+<div class="modal fade" id="colPiiSettingModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 1100px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 16px 24px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0;">
+                <h5 class="modal-title" style="font-size: 1.1rem; font-weight: 600;"><i class="fas fa-check-circle" style="color: #22c55e;"></i> PII 확정 및 인벤토리 세팅</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body" id="columnDetailBody" style="padding: 24px;">
+            <div class="modal-body" style="padding: 24px;">
+                <input type="hidden" id="colPiiHiddenDb">
+                <input type="hidden" id="colPiiHiddenSchema">
+                <input type="hidden" id="colPiiHiddenTable">
+                <input type="hidden" id="colPiiHiddenColumn">
+                <div style="margin-bottom: 20px;">
+                    <table class="table table-sm table-bordered" style="margin: 0; font-size: 0.85rem;">
+                        <tr style="background: #f8fafc;">
+                            <td style="background:#e2e8f0; font-weight:700; color:#334155; text-align:center; width:40px; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">컬럼</td>
+                            <th style="background:#eef2f7;">데이터베이스</th><td id="colPiiDb">-</td>
+                            <th style="background:#eef2f7;">스키마</th><td id="colPiiSchema">-</td>
+                            <th style="background:#eef2f7;">테이블</th><td id="colPiiTable">-</td>
+                            <th style="background:#eef2f7;">컬럼</th><td id="colPiiColumn">-</td>
+                            <th style="background:#eef2f7;">데이터타입</th><td id="colPiiDataType">-</td>
+                        </tr>
+                        <tr style="background: #eff6ff;">
+                            <td style="background:#bfdbfe; font-weight:700; color:#1e40af; text-align:center; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">현재</td>
+                            <th style="background:#dbeafe; color:#1e40af;">개인정보</th><td id="colPiiCurrentType">-</td>
+                            <th style="background:#dbeafe; color:#1e40af;">암호화</th><td id="colPiiCurrentEnc">-</td>
+                            <th style="background:#dbeafe; color:#1e40af;">변환타입</th><td id="colPiiCurrentScramble">-</td>
+                            <th style="background:#dbeafe; color:#1e40af;">탐지결과</th><td id="colPiiVal2" colspan="3">-</td>
+                        </tr>
+                        <tr style="background: #f0fdf4;">
+                            <td style="background:#bbf7d0; font-weight:700; color:#166534; text-align:center; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">설정</td>
+                            <th style="background:#dcfce7; color:#166534;">개인정보</th><td id="colPiiSelectedType" style="color:#166534; font-weight:600;">-</td>
+                            <th style="background:#dcfce7; color:#166534;">변환타입</th>
+                            <td><input type="text" class="form-control form-control-sm" id="colPiiScramble" readonly style="background:#f1f5f9; padding:2px 6px; height:26px;"></td>
+                            <th style="background:#dcfce7; color:#166534;">암호화</th>
+                            <td><select class="form-control form-control-sm" id="colPiiEncrypt" style="width:70px; padding:2px 6px; height:26px; border-color:#86efac;">
+                                <option value="">-</option><option value="Y">Y</option>
+                            </select></td>
+                            <td colspan="4"></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="pii-confirm-box">
+                    <div class="pii-confirm-header">
+                        <span><i class="fas fa-shield-alt"></i> 해당하는 개인정보 항목을 선택하세요</span>
+                        <button type="button" class="btn-pii-reset" onclick="$('input[name=colPiiTypeRadio]:checked').prop('checked',false); $('#colPiiScramble').val(''); $('#colPiiSelectedType').text('-');">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                    <div class="pii-confirm-body" id="colPiiTypeSelector"></div>
+                </div>
             </div>
             <div class="modal-footer" style="padding: 12px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn" onclick="submitColPiiSetting()" style="background: #22c55e; color: #fff; font-weight: 600;">
+                    <i class="fas fa-check-circle"></i> 저장
+                </button>
             </div>
         </div>
     </div>
@@ -339,711 +306,147 @@
 var csrfToken = $('meta[name="_csrf"]').attr('content');
 var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
 
-// i18n Messages for JavaScript
-var i18nCols = {
-    deleteConfirm: '<spring:message code="discovery.delete_confirm" javaScriptEscape="true"/>',
-    deleteFromRegistryConfirm: '<spring:message code="discovery.delete_from_registry_confirm" javaScriptEscape="true"/>',
-    delete_: '<spring:message code="discovery.delete" javaScriptEscape="true"/>',
-    deletedFromRegistry: '<spring:message code="discovery.deleted_from_registry" javaScriptEscape="true"/>',
-    confirmPii: '<spring:message code="discovery.confirm_pii" javaScriptEscape="true"/>',
-    markFalsePositive: '<spring:message code="discovery.mark_false_positive" javaScriptEscape="true"/>',
-    confirmAsPii: '<spring:message code="discovery.confirm_as_pii" javaScriptEscape="true"/>',
-    markAsFalsePositive: '<spring:message code="discovery.mark_as_false_positive" javaScriptEscape="true"/>',
-    statusChanged: '<spring:message code="discovery.status_changed" javaScriptEscape="true"/>',
-    batchDelete: '<spring:message code="discovery.batch_delete" javaScriptEscape="true"/>',
-    batchDeleteConfirm: '<spring:message code="discovery.batch_delete_confirm" javaScriptEscape="true"/>',
-    itemsDeleted: '<spring:message code="discovery.items_deleted" javaScriptEscape="true"/>',
-    itemsDeleteFailed: '<spring:message code="discovery.items_delete_failed" javaScriptEscape="true"/>',
-    metaTableSyncConfirm: '<spring:message code="discovery.meta_table_sync_confirm" javaScriptEscape="true"/>',
-    syncToMetaTable: '<spring:message code="discovery.sync_to_meta_table" javaScriptEscape="true"/>',
-    sync: '<spring:message code="discovery.sync" javaScriptEscape="true"/>'
-};
-
-var currentTab = '${currentTab}' || 'confirmed';
-var currentFilters = {
-    db: '${param.search1}' || '',
-    schema: '${param.search2}' || '',
-    table: '${param.filterTable}' || '',
-    column: '${param.filterColumn}' || '',
-    piiType: '${param.search3}' || '',
-    page: parseInt('${param.pageNum}') || 1,
-    amount: parseInt('${param.amount}') || 100
-};
-
-// 탭 전환
-function switchTab(tab) {
-    currentTab = tab;
-    currentFilters.page = 1;
-    var status = (tab === 'excluded') ? 'EXCLUDED' : 'CONFIRMED';
-    loadPageContent('columns?search4=' + status + '&tab=' + tab);
-}
-
+// DB 목록 로드
 $(document).ready(function() {
-    loadDatabaseList();
-    loadPiiTypeList();
-    computeStats();
-
-    // Input 필드에 값 복원
-    $('#filterSchema').val(currentFilters.schema);
-    $('#filterTable').val(currentFilters.table);
-    $('#filterColumn').val(currentFilters.column);
-
-    // Page size 복원
-    $('#pageSize').val(currentFilters.amount);
-
-    // Select 변경 시 자동 조회
-    $('#filterDb, #filterPiiType').change(function() {
-        applyFilters();
-    });
-
-    // Input Enter 키로 검색
-    $('#filterSchema, #filterTable, #filterColumn').keypress(function(e) {
-        if (e.which === 13) applyFilters();
+    $.get(contextPath + '/piidiscovery/api/databases', function(databases) {
+        var html = '<option value="">DB</option>';
+        if (databases && databases.length > 0) {
+            databases.forEach(function(db) { html += '<option value="' + db.db + '">' + db.db + '</option>'; });
+        }
+        $('#colFilterDb').html(html);
+        <c:if test="${not empty pageMaker.cri.search1}">$('#colFilterDb').val('${pageMaker.cri.search1}');</c:if>
     });
 });
 
-function loadDatabaseList() {
-    $.get('${pageContext.request.contextPath}/piidiscovery/api/databases', function(dbList) {
-        var html = '<option value="">데이터베이스</option>';
-        var manualHtml = '<option value="">데이터베이스 선택...</option>';
-        dbList.forEach(function(db) {
-            var dbName = db.db || db.dbName;
-            html += '<option value="' + dbName + '">' + dbName + '</option>';
-            manualHtml += '<option value="' + dbName + '">' + dbName + '</option>';
-        });
-        $('#filterDb').html(html);
-        $('#manualDbName').html(manualHtml);
-
-        // DB 선택값 복원
-        if (currentFilters.db) {
-            $('#filterDb').val(currentFilters.db);
-        }
-    });
-}
-
-function loadPiiTypeList() {
-    $.get('${pageContext.request.contextPath}/piidiscovery/api/pii-types', function(types) {
-        var html = '<option value="">개인정보 유형</option>';
-        var manualHtml = '<option value="">개인정보 유형 선택...</option>';
-        types.forEach(function(t) {
-            html += '<option value="' + t.piiTypeCode + '">' + t.piiTypeName + '</option>';
-            manualHtml += '<option value="' + t.piiTypeCode + '">' + t.piiTypeName + '</option>';
-        });
-        $('#filterPiiType').html(html);
-        $('#manualPiiType').html(manualHtml);
-
-        // PII Type 선택값 복원
-        if (currentFilters.piiType) {
-            $('#filterPiiType').val(currentFilters.piiType);
-        }
-    });
-}
-
-function loadSchemasForManual() {
-    var dbName = $('#manualDbName').val();
-    if (!dbName) {
-        $('#manualSchemaName').html('<option value="">스키마 선택...</option>');
-        return;
-    }
-    $.get('${pageContext.request.contextPath}/piidiscovery/api/schemas/' + dbName, function(schemas) {
-        var html = '<option value="">스키마 선택...</option>';
-        schemas.forEach(function(s) {
-            html += '<option value="' + s + '">' + s + '</option>';
-        });
-        $('#manualSchemaName').html(html);
-    });
-}
-
-function computeStats() {
-    // Compute unique counts from table
-    var dbs = new Set();
-    var tables = new Set();
-    var piiTypes = new Set();
-
-    $('#columnsTable tbody tr').each(function() {
-        dbs.add($(this).find('td:eq(1)').text());
-        tables.add($(this).find('td:eq(1)').text() + '.' + $(this).find('td:eq(3)').text());
-        piiTypes.add($(this).find('td:eq(6) .badge').text());
-    });
-
-    $('#statDatabases').text(dbs.size || '-');
-    $('#statTables').text(tables.size || '-');
-    $('#statPiiTypes').text(piiTypes.size || '-');
-}
-
-function applyFilters() {
-    currentFilters.db = $('#filterDb').val();
-    currentFilters.schema = $('#filterSchema').val();
-    currentFilters.table = $('#filterTable').val();
-    currentFilters.column = $('#filterColumn').val();
-    currentFilters.piiType = $('#filterPiiType').val();
-    currentFilters.page = 1;
-    goToPage(1);
-}
-
-function clearFilters() {
-    $('#filterDb, #filterPiiType').val('');
-    $('#filterSchema, #filterTable, #filterColumn').val('');
-    currentFilters = { db: '', schema: '', table: '', column: '', piiType: '', page: 1, amount: currentFilters.amount };
-    goToPage(1);
-}
-
-function goToPage(page) {
-    currentFilters.page = page;
-    var status = (currentTab === 'excluded') ? 'EXCLUDED' : 'CONFIRMED';
-    loadPageContent('columns?pageNum=' + page + '&amount=' + currentFilters.amount +
-        '&search1=' + encodeURIComponent(currentFilters.db) +
-        '&search2=' + encodeURIComponent(currentFilters.schema) +
-        '&search3=' + encodeURIComponent(currentFilters.piiType) +
-        '&filterTable=' + encodeURIComponent(currentFilters.table) +
-        '&filterColumn=' + encodeURIComponent(currentFilters.column) +
-        '&tab=' + currentTab +
-        '&search4=' + status);
-}
-
-function changePageSize() {
-    currentFilters.amount = parseInt($('#pageSize').val());
-    goToPage(1);
-}
-
-// ========== Selection ==========
-function toggleSelectAll() {
-    var isChecked = $('#selectAll').is(':checked');
-    $('.col-checkbox').prop('checked', isChecked);
-    updateSelection();
-}
-
-function updateSelection() {
-    var count = $('.col-checkbox:checked').length;
-    $('#selectedNum').text(count);
-    $('#selectedCount').toggle(count > 0);
-    $('#btnSyncMeta, #btnRemove').prop('disabled', count === 0);
-}
-
-// ========== Actions (Registry API) ==========
-
-// Registry에서 삭제 (Remove) - 다음 스캔에서 다시 탐지됨
-function resetColumn(registryId) {
-    showConfirmModal({
-        type: 'danger',
-        title: i18nCols.deleteConfirm,
-        message: i18nCols.deleteFromRegistryConfirm,
-        confirmText: i18nCols.delete_
-    }).then(function(confirmed) {
-        if (!confirmed) return;
-
-        $.ajax({
-            url: '${pageContext.request.contextPath}/piidiscovery/api/registry/' + registryId,
-            type: 'DELETE',
-            beforeSend: function(xhr) {
-                if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
-            },
-            success: function(response) {
-                if (response.success) {
-                    showToast('success', response.message || i18nCols.deletedFromRegistry);
-                    $('tr[data-id="' + registryId + '"]').fadeOut(function() { $(this).remove(); computeStats(); });
-                } else {
-                    showToast('error', response.message || '삭제에 실패했습니다');
-                }
-            },
-            error: function() {
-                showToast('error', '레지스트리에서 삭제에 실패했습니다');
-            }
-        });
-    });
-}
-
-// 상태 변경 (CONFIRMED <-> EXCLUDED)
-function changeStatus(registryId, newStatus) {
-    var isConfirm = newStatus === 'CONFIRMED';
-    showConfirmModal({
-        type: isConfirm ? 'success' : 'warning',
-        title: isConfirm ? i18nCols.confirmPii : i18nCols.markFalsePositive,
-        message: isConfirm ? i18nCols.confirmAsPii : i18nCols.markAsFalsePositive,
-        confirmText: isConfirm ? i18nCols.confirmPii : i18nCols.markFalsePositive
-    }).then(function(confirmed) {
-        if (!confirmed) return;
-
-        $.ajax({
-            url: '${pageContext.request.contextPath}/piidiscovery/api/registry/' + registryId + '/status?status=' + newStatus,
-            type: 'PUT',
-            beforeSend: function(xhr) {
-                if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
-            },
-            success: function(response) {
-                if (response.success) {
-                    showToast('success', response.message || i18nCols.statusChanged);
-                    $('tr[data-id="' + registryId + '"]').fadeOut(function() { $(this).remove(); computeStats(); });
-                } else {
-                    showToast('error', response.message || '변경에 실패했습니다');
-                }
-            },
-            error: function() {
-                showToast('error', '상태 변경에 실패했습니다');
-            }
-        });
-    });
-}
-
-// 선택한 컬럼들 삭제 (Registry에서 제거)
-function removeSelected() {
-    var selectedIds = [];
-    $('.col-checkbox:checked').each(function() {
-        selectedIds.push($(this).val());
-    });
-
-    if (selectedIds.length === 0) return;
-
-    showConfirmModal({
-        type: 'danger',
-        title: i18nCols.batchDelete,
-        message: selectedIds.length + i18nCols.batchDeleteConfirm,
-        confirmText: i18nCols.delete_
-    }).then(function(confirmed) {
-        if (!confirmed) return;
-
-        var deleteCount = 0;
-        var failCount = 0;
-
-        selectedIds.forEach(function(registryId, index) {
-            $.ajax({
-                url: '${pageContext.request.contextPath}/piidiscovery/api/registry/' + registryId,
-                type: 'DELETE',
-                async: false,
-                beforeSend: function(xhr) {
-                    if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
-                },
-                success: function(response) {
-                    if (response.success) {
-                        deleteCount++;
-                        $('tr[data-id="' + registryId + '"]').remove();
-                    } else {
-                        failCount++;
-                    }
-                },
-                error: function() {
-                    failCount++;
-                }
-            });
-        });
-
-        if (deleteCount > 0) {
-            showToast('success', deleteCount + i18nCols.itemsDeleted);
-            computeStats();
-        }
-        if (failCount > 0) {
-            showToast('error', failCount + i18nCols.itemsDeleteFailed);
-        }
-    });
-}
-
-// 레거시 함수들 (호환성 유지용 - deprecated)
-function unconfirmColumn(registryId) { resetColumn(registryId); }
-function excludeColumn(registryId) { changeStatus(registryId, 'EXCLUDED'); }
-function restoreColumn(registryId) { resetColumn(registryId); }
-function confirmColumn(registryId) { changeStatus(registryId, 'CONFIRMED'); }
-
-function exportRegistry() {
-    var status = (currentTab === 'excluded') ? 'EXCLUDED' : 'CONFIRMED';
-    var dbName = $('#filterDb').val() || '';
-    var url = '${pageContext.request.contextPath}/piidiscovery/api/registry/export?status=' + status;
-    if (dbName) {
-        url += '&dbName=' + encodeURIComponent(dbName);
-    }
-    window.location.href = url;
-}
-
-// ========== Manual Add ==========
-function showAddManualModal() {
-    $('#addManualForm')[0].reset();
-    $('#manualSchemaName').html('<option value="">스키마 선택...</option>');
-    $('#addManualModal').modal('show');
-}
-
-function saveManualColumn() {
-    var formData = {
-        dbName: $('#manualDbName').val(),
-        schemaName: $('#manualSchemaName').val(),
-        tableName: $('#manualTableName').val().toUpperCase(),
-        columnName: $('#manualColumnName').val().toUpperCase(),
-        dataType: $('#manualDataType').val().toUpperCase() || 'VARCHAR2',
-        piiTypeCode: $('#manualPiiType').val(),
-        status: 'CONFIRMED'
+function colSearch(page) {
+    var params = {
+        pageNum: page || 1,
+        amount: 100,
+        search1: $('#colFilterDb').val(),
+        search2: $('#colFilterOwner').val() || null,
+        search3: $('#colFilterTable').val() || null,
+        search4: $('#colFilterColumn').val() || null,
+        search10: $('#colFilterComment').val() || null,
+        search5: $('#colFilterEncrypt').val(),
+        search7: $('#colFilterPiiType').val(),
+        search8: $('#colFilterScramble').val(),
+        search16: $('#colFilterDetection').val(),
+        search15: $('#colFilterVerify').val()
     };
+    // null 제거
+    Object.keys(params).forEach(function(k) { if (!params[k]) delete params[k]; });
+    loadPageContent('columns', params);
+}
 
-    if (!formData.dbName || !formData.schemaName || !formData.tableName || !formData.columnName || !formData.piiTypeCode) {
-        showToast('warning', '필수 항목을 모두 입력해주세요');
-        return;
-    }
+// ========== 체크박스 + 확인처리 ==========
+function colToggleAll() {
+    var checked = $('#colCheckAll').prop('checked');
+    $('input[name="colChk"]').prop('checked', checked);
+    colCheckChanged();
+}
+
+function colCheckChanged() {
+    var cnt = $('input[name="colChk"]:checked').length;
+    $('#colSelectedNum').text(cnt);
+    if (cnt > 0) { $('#colVerifyActions').css('display', 'flex'); } else { $('#colVerifyActions').hide(); }
+    // 행 색상
+    $('input[name="colChk"]').each(function() {
+        $(this).closest('tr').css('background-color', $(this).prop('checked') ? '#E2E8F9' : '');
+    });
+}
+
+function colVerifySelected() {
+    var param = [];
+    $('input[name="colChk"]:checked').each(function() {
+        param.push({
+            db: $(this).data('db'),
+            owner: $(this).data('owner'),
+            table_name: $(this).data('table'),
+            column_name: $(this).data('column')
+        });
+    });
+    if (param.length === 0) return;
 
     $.ajax({
-        url: '${pageContext.request.contextPath}/piidiscovery/api/registry',
+        url: '/metatable/verify',
         type: 'POST',
-        contentType: 'application/json',
-        beforeSend: function(xhr) {
-            if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
+        contentType: 'application/json; charset=UTF-8',
+        data: JSON.stringify(param),
+        beforeSend: function(xhr) { if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken); },
+        success: function() {
+            showToast('success', param.length + '건 확인처리 완료');
+            colSearch();
         },
-        data: JSON.stringify(formData),
-        success: function(response) {
-            if (response.success) {
-                $('#addManualModal').modal('hide');
-                showToast('success', '개인정보 컬럼이 레지스트리에 추가되었습니다');
-                loadPageContent('columns');
-            } else {
-                showToast('error', response.message || '추가에 실패했습니다');
-            }
-        },
-        error: function() {
-            showToast('error', '컬럼 추가에 실패했습니다');
-        }
+        error: function() { showToast('error', '확인처리 실패'); }
     });
 }
 
-// ========== Detail View (Registry API) ==========
-function showColumnDetail(registryId) {
-    $('#columnDetailBody').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">로딩 중...</p></div>');
-    $('#columnDetailModal').modal('show');
+function colClearFilters() {
+    $('#colFilterDb, #colFilterOwner, #colFilterTable, #colFilterColumn, #colFilterComment').val('');
+    $('#colFilterEncrypt, #colFilterPiiType, #colFilterScramble, #colFilterDetection, #colFilterVerify').val('');
+    colSearch(1);
+}
 
+function colGoToPage(page) { colSearch(page); }
+
+// ========== PII 설정 모달 ==========
+var colLkPiiTypes = null;
+function loadColLkPiiTypes(cb) {
+    if (colLkPiiTypes) { cb(colLkPiiTypes); return; }
+    $.get(contextPath + '/piidiscovery/api/lk-pii-types', function(t) { colLkPiiTypes = t || []; cb(colLkPiiTypes); });
+}
+
+function openPiiSettingModal(tr) {
+    var $tr = $(tr);
+    var db = $tr.data('db'), schema = $tr.data('schema'), table = $tr.data('table'), column = $tr.data('column');
+    var piitype = $tr.data('piitype'), encrypt = $tr.data('encrypt'), scramble = $tr.data('scramble');
+    var datatype = $tr.data('datatype'), val2 = $tr.data('val2'), piitypename = $tr.data('piitypename');
+
+    $('#colPiiDb').text(db || '-'); $('#colPiiSchema').text(schema || '-');
+    $('#colPiiTable').html('<strong>' + (table || '-') + '</strong>'); $('#colPiiColumn').html('<code>' + (column || '-') + '</code>');
+    $('#colPiiDataType').html('<span class="badge badge-secondary">' + (datatype || '-') + '</span>');
+    $('#colPiiCurrentType').html(piitypename ? '<span class="badge badge-info">' + piitypename + '</span>' : '-');
+    $('#colPiiCurrentEnc').text(encrypt || '-'); $('#colPiiCurrentScramble').text(scramble || '-'); $('#colPiiVal2').text(val2 || '-');
+    $('#colPiiHiddenDb').val(db); $('#colPiiHiddenSchema').val(schema); $('#colPiiHiddenTable').val(table); $('#colPiiHiddenColumn').val(column);
+    $('#colPiiEncrypt').val(encrypt === 'Y' ? 'Y' : ''); $('#colPiiScramble').val(scramble || '');
+
+    loadColLkPiiTypes(function(types) {
+        var html = '', gid = '';
+        types.forEach(function(t) {
+            if (t.piigroupid !== gid) {
+                if (gid) html += '</div></div>';
+                gid = t.piigroupid;
+                html += '<div class="pc-row"><div class="pc-grade g' + t.piigradeid + '">' + t.piigradeid + '</div><div class="pc-category">' + t.piigroupname + '</div><div class="pc-items">';
+            }
+            var ck = (piitype && piitype === t.piicode) ? ' checked' : '';
+            html += '<div class="pc-chip"><input type="radio" name="colPiiTypeRadio" id="cp_' + t.piicode + '" value="' + t.piicode + '" data-scrtype="' + (t.scrtype||'') + '" data-grade="' + (t.piigradeid||'') + '"' + ck + '><label for="cp_' + t.piicode + '">' + t.piitypename + '</label></div>';
+        });
+        if (gid) html += '</div></div>';
+        $('#colPiiTypeSelector').html(html);
+        $('input[name="colPiiTypeRadio"]').change(function() { $('#colPiiScramble').val($(this).data('scrtype')||''); $('#colPiiSelectedType').text($(this).next('label').text()); });
+        var $ck = $('input[name="colPiiTypeRadio"]:checked');
+        $('#colPiiSelectedType').text($ck.length > 0 ? $ck.next('label').text() : '-');
+        $('#colPiiSettingModal').modal('show');
+    });
+}
+
+function submitColPiiSetting() {
+    var $sel = $('input[name="colPiiTypeRadio"]:checked');
+    if ($sel.length === 0) { showToast('warning', '개인정보 유형을 선택해주세요'); return; }
     $.ajax({
-        url: '${pageContext.request.contextPath}/piidiscovery/api/registry/' + registryId,
-        type: 'GET',
-        success: function(result) {
-            var html = '<div class="detail-grid">';
-
-            // Left Section: Column Info + Detection Result
-            html += '<div class="detail-left">';
-
-            // Column Info
-            html += '<div class="detail-section">';
-            html += '<h6><i class="fas fa-columns"></i> 컬럼 정보</h6>';
-            html += '<table class="table table-sm table-bordered">';
-            html += '<tr><th>데이터베이스</th><td>' + (result.dbName || '-') + '</td></tr>';
-            html += '<tr><th>스키마</th><td>' + (result.schemaName || '-') + '</td></tr>';
-            html += '<tr><th>테이블</th><td><strong>' + (result.tableName || '-') + '</strong></td></tr>';
-            html += '<tr><th>컬럼</th><td><code>' + (result.columnName || '-') + '</code></td></tr>';
-            html += '<tr><th>데이터 타입</th><td>' + (result.dataType || '-') + '</td></tr>';
-            html += '<tr><th>코멘트</th><td>' + (result.columnComment || '-') + '</td></tr>';
-            html += '</table>';
-            html += '</div>';
-
-            // PII Registry Info
-            html += '<div class="detail-section">';
-            html += '<h6><i class="fas fa-shield-alt"></i> 레지스트리 정보</h6>';
-            html += '<table class="table table-sm table-bordered">';
-            html += '<tr><th>개인정보 유형</th><td><span class="badge badge-info">' + (result.piiTypeName || '-') + '</span></td></tr>';
-            var score = result.confidenceScore || 0;
-            var scoreClass = score >= 80 ? 'high' : (score >= 50 ? 'medium' : 'low');
-            html += '<tr><th>신뢰도</th><td>' + (result.detectionMethod === 'MANUAL' ? '<span class="badge badge-light">MANUAL</span>' : '<span class="score-badge ' + scoreClass + '">' + score + '%</span>') + '</td></tr>';
-            html += '<tr><th>탐지 방법</th><td><span class="badge badge-secondary">' + (result.detectionMethod || '-') + '</span></td></tr>';
-            html += '<tr><th>상태</th><td><span class="status-badge ' + (result.status || 'confirmed').toLowerCase() + '">' + (result.status || 'CONFIRMED') + '</span></td></tr>';
-            html += '<tr><th>등록</th><td>' + (result.registeredBy || '-') + ' / ' + (result.registeredDate || '-') + '</td></tr>';
-            html += '<tr><th>최초 탐지일</th><td>' + (result.firstDetectedDate || '-') + '</td></tr>';
-            html += '</table>';
-            html += '</div>';
-
-            html += '</div>'; // end detail-left
-
-            // Right Section: Sample Data
-            html += '<div class="detail-right">';
-            html += '<div class="detail-section" style="height: 100%;">';
-            html += '<h6><i class="fas fa-database"></i> 샘플 데이터</h6>';
-            if (result.sampleData) {
-                html += '<div class="sample-data-box">';
-                var samples = result.sampleData.split('\n');
-                samples.forEach(function(sample, idx) {
-                    if (sample.trim()) {
-                        html += '<div class="sample-item"><span class="sample-num">' + (idx + 1) + '</span> ' + escapeHtml(sample) + '</div>';
-                    }
-                });
-                html += '</div>';
-            } else {
-                html += '<div class="text-muted" style="padding: 20px; text-align: center;"><i class="fas fa-info-circle"></i><br>샘플 데이터가 없습니다</div>';
-            }
-            html += '</div>';
-            html += '</div>'; // end detail-right
-
-            html += '</div>'; // end detail-grid
-
-            $('#columnDetailBody').html(html);
-        },
-        error: function() {
-            $('#columnDetailBody').html('<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> 상세 정보를 불러오는데 실패했습니다</div>');
-        }
+        url: contextPath + '/piidiscovery/api/meta-pii-update',
+        type: 'POST', contentType: 'application/json',
+        data: JSON.stringify({ db: $('#colPiiHiddenDb').val(), schema: $('#colPiiHiddenSchema').val(), table: $('#colPiiHiddenTable').val(), column: $('#colPiiHiddenColumn').val(),
+            piiTypeCode: $sel.val(), piiGrade: $sel.data('grade')+'', encryptFlag: $('#colPiiEncrypt').val(), scrambleType: $('#colPiiScramble').val() }),
+        beforeSend: function(xhr) { if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken); },
+        success: function(r) { if (r.success) { $('#colPiiSettingModal').modal('hide'); showToast('success', 'PII 설정 완료'); colSearch(); } else { showToast('error', r.message||'실패'); } },
+        error: function() { showToast('error', '업데이트 실패'); }
     });
 }
 
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(text));
-    return div.innerHTML;
-}
-
-// ========== Utility ==========
-function showToast(type, message) {
-    var bgColor = type === 'success' ? '#10b981' : (type === 'error' ? '#ef4444' : (type === 'warning' ? '#f59e0b' : '#3b82f6'));
-    var toast = $('<div class="position-fixed" style="top: 20px; right: 20px; z-index: 9999; padding: 12px 20px; background: ' + bgColor + '; color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">' + message + '</div>');
-    $('body').append(toast);
-    setTimeout(function() { toast.fadeOut(function() { toast.remove(); }); }, 3000);
+function showToast(type, msg) {
+    var bg = type==='success'?'#22c55e':type==='error'?'#ef4444':'#f59e0b';
+    var t = $('<div class="position-fixed" style="top:20px;right:20px;z-index:9999;padding:12px 20px;background:'+bg+';color:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">'+msg+'</div>');
+    $('body').append(t); setTimeout(function(){t.fadeOut(function(){t.remove();});},3000);
 }
 </script>
-
-<style>
-/* Summary Cards Row */
-.summary-cards-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.summary-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: 10px;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    border-left: 4px solid;
-}
-.summary-card-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-.summary-card-content {
-    display: flex;
-    flex-direction: column;
-}
-.summary-card-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-.summary-card-label {
-    font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 500;
-}
-/* Card Variants */
-.summary-card-success {
-    border-left-color: #22c55e;
-}
-.summary-card-success .summary-card-icon {
-    background: #dcfce7;
-    color: #16a34a;
-}
-.summary-card-success .summary-card-value {
-    color: #16a34a;
-}
-.summary-card-danger {
-    border-left-color: #ef4444;
-}
-.summary-card-danger .summary-card-icon {
-    background: #fee2e2;
-    color: #dc2626;
-}
-.summary-card-danger .summary-card-value {
-    color: #dc2626;
-}
-.summary-card-primary {
-    border-left-color: #3b82f6;
-}
-.summary-card-primary .summary-card-icon {
-    background: #dbeafe;
-    color: #2563eb;
-}
-.summary-card-primary .summary-card-value {
-    color: #2563eb;
-}
-.summary-card-purple {
-    border-left-color: #a855f7;
-}
-.summary-card-purple .summary-card-icon {
-    background: #f3e8ff;
-    color: #9333ea;
-}
-.summary-card-purple .summary-card-value {
-    color: #9333ea;
-}
-
-/* Tab Styles */
-.nav-tabs {
-    border-bottom: 2px solid #e2e8f0;
-    background: #f8fafc;
-    padding: 0 10px;
-    border-radius: 8px 8px 0 0;
-}
-.nav-tabs .nav-item {
-    margin-bottom: -2px;
-}
-.nav-tabs .nav-link {
-    color: #64748b;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    margin-right: 4px;
-    padding: 12px 24px;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-.nav-tabs .nav-link:hover {
-    color: #1e293b;
-    background: #e2e8f0;
-}
-.nav-tabs .nav-link.active {
-    color: #6366f1;
-    background: #ffffff;
-    border-color: #e2e8f0;
-    border-bottom: 2px solid #ffffff;
-    position: relative;
-}
-.nav-tabs .nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: #6366f1;
-    border-radius: 3px 3px 0 0;
-}
-
-.score-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.score-badge.high { background: #dcfce7; color: #166534; }
-.score-badge.medium { background: #fef3c7; color: #92400e; }
-.score-badge.low { background: #fee2e2; color: #991b1b; }
-
-/* Detail Modal Styles */
-.detail-grid {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-}
-.detail-left {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-    flex: 1;
-}
-.detail-right {
-    flex: 0 0 380px;
-}
-.detail-section {
-    background: #f8fafc;
-    border-radius: 10px;
-    padding: 20px;
-    flex: 1;
-    border: 1px solid #e2e8f0;
-}
-.detail-section h6 {
-    color: #1e293b;
-    font-weight: 600;
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e2e8f0;
-    font-size: 1rem;
-}
-.detail-section h6 i {
-    margin-right: 10px;
-    color: #6366f1;
-}
-.detail-section .table {
-    margin-bottom: 0;
-    background: white;
-    font-size: 0.95rem;
-}
-.detail-section .table th {
-    background: #f1f5f9;
-    font-weight: 600;
-    color: #475569;
-    padding: 10px 14px;
-    width: 110px;
-    border: 1px solid #e2e8f0;
-}
-.detail-section .table td {
-    padding: 10px 14px;
-    border: 1px solid #e2e8f0;
-}
-.sample-data-box {
-    background: #1e293b;
-    border-radius: 8px;
-    padding: 16px;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 0.9rem;
-    height: 100%;
-    min-height: 260px;
-    max-height: 320px;
-    overflow-y: auto;
-}
-.sample-item {
-    color: #e2e8f0;
-    padding: 8px 0;
-    border-bottom: 1px solid #334155;
-    font-size: 0.9rem;
-}
-.sample-item:last-child {
-    border-bottom: none;
-}
-.sample-num {
-    display: inline-block;
-    width: 28px;
-    color: #94a3b8;
-    font-weight: 500;
-    text-align: right;
-    margin-right: 12px;
-}
-.status-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-.status-badge.pending { background: #e2e8f0; color: #475569; }
-.status-badge.confirmed { background: #dcfce7; color: #166534; }
-.status-badge.excluded { background: #fee2e2; color: #991b1b; }
-
-/* Filter Bar Styles */
-.filter-field {
-    width: 130px !important;
-    height: 32px !important;
-    font-size: 0.85rem !important;
-    border-radius: 4px !important;
-}
-.filter-field:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
-}
-.filter-btn {
-    height: 32px !important;
-    padding: 0 14px !important;
-    font-size: 0.85rem !important;
-    border-radius: 4px !important;
-    white-space: nowrap;
-}
-.filter-btn i {
-    margin-right: 4px;
-}
-.action-btn {
-    height: 32px !important;
-    padding: 0 12px !important;
-    font-size: 0.85rem !important;
-    border-radius: 4px !important;
-    white-space: nowrap;
-}
-.action-btn i {
-    margin-right: 4px;
-}
-</style>

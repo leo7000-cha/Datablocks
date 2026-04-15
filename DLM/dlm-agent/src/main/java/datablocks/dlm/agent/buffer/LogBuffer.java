@@ -29,7 +29,7 @@ public class LogBuffer {
     public void init(AgentConfig config) {
         int capacity = config.getBufferCapacity();
         this.queue = new LinkedBlockingQueue<>(capacity);
-        System.out.println("[DLM-Agent] LogBuffer initialized: capacity=" + capacity);
+        System.out.println("[XAudit-Agent] LogBuffer initialized: capacity=" + capacity);
     }
 
     /**

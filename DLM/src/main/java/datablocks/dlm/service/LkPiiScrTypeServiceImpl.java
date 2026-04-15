@@ -30,6 +30,11 @@ public class LkPiiScrTypeServiceImpl implements LkPiiScrTypeService {
 	}
 	
 	@Override
+	public List<LkPiiScrTypeVO> getListAll() {
+		return mapper.getListAll();
+	}
+
+	@Override
 	public List<LkPiiScrTypeVO> getList(Criteria cri) {
 		
 		LogUtil.log("INFO", "get List with criteria: " + cri);
@@ -79,5 +84,12 @@ public class LkPiiScrTypeServiceImpl implements LkPiiScrTypeService {
 		
 		return mapper.update(piiscrtype) == 1;
 	}
-	
+
+	@Override
+	@Transactional
+	public void updateVisible(String piicode, String visible) {
+		LogUtil.log("INFO", "updateVisible: " + piicode + " -> " + visible);
+		mapper.updateVisible(piicode, visible);
+	}
+
 }

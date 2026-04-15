@@ -236,7 +236,7 @@
     // Move row up or down
     function rowMoveEvent(direction) {
         if (!$(".chkRadio:checked").val()) {
-            alert("<spring:message code='msg.selectstep' text='Select a step to move.'/>");
+            dlmAlert("<spring:message code='msg.selectstep' text='Select a step to move.'/>");
             return;
         }
 
@@ -270,7 +270,7 @@
         var approvalname = $('#form_etc [name="approvalname"]').val();
 
         if (!aprvlineid) {
-            alert("<spring:message code='msg.selectapprovalline' text='Please select an approval line first.'/>");
+            dlmAlert("<spring:message code='msg.selectapprovalline' text='Please select an approval line first.'/>");
             return;
         }
 
@@ -294,7 +294,7 @@
     // Delete selected step
     function deleteSelectedStep() {
         if (!$(".chkRadio:checked").val()) {
-            alert("<spring:message code='msg.selectstep' text='Select a step to delete.'/>");
+            dlmAlert("<spring:message code='msg.selectstep' text='Select a step to delete.'/>");
             return;
         }
 
@@ -320,12 +320,12 @@
             var seq = tr.find('.td-seq').text().trim();
 
             if (!stepname) {
-                alert("<spring:message code='msg.enterstepname' text='Step'/> " + seq + ": <spring:message code='msg.stepnamerequired' text='Step name is required.'/>");
+                dlmAlert("<spring:message code='msg.enterstepname' text='Step'/> " + seq + ": <spring:message code='msg.stepnamerequired' text='Step name is required.'/>");
                 hasError = true;
                 return false;
             }
             if (!approverid) {
-                alert("<spring:message code='msg.enterstepname' text='Step'/> " + seq + ": <spring:message code='msg.approverrequired' text='Approver is required.'/>");
+                dlmAlert("<spring:message code='msg.enterstepname' text='Step'/> " + seq + ": <spring:message code='msg.approverrequired' text='Approver is required.'/>");
                 hasError = true;
                 return false;
             }
@@ -343,7 +343,7 @@
         });
 
         if (isEmpty) {
-            alert("<spring:message code='msg.atleastonestep' text='At least one approval step is required.'/>");
+            dlmAlert("<spring:message code='msg.atleastonestep' text='At least one approval step is required.'/>");
             return;
         }
         if (hasError) return;
@@ -364,7 +364,7 @@
                 $('#approvalstepbody > tr').each(function () {
                     $(this).find('input[name="saveyn"]').val("Y");
                 });
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
             },
             error: function (request, error) {
                 ingHide();

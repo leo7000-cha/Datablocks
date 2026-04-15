@@ -165,6 +165,15 @@
                     <th><spring:message code="col.decfunc" text="Decrypt Function"/></th>
                     <td><c:out value="${lkpiiscrtype.decfunc}"/></td>
                 </tr>
+                <tr>
+                    <th>사용여부</th>
+                    <td>
+                        <c:choose>
+                            <c:when test="${lkpiiscrtype.visible == 'Y'}"><span style="color: #22c55e; font-weight: 600;">Y</span></c:when>
+                            <c:otherwise><span style="color: #ef4444; font-weight: 600;">N</span></c:otherwise>
+                        </c:choose>
+                    </td>
+                </tr>
                 </tbody>
             </table>
         </form>

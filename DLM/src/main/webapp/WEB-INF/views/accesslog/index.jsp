@@ -9,10 +9,12 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge; chrome=1"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>X-One 접속기록관리</title>
+    <title>X-Audit 접속기록·소명</title>
     <link href="/resources/vendor/fontawesome-free-6.1.1-web/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="/resources/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/resources/css/flatpickr.min.css" rel="stylesheet">
+    <link href="/resources/css/material_blue.css" rel="stylesheet">
     <meta name="_csrf" content="${_csrf.token}">
     <meta name="_csrf_header" content="${_csrf.headerName}">
     <style>
@@ -116,6 +118,12 @@
         .filter-bar select, .filter-bar input { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem; color: #334155; }
         .filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: var(--monitor-primary); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
 
+        /* Flatpickr date inputs */
+        .fp-date { cursor: pointer; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") no-repeat right 10px center; padding-right: 32px !important; }
+        .flatpickr-calendar { border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border: 1px solid #e2e8f0; }
+        .flatpickr-day.selected { background: var(--monitor-primary) !important; border-color: var(--monitor-primary) !important; }
+        .flatpickr-day:hover { background: #ccfbf1; border-color: #ccfbf1; }
+
         /* Empty State */
         .empty-state { text-align: center; padding: 60px 20px; }
         .empty-state-icon { width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
@@ -170,17 +178,42 @@
                     <div class="nav-item">
                         <a href="javascript:void(0)" class="nav-link" data-page="alerts">
                             <i class="fas fa-triangle-exclamation"></i> 이상행위 알림
-                            <c:if test="${stats.unresolvedAlertCount != null && stats.unresolvedAlertCount > 0}">
-                                <span class="nav-badge">${stats.unresolvedAlertCount}</span>
-                            </c:if>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="suppressions">
+                            <i class="fas fa-filter-circle-xmark"></i> 알림 예외 관리
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="alert-rules">
+                            <i class="fas fa-list-check"></i> 탐지 규칙
+                        </a>
+                    </div>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">검증</div>
+                    <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="hash-verify">
+                            <i class="fas fa-fingerprint"></i> 저장기록 위·변조 검증
                         </a>
                     </div>
                 </div>
                 <div class="nav-section">
                     <div class="nav-section-title">관리</div>
                     <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="policy">
+                            <i class="fas fa-shield-alt"></i> 감사 대상 테이블
+                        </a>
+                    </div>
+                    <div class="nav-item">
                         <a href="javascript:void(0)" class="nav-link" data-page="sources">
-                            <i class="fas fa-server"></i> 수집 대상
+                            <i class="fas fa-server"></i> 수집 관리
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="exclude-patterns">
+                            <i class="fas fa-filter"></i> 수집 제외 SQL
                         </a>
                     </div>
                     <div class="nav-item">
@@ -219,6 +252,7 @@
 
     <script src="/resources/vendor/jquery/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/resources/js/flatpickr.min.js"></script>
     <script>
     $(function() {
         var csrfToken = $('meta[name="_csrf"]').attr('content');
@@ -229,7 +263,12 @@
             'dashboard': '대시보드',
             'logs': '접속기록 조회',
             'alerts': '이상행위 알림',
-            'sources': '수집 대상 관리',
+            'hash-verify': '저장기록 위·변조 검증',
+            'alert-rules': '이상행위 탐지 규칙',
+            'suppressions': '알림 예외 관리',
+            'policy': '감사 대상 테이블 관리',
+            'sources': '수집 관리',
+            'exclude-patterns': '수집 제외 SQL 관리',
             'settings': '환경설정'
         };
 
@@ -250,33 +289,116 @@
             });
         });
 
-        // 알림 배지 자동 갱신 (30초)
-        function updateAlertBadge() {
-            $.get('/accesslog/api/alert-count', function(data) {
-                var cnt = data.count || 0;
-                var $badge = $('.nav-link[data-page="alerts"] .nav-badge');
-                if (cnt > 0) {
-                    if ($badge.length) {
-                        $badge.text(cnt);
-                    } else {
-                        $('.nav-link[data-page="alerts"]').append('<span class="nav-badge">' + cnt + '</span>');
-                    }
-                } else {
-                    $badge.remove();
+        // URL 해시로 페이지 직접 로드 (새 탭 열기 지원)
+        var initHash = location.hash.replace('#', '');
+        if (initHash && pageTitles[initHash]) {
+            $('.nav-link[data-page="' + initHash + '"]').click();
+        }
+
+    });
+
+    // ========== 공통 알림 (dlmAlert) ==========
+    function dlmAlert(msg, callback) {
+        var $m = $('#dlmAlertModal');
+        if ($m.length === 0) {
+            $('body').append(
+                '<div id="dlmAlertModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:100000;align-items:center;justify-content:center;">' +
+                '  <div style="background:#fff;border-radius:14px;max-width:380px;width:90%;padding:28px 24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.18);text-align:center;">' +
+                '    <div style="width:48px;height:48px;background:#fef3c7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
+                '      <i class="fas fa-exclamation-triangle" style="color:#f59e0b;font-size:1.3rem;"></i>' +
+                '    </div>' +
+                '    <div id="dlmAlertMsg" style="font-size:0.9rem;color:#334155;line-height:1.6;white-space:pre-line;margin-bottom:20px;"></div>' +
+                '    <button id="dlmAlertOk" style="background:linear-gradient(135deg,var(--monitor-primary),var(--monitor-primary-dark));color:#fff;border:none;padding:10px 36px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">확인</button>' +
+                '  </div>' +
+                '</div>'
+            );
+            $m = $('#dlmAlertModal');
+            $m.on('click', '#dlmAlertOk', function() {
+                $m.hide();
+                var cb = $m.data('callback');
+                if (typeof cb === 'function') cb();
+            });
+            // ESC 닫기
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && $m.is(':visible')) { $m.hide(); }
+            });
+        }
+        $('#dlmAlertMsg').text(msg);
+        $m.data('callback', callback || null);
+        $m.css('display','flex');
+        setTimeout(function() { $('#dlmAlertOk').focus(); }, 50);
+    }
+
+    // HTML 이스케이프 유틸
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ========== 공통 확인 모달 (showConfirm) ==========
+    function showConfirm(message, callback, cancelCallback) {
+        var $m = $('#dlmConfirmModal');
+        if ($m.length === 0) {
+            $('body').append(
+                '<div id="dlmConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:100000;align-items:center;justify-content:center;">' +
+                '  <div style="background:#fff;border-radius:14px;max-width:380px;width:90%;padding:28px 24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.18);text-align:center;">' +
+                '    <div style="width:48px;height:48px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
+                '      <i class="fas fa-exclamation-circle" style="color:#ef4444;font-size:1.3rem;"></i>' +
+                '    </div>' +
+                '    <div id="dlmConfirmMsg" style="font-size:0.9rem;color:#334155;line-height:1.6;white-space:pre-line;margin-bottom:20px;"></div>' +
+                '    <div style="display:flex;gap:10px;justify-content:center;">' +
+                '      <button id="dlmConfirmCancel" style="background:#f1f5f9;color:#64748b;border:none;padding:10px 28px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">취소</button>' +
+                '      <button id="dlmConfirmOk" style="background:#ef4444;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">확인</button>' +
+                '    </div>' +
+                '  </div>' +
+                '</div>'
+            );
+            $m = $('#dlmConfirmModal');
+            $m.on('click', '#dlmConfirmOk', function() {
+                $m.hide();
+                var cb = $m.data('callback');
+                if (typeof cb === 'function') cb();
+            });
+            $m.on('click', '#dlmConfirmCancel', function() {
+                $m.hide();
+                var cb = $m.data('cancelCallback');
+                if (typeof cb === 'function') cb();
+            });
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' && $m.is(':visible')) {
+                    $m.hide();
+                    var cb = $m.data('cancelCallback');
+                    if (typeof cb === 'function') cb();
                 }
             });
         }
-        setInterval(updateAlertBadge, 30000);
+        $('#dlmConfirmMsg').text(message);
+        $m.data('callback', callback || null);
+        $m.data('cancelCallback', cancelCallback || null);
+        $m.css('display','flex');
+        setTimeout(function() { $('#dlmConfirmOk').focus(); }, 50);
+    }
 
-        // 대시보드 자동 새로고침 (60초)
-        setInterval(function() {
-            if (currentPage === 'dashboard') {
-                $.get('/accesslog/dashboard', function(html) {
-                    $('#mainContent').html(html);
-                });
-            }
-        }, 60000);
-    });
+    // ========== 공통 토스트 ==========
+    function showToast(msg, isError) {
+        var $t = $('#globalToast');
+        if ($t.length === 0) {
+            $('body').append(
+                '<div id="globalToast" style="position:fixed;bottom:24px;right:24px;z-index:99999;' +
+                'padding:12px 24px;border-radius:10px;font-size:0.85rem;font-weight:500;color:#fff;' +
+                'box-shadow:0 4px 16px rgba(0,0,0,0.15);transform:translateY(100px);opacity:0;' +
+                'transition:all 0.3s;pointer-events:none;"></div>'
+            );
+            $t = $('#globalToast');
+        }
+        var icon = isError ? 'times-circle' : 'check-circle';
+        $t.html('<i class="fas fa-' + icon + '" style="margin-right:6px;"></i>' + msg);
+        $t.css({ background: isError ? '#dc2626' : '#059669', transform: 'translateY(0)', opacity: 1 });
+        clearTimeout($t.data('timer'));
+        $t.data('timer', setTimeout(function() {
+            $t.css({ transform: 'translateY(100px)', opacity: 0 });
+        }, 2500));
+    }
     </script>
 </body>
 </html>

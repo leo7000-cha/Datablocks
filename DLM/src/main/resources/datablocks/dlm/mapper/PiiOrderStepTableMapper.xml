@@ -320,9 +320,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		   and status not in ('Ended OK', 'Wait condition') 
 	</update>
 	
-	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiOrderStepTableVO"> 
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiOrderStepTableVO">
 		<![CDATA[
-		 select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		 select orderid, status, forceokflag,  DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, jobid, version, stepid, stepname, steptype, stepseq, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, arccnt, arctime,  DATE_FORMAT(arcstart,'%Y/%m/%d %H:%i:%s') as arcstart,  DATE_FORMAT(arcend,'%Y/%m/%d %H:%i:%s') as arcend, execnt, exetime,  DATE_FORMAT(exestart,'%Y/%m/%d %H:%i:%s') as exestart,  DATE_FORMAT(exeend,'%Y/%m/%d %H:%i:%s') as exeend, sqlmsg, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
 		   from cotdl.tbl_piiordersteptable
 		]]>
 		<include refid="criteria_piiordersteptable"></include>

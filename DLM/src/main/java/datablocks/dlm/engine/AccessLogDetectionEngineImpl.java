@@ -5,11 +5,13 @@ import datablocks.dlm.domain.AccessLogAlertVO;
 import datablocks.dlm.domain.AccessLogConfigVO;
 import datablocks.dlm.mapper.AccessLogMapper;
 import datablocks.dlm.service.AccessLogEmailService;
+import datablocks.dlm.service.AccessLogService;
 import datablocks.dlm.util.LogUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,6 +31,12 @@ public class AccessLogDetectionEngineImpl implements AccessLogDetectionEngine {
 
     @Autowired
     private AccessLogEmailService emailService;
+
+    @Autowired
+    private AccessLogService accessLogService;
+
+    @Value("${server.port:8080}")
+    private int serverPort;
 
     @Override
     public int detectAnomalies(String sourceId) {
@@ -218,13 +226,13 @@ public class AccessLogDetectionEngineImpl implements AccessLogDetectionEngine {
             String userAccount = (String) row.get("userAccount");
             String userName = (String) row.get("userName");
             String clientIp = (String) row.get("clientIp");
-            String logId = row.get("logId") != null ? row.get("logId").toString() : "";
+            String logIds = row.get("logIds") != null ? row.get("logIds").toString() : "";
 
             AccessLogAlertVO alert = buildAlert(rule,
                     userAccount, userName,
                     "미등록 IP 접근: " + userAccount + " from " + clientIp,
                     "90일간 사용 이력이 없는 IP " + clientIp + "에서 접속",
-                    logId);
+                    logIds);
             insertAlertAndNotify(alert, rule);
             count++;
         }
@@ -267,16 +275,58 @@ public class AccessLogDetectionEngineImpl implements AccessLogDetectionEngine {
         return alert;
     }
 
+    /**
+     * 억제 규칙 확인: 해당 사용자+규칙에 활성 예외가 있으면 알림 생성 건너뜀
+     */
+    private boolean isSuppressed(String ruleId, String targetUserId) {
+        try {
+            return mapper.countActiveSuppression(ruleId, targetUserId) > 0;
+        } catch (Exception e) {
+            // 테이블 미존재 등 예외 시 억제 안 함 (안전)
+            logger.warn("Suppression check failed, proceeding with alert: {}", e.getMessage());
+            return false;
+        }
+    }
+
     private void insertAlertAndNotify(AccessLogAlertVO alert, AccessLogAlertRuleVO rule) {
+        // 억제 규칙 확인
+        if (isSuppressed(rule.getRuleId(), alert.getTargetUserId())) {
+            LogUtil.log("INFO", "Alert suppressed: rule=" + rule.getRuleCode()
+                    + ", user=" + alert.getTargetUserId());
+            return;
+        }
+
         mapper.insertAlert(alert);
 
-        // HIGH severity 시 이메일 알림
+        // 관리자에게 알림 (HIGH severity)
         if ("HIGH".equals(rule.getSeverity())) {
             try {
                 emailService.sendAlertNotification(alert);
             } catch (Exception e) {
                 logger.error("Email notification failed for alert: {}", alert.getAlertTitle(), e);
             }
+        }
+
+        // 대상자 이메일이 TBL_MEMBER에 있으면 자동 소명 요청 발송
+        try {
+            Map<String, Object> memberInfo = mapper.selectMemberEmail(alert.getTargetUserId());
+            if (memberInfo != null && memberInfo.get("email") != null
+                    && !((String) memberInfo.get("email")).trim().isEmpty()) {
+                String email = ((String) memberInfo.get("email")).trim();
+                String baseUrl = "http://localhost:" + serverPort;
+
+                // 설정에서 baseUrl 가져오기 (있으면)
+                AccessLogConfigVO baseUrlCfg = mapper.selectConfigByKey("DLM_BASE_URL");
+                if (baseUrlCfg != null && baseUrlCfg.getConfigValue() != null
+                        && !baseUrlCfg.getConfigValue().trim().isEmpty()) {
+                    baseUrl = baseUrlCfg.getConfigValue().trim();
+                }
+
+                accessLogService.sendJustificationRequest(alert.getAlertId(), email, baseUrl, "system");
+                LogUtil.log("INFO", "Auto justification request sent: alertId=" + alert.getAlertId() + ", email=" + email);
+            }
+        } catch (Exception e) {
+            logger.error("Auto justification request failed for alert: {}", alert.getAlertTitle(), e);
         }
     }
 }

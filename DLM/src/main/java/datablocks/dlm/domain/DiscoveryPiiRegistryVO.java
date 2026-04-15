@@ -31,6 +31,11 @@ public class DiscoveryPiiRegistryVO {
     private Double confidenceScore;
     private String sampleData;
 
+    // Encryption Info
+    private String encryptionStatus;  // NONE, HASHED, ENCRYPTED, UNKNOWN
+    private String encryptionMethod;  // SHA-256, MD5, BCrypt, AES/Base64 등
+    private Integer encryptionRatio;  // 암호화 비율 (0-100%)
+
     // First Detection Info
     private String firstDetectedDate;
     private String firstDetectedExecutionId;
@@ -97,6 +102,9 @@ public class DiscoveryPiiRegistryVO {
         }
 
         registry.setSampleData(result.getSampleData());
+        registry.setEncryptionStatus(result.getEncryptionStatus());
+        registry.setEncryptionMethod(result.getEncryptionMethod());
+        registry.setEncryptionRatio(result.getEncryptionRatio());
         registry.setFirstDetectedDate(result.getScanDate() != null ? result.getScanDate() : result.getRegDate());
         registry.setFirstDetectedExecutionId(result.getExecutionId());
         registry.setFirstDetectedResultId(result.getResultId());

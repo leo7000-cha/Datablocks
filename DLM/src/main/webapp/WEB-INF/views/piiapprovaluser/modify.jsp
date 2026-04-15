@@ -157,7 +157,7 @@
                     //elementResult.html(data); //받아온 data 실행
                     //alert(result + ":"+data);
                     if (result == "success") {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                         goBackToList();
                     } else {
                         $("#errormodalbody").html(result);
@@ -171,35 +171,32 @@
 
         $("button[data-oper='remove']").on("click", function (e) {
             e.preventDefault();e.stopPropagation();
-            var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-            if (confirmflag == false) {
-                return;
-            }
-
-            var formsubmitSerialArray = $("#piiapprovaluser_modify_form").serializeArray();
-            var formsubmit = JSON.stringify(serializeObject(formsubmitSerialArray));
-            $.ajax({
-                url: "/piiapprovaluser/remove",
-                type: "post",
-                data: formsubmit,
-                dataType: "text",
-                contentType: "application/json; charset=UTF-8",
-                beforeSend: function (xhr) {   /*데이터를 전송하기 전에 헤더에 csrf값을 설정한다*/
-                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-                },
-                error: function (request, error) { ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (result, data) {
-                    if (result == "success") {
-                        $("#GlobalSuccessMsgModal").modal("show");
-                        goBackToList();
-                    } else {
-                        $("#errormodalbody").html(result);
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                var formsubmitSerialArray = $("#piiapprovaluser_modify_form").serializeArray();
+                var formsubmit = JSON.stringify(serializeObject(formsubmitSerialArray));
+                $.ajax({
+                    url: "/piiapprovaluser/remove",
+                    type: "post",
+                    data: formsubmit,
+                    dataType: "text",
+                    contentType: "application/json; charset=UTF-8",
+                    beforeSend: function (xhr) {   /*데이터를 전송하기 전에 헤더에 csrf값을 설정한다*/
+                        xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                    },
+                    error: function (request, error) { ingHide();
+                        $("#errormodalbody").html(request.responseText);
                         $("#errormodal").modal("show");
+                    },
+                    success: function (result, data) {
+                        if (result == "success") {
+                            showToast("처리가 완료되었습니다.", false);
+                            goBackToList();
+                        } else {
+                            $("#errormodalbody").html(result);
+                            $("#errormodal").modal("show");
+                        }
                     }
-                }
+                });
             });
 
         });

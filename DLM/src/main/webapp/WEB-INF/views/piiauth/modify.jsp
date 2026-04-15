@@ -124,7 +124,7 @@
                 },
                 success: function (data) { ingHide();
                     elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
 
                 }
             });
@@ -132,27 +132,24 @@
         });
 
         $("button[data-oper='remove']").on("click", function (e) {
-            var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-            if (confirmflag == false) {
-                return;
-            }
-
-            var elementForm = $("#piiauth_modify_form");
-            var elementResult = $("#content_home");
-            ingShow(); $.ajax({
-                type: "POST",
-                url: "/piiauth/remove",
-                dataType: "html",
-                //data:$('form').serialize(),
-                data: elementForm.serialize(),
-                error: function (request, error) { ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (data) { ingHide();
-                    elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
-                }
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                var elementForm = $("#piiauth_modify_form");
+                var elementResult = $("#content_home");
+                ingShow(); $.ajax({
+                    type: "POST",
+                    url: "/piiauth/remove",
+                    dataType: "html",
+                    //data:$('form').serialize(),
+                    data: elementForm.serialize(),
+                    error: function (request, error) { ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    },
+                    success: function (data) { ingHide();
+                        elementResult.html(data); //받아온 data 실행
+                        showToast("처리가 완료되었습니다.", false);
+                    }
+                });
             });
 
         });

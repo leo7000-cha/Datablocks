@@ -77,6 +77,12 @@ public class PiiOrderServiceImpl implements PiiOrderService {
 	@Autowired
 	private ArchiveNamingService archiveNamingService;
 
+	@Autowired
+	private TestDataMapper testDataMapper;
+
+	@Autowired
+	private OrderDdlMapper orderDdlMapper;
+
 
 	@Override
 	public List<PiiOrderVO> getList() {
@@ -129,6 +135,8 @@ public class PiiOrderServiceImpl implements PiiOrderService {
 		ordersteptableudpateMapper.deletebyorderid(orderid);
 		ordersteptablewaitMapper.deletebyorderid(orderid);
 		orderjobwaitMapper.deletebyorderid(orderid);
+		testDataMapper.deleteMasterKeymapByOrderId(orderid);
+		orderDdlMapper.deletebyorderid(orderid);
 		ordersteptableMapper.deletebyorderid(orderid);
 		orderstepMapper.deletebyorderid(orderid);
 		innerStepMapper.deletebyorderid(orderid);

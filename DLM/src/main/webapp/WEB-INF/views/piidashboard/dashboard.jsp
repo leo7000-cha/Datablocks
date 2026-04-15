@@ -757,14 +757,14 @@
         <sec:authentication property="principal.member.userid" var="userid"/>
         <c:if test="${userid ne 'admin' }">
         if("<c:out value='${needtochangepwd}'/>" == "INI"){
-            if(confirm("<spring:message code="etc.pwdfirst" text="비밀번호가 초기 상태입니다. 지금 변경하시겠습니까?"/>")){
+            showConfirm("<spring:message code="etc.pwdfirst" text="비밀번호가 초기 상태입니다. 지금 변경하시겠습니까?"/>", function(){
                 searchAction_pwd("<c:out value='${userid}'/>");
-            }
+            });
         }
         if("<c:out value='${needtochangepwd}'/>" == "EXPIRED"){
-            if(confirm("<spring:message code="etc.pwdreset" text="비밀번호가 6개월 이상 변경되지 않았습니다. 지금 변경하시겠습니까?"/>")){
+            showConfirm("<spring:message code="etc.pwdreset" text="비밀번호가 6개월 이상 변경되지 않았습니다. 지금 변경하시겠습니까?"/>", function(){
                 searchAction_pwd("<c:out value='${userid}'/>");
-            }
+            });
         }
         </c:if>
     });

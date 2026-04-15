@@ -266,13 +266,13 @@
             td = tr.children();
 
             if(typeof td.eq(1).text() == "undefined" || td.eq(1).text() == "" || td.eq(1).text() == null){
-                alert("결재자가 정의 되지 않았습니다.");
+                dlmAlert("결재자가 정의 되지 않았습니다.");
                 emptyflag = false;
                 return false;
                 // return;
             }
             if(typeof td.eq(2).text() == "undefined" || td.eq(2).text() == "" || td.eq(2).text() == null){
-                alert("결재자가 정의 되지 않았습니다.");
+                dlmAlert("결재자가 정의 되지 않았습니다.");
                 emptyflag = true;
                 return false;
                 // return;
@@ -291,7 +291,7 @@
         });
 
         if(emptyflag){
-            alert("You must set up an approver");
+            dlmAlert("You must set up an approver");
             return;
         }
 
@@ -306,7 +306,7 @@
                 xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
             },
             success: function (data, textStatus, jqXHR) {ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
             },
             error: function (request, error) { ingHide();
                 $("#errormodalbody").html(request.responseText);

@@ -250,6 +250,27 @@ public interface DiscoveryService {
     void registerToRegistry(String resultId, String status, String userId);
 
     /**
+     * PII 확정 + 인벤토리 세팅 (단건)
+     * Registry 등록 + MetaTable piitype/encript_flag/scramble_type 업데이트
+     */
+    /** MetaTable 기반 PII 컬럼 목록 조회 (columns 페이지용) */
+    List<datablocks.dlm.domain.MetaTableVO> getMetaTablePiiColumns(datablocks.dlm.domain.Criteria cri);
+    int getMetaTablePiiColumnsTotal(datablocks.dlm.domain.Criteria cri);
+    int getMetaTablePiiCount(String type);
+
+    /** MetaTable 전체 컬럼 조회 (인벤토리 동일 기능) */
+    List<datablocks.dlm.domain.MetaTableVO> getMetaTableAllColumns(datablocks.dlm.domain.Criteria cri);
+    int getMetaTableAllColumnsTotal(datablocks.dlm.domain.Criteria cri);
+
+    /** MetaTable PII 설정 직접 업데이트 (개인정보 컬럼 페이지용) */
+    void updateMetaTablePiiDirect(String db, String schema, String table, String column,
+                                   String piiTypeCode, String piiGrade, String encryptFlag, String scrambleType);
+
+    void confirmWithSettings(String resultId, String userId,
+                             String piiTypeCode, String piiGrade, String encryptFlag,
+                             String scrambleType);
+
+    /**
      * 여러 Scan Result를 일괄로 Registry에 등록
      */
     void registerToRegistryBatch(List<String> resultIds, String status, String userId);

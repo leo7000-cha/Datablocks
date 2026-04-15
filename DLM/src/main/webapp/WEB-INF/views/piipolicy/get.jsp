@@ -248,7 +248,7 @@
             e.stopPropagation();
 
             if ($('#piipolicy_get_form [name="phase"]').val() != "CHECKOUT") {
-                alert("The Policy is not checkout status");
+                dlmAlert("The Policy is not checkout status");
                 return;
             }
 
@@ -303,7 +303,7 @@
             e.stopPropagation();
 
             if ($('#piipolicy_get_form [name="phase"]').val() != "CHECKIN") {
-                alert("The policy is not 'CHECKIN' status");
+                dlmAlert("The policy is not 'CHECKIN' status");
                 return;
             }
 

@@ -239,7 +239,7 @@
             var userid = form.find('[name="userid"]').val().trim();
 
             if (!userid) {
-                alert('<spring:message code="msg.enteruserid" text="Please enter user ID"/>');
+                dlmAlert('<spring:message code="msg.enteruserid" text="Please enter user ID"/>');
                 return;
             }
 
@@ -254,7 +254,7 @@
                     $('#registerModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() {
                         searchAction(1);
                     }, 500);
@@ -282,7 +282,7 @@
                     $('#modifyModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() {
                         searchAction(1);
                     }, 500);
@@ -297,32 +297,30 @@
 
         // Delete
         $('#btnDelete').on('click', function () {
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>')) {
-                return;
-            }
-
-            var form = $('#modifyForm');
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piiauth/remove",
-                data: form.serialize(),
-                dataType: "html",
-                success: function (data) {
-                    ingHide();
-                    $('#modifyModal').modal('hide');
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() {
-                        searchAction(1);
-                    }, 500);
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>', function() {
+                var form = $('#modifyForm');
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piiauth/remove",
+                    data: form.serialize(),
+                    dataType: "html",
+                    success: function (data) {
+                        ingHide();
+                        $('#modifyModal').modal('hide');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open').css('padding-right', '');
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() {
+                            searchAction(1);
+                        }, 500);
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });

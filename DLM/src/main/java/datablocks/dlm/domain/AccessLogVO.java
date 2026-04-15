@@ -24,6 +24,7 @@ public class AccessLogVO {
     private Integer affectedRows;    // 영향받은 행 수
     private String searchCondition;  // 검색 조건문 (Whom)
     private String sqlText;          // 실행 SQL
+    private String collectType;      // 수집 방식 (DB_AUDIT/DB_DAC/WAS_AGENT)
     private String accessChannel;    // 접근 경로 (WEB/WAS/DB_DIRECT/API/BATCH)
     private String sessionId;        // 세션 ID
     private String resultCode;       // 수행 결과 (SUCCESS/FAIL/DENIED)

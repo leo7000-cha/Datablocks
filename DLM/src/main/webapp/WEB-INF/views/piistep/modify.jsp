@@ -509,37 +509,37 @@
 
 
             if (isEmpty($('#piistep_modify_form [name="stepid"]').val())) {
-                alert('Stepid is mandatory');
+                dlmAlert('Stepid is mandatory');
                 $('#piistep_modify_form [name="stepid"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="stepname"]').val())) {
-                alert('Stepname is mandatory');
+                dlmAlert('Stepname is mandatory');
                 $('#piistep_modify_form [name="stepname"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="steptype"]').val())) {
-                alert('Steptype is mandatory');
+                dlmAlert('Steptype is mandatory');
                 $('#piistep_modify_form [name="steptype"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="db"]').val())) {
-                alert('DB is mandatory');
+                dlmAlert('DB is mandatory');
                 $('#piistep_modify_form [name="db"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="threadcnt"]').val())) {
-                alert('Threadcnt is mandatory');
+                dlmAlert('Threadcnt is mandatory');
                 $('#piistep_modify_form [name="threadcnt"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="commitcnt"]').val())) {
-                alert('Commitcnt is mandatory');
+                dlmAlert('Commitcnt is mandatory');
                 $('#piistep_modify_form [name="commitcnt"]').focus();
                 return;
             }
             if (isEmpty($('#piistep_modify_form [name="status"]').val())) {
-                alert('Status is mandatory');
+                dlmAlert('Status is mandatory');
                 $('#piistep_modify_form [name="status"]').focus();
                 return;
             }

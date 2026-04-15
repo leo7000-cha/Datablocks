@@ -595,7 +595,7 @@
             var runtype = $('#piijob_register_form [name="runtype"]').val();
             var jobid = $('#piijob_register_form [name="jobid"]').val();
             if (isEmpty(jobid)) {
-                alert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobid" text="JOBID"/> is mandatory');
                 $('#piijob_register_form [name="jobid"]').focus();
                 return;
             }
@@ -618,7 +618,7 @@
                 return;
             }
             if (isEmpty($('#piijob_register_form [name="jobname"]').val())) {
-                alert('<spring:message code="col.jobname" text="Jobname"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobname" text="Jobname"/> is mandatory');
                 $('#piijob_register_form [name="jobname"]').focus();
                 return;
             }
@@ -626,70 +626,70 @@
             var system = $('#piijob_register_form [name="system"]').val();
 
             if (jobtype == "PII" && isEmpty(system)) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_register_form [name="system"]').focus();
                 return;
             }
             if (jobtype == "TDM" && isEmpty($('#piijob_register_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_register_form [name="system"]').focus();
                 return;
             }
             if (jobtype == "ILM" && isEmpty($('#piijob_register_form [name="system"]').val())) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_register_form [name="system"]').focus();
                 return;
             }
             if (jobtype == "MIGRATE" && isEmpty(system)) {
-                alert('<spring:message code="col.system" text="System"/> is mandatory');
+                dlmAlert('<spring:message code="col.system" text="System"/> is mandatory');
                 $('#piijob_register_form [name="system"]').focus();
                 return;
             }
             if (jobtype == "PII" && isEmpty($('#piijob_register_form [name="policy_id"]').val())) {
-                alert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
+                dlmAlert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
                 $('#piijob_register_form [name="policy_id"]').focus();
                 return;
             }
             if (jobtype == "PII" && isEmpty($('#piijob_register_form [name="keymap_id"]').val())) {
-                alert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
+                dlmAlert('<spring:message code="col.keymap_id" text="Keymap_Id"/> is mandatory');
                 $('#piijob_register_form [name="keymap_id"]').focus();
                 return;
             }
             if (isEmpty($('#piijob_register_form [name="jobtype"]').val())) {
-                alert('<spring:message code="col.jobtype" text="Jobtype"/> is mandatory');
+                dlmAlert('<spring:message code="col.jobtype" text="Jobtype"/> is mandatory');
                 $('#piijob_register_form [name="jobtype"]').focus();
                 return;
             }
             if (jobtype != "SCRAMBLE" && jobtype != "ILM" && jobtype != "MIG" ) {
                 if (isEmpty($('#piijob_register_form [name="runtype"]').val())) {
-                    alert('<spring:message code="col.runtype" text="Runtype"/> is mandatory');
+                    dlmAlert('<spring:message code="col.runtype" text="Runtype"/> is mandatory');
                     $('#piijob_register_form [name="runtype"]').focus();
                     return;
                 }
 
                 if (runtype != "IRREGULAR" && isEmpty($('#piijob_register_form [name="calendar"]').val())) {
-                    alert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
+                    dlmAlert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
                     $('#piijob_register_form [name="calendar"]').focus();
                     return;
                 }
                 if (runtype != "IRREGULAR" && isEmpty($('#piijob_register_form [name="calendar"]').val())) {
-                    alert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
+                    dlmAlert('<spring:message code="col.calendar" text="Calendar"/> is mandatory');
                     $('#piijob_register_form [name="calendar"]').focus();
                     return;
                 }
                 if (!isEmpty($('#piijob_register_form [name="calendar"]').val()) && isEmpty($('#piijob_register_form [name="time"]').val())) {
-                    alert('<spring:message code="col.time" text="Time"/> is mandatory');
+                    dlmAlert('<spring:message code="col.time" text="Time"/> is mandatory');
                     $('#piijob_register_form [name="time"]').focus();
                     return;
                 }
             }
             if (isEmpty($('#piijob_register_form [name="job_owner_id1"]').val())) {
-                alert('<spring:message code="col.job_owner_id1" text="Job_Owner_Id1"/> is mandatory');
+                dlmAlert('<spring:message code="col.job_owner_id1" text="Job_Owner_Id1"/> is mandatory');
                 $('#piijob_register_form [name="job_owner_id1"]').focus();
                 return;
             }
             if (isEmpty($('#piijob_register_form [name="job_owner_name1"]').val())) {
-                alert('<spring:message code="col.job_owner_name1" text="Job_Owner_Name1"/> is mandatory');
+                dlmAlert('<spring:message code="col.job_owner_name1" text="Job_Owner_Name1"/> is mandatory');
                 $('#piijob_register_form [name="job_owner_name1"]').focus();
                 return;
             }

@@ -157,11 +157,11 @@
 
             var re = /^\d{4}\/\d{2}\/\d{2}$/;
             if (startDate && !re.test(startDate)) {
-                alert("Invalid start date format (yyyy/mm/dd)");
+                dlmAlert("Invalid start date format (yyyy/mm/dd)");
                 return;
             }
             if (endDate && !re.test(endDate)) {
-                alert("Invalid end date format (yyyy/mm/dd)");
+                dlmAlert("Invalid end date format (yyyy/mm/dd)");
                 return;
             }
 
@@ -178,7 +178,7 @@
                 },
                 error: function (req) {
                     ingHide();
-                    alert("Error: " + (req.responseText || req.status));
+                    dlmAlert("Error: " + (req.responseText || req.status));
                 }
             });
         });
@@ -191,11 +191,11 @@
 
             var re = /^\d{4}\/\d{2}\/\d{2}$/;
             if (startDate && !re.test(startDate)) {
-                alert("Invalid start date format (yyyy/mm/dd)");
+                dlmAlert("Invalid start date format (yyyy/mm/dd)");
                 return;
             }
             if (endDate && !re.test(endDate)) {
-                alert("Invalid end date format (yyyy/mm/dd)");
+                dlmAlert("Invalid end date format (yyyy/mm/dd)");
                 return;
             }
 

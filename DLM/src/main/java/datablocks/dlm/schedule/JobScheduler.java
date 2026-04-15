@@ -185,7 +185,7 @@ public class JobScheduler {
                     orderOneJob(piijob.getJobid(), piijob.getVersion(), basedate, rundate);
                     LogUtil.log("INFO", "orderJob Success============>" + piijob.getJobid());
                 } catch (Exception ex) {
-                    logger.warn("warn "+"orderJob Exception============>" + piijob.getJobid() + "  " + ex.toString());
+                    logger.warn("orderJob Exception: jobid={}", piijob.getJobid(), ex);
                 }
                 //-----------------------------------------------------------------------------
                 orderfag = false;
@@ -200,10 +200,10 @@ public class JobScheduler {
         if(autoarcflag) {
             Criteria cri = new Criteria(1, 10000);
             List<PiiStepTableVO> piisteptablelist = stepTableMapper.getListWithPaging(cri);
-            LogUtil.log("DEBUG", "$$$$$$$$$$$$$$  sysArcTabWithSource  piisteptablelist.size() = "+piisteptablelist.size()+"   cri: "+cri.toString());
+            LogUtil.log("DEBUG", "sysArcTabWithSource piisteptablelist.size()=" + piisteptablelist.size() + " cri: " + cri.toString());
             for (PiiStepTableVO piisteptable : piisteptablelist) {
                 //New arc table creation
-                LogUtil.log("DEBUG", "$$$$$$$$$$$$$$  for (PiiStepTableVO piisteptable : piisteptablelist) { = "+piisteptable);
+                LogUtil.log("DEBUG", "sysArcTabWithSource processing piisteptable=" + piisteptable);
                 if(piisteptable.getExetype().equalsIgnoreCase("ARCHIVE")) {
 //                    logger.warn("warn "+"$$$$$$$$$$$$$$  ARCHIVE = "+piisteptable);
                     cri.setSearch4(piisteptable.getDb());
@@ -218,21 +218,21 @@ public class JobScheduler {
 
     }
 
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 0 6,12,18 * * *")
     public void refreshDashboard() throws Exception {
 
         try {
             metaPiiStatusMapper.delete();
             metaPiiStatusMapper.insert();
         } catch (Exception ex) {
-            logger.warn("warn "+"## 0 refreshDashboard  metaPiiStatusMapper = "+ex.toString());
+            logger.warn("refreshDashboard metaPiiStatusMapper failed", ex);
         }
 
         try {
             contractMapper.delete_piicontractstat();
             contractMapper.insertStatList12Month();
         } catch (Exception ex) {
-            logger.warn("warn "+"## 1 refreshDashboard = "+ex.toString());
+            logger.warn("refreshDashboard contractMapper failed", ex);
         }
         try {
             extractMapper.delete_piicuststat();
@@ -241,7 +241,7 @@ public class JobScheduler {
             extractMapper.insertCustStatListAllMonths();
 
         } catch (Exception ex) {
-            logger.warn("warn "+"## 2 refreshDashboard - extract custstat = "+ex.toString());
+            logger.warn("refreshDashboard extract custstat failed", ex);
         }
         try {
             extractMapper.delete_piicuststatyear();
@@ -249,7 +249,7 @@ public class JobScheduler {
             extractMapper.insertextractrunresultsumstat();
 
         } catch (Exception ex) {
-            logger.warn("warn "+"## 3 refreshDashboard = "+ex.toString());
+            logger.warn("refreshDashboard extract yearstat failed", ex);
         }
     }
 
@@ -259,14 +259,14 @@ public class JobScheduler {
      * 주간 퍼지: 영구파기/복원 완료 후 보존 기간 경과 레코드를 tbl_piiextract에서 삭제.
      * 삭제 전 통계를 TBL_PIIEXTRACT_PURGE_STAT에 적재하여 보고서 카운트 보존.
      */
-    @Scheduled(cron = "0 0 3 ? * SUN")
+    @Scheduled(cron = "0 0 16 ? * SUN")
     public void purgeCompletedExtractRecords() {
         if (!purgeRunning.compareAndSet(false, true)) {
-            logger.warn("warn "+"## purgeCompletedExtractRecords SKIPPED - already running");
+            logger.warn("purgeCompletedExtractRecords SKIPPED - already running");
             return;
         }
         try {
-            logger.info("info "+"## purgeCompletedExtractRecords START");
+            logger.info("purgeCompletedExtractRecords START");
             Calendar cal = Calendar.getInstance();
 
             // 3단계(PII_POLICY3) 영구파기: 1년 경과
@@ -289,29 +289,29 @@ public class JobScheduler {
             purgeExtractByPolicy("PII_POLICY2", "RESTORE", cutoff12m);
             purgeExtractByPolicy("PII_POLICY3", "RESTORE", cutoff12m);
 
-            logger.info("info "+"## purgeCompletedExtractRecords END OK");
+            logger.info("purgeCompletedExtractRecords END OK");
         } catch (Exception ex) {
-            logger.error("error "+"## purgeCompletedExtractRecords FAIL = " + ex.toString(), ex);
+            logger.error("purgeCompletedExtractRecords FAIL", ex);
         }
 
         // 비-파기 Job 오더 이력 퍼지: 6개월 경과 (PII/ARC_DATA_DELETE/RESTORE_CUSTID 제외)
         try {
-            logger.info("info "+"## purgeCompletedNonPiiOrders START");
+            logger.info("purgeCompletedNonPiiOrders START");
             Calendar cal = Calendar.getInstance();
             cal.setTime(new Date());
             cal.add(Calendar.MONTH, -6);
             Date cutoff6m = cal.getTime();
             orderMapper.deleteCompletedNonPiiOrders(cutoff6m);
-            logger.info("info "+"## purgeCompletedNonPiiOrders END OK");
+            logger.info("purgeCompletedNonPiiOrders END OK");
         } catch (Exception ex) {
-            logger.error("error "+"## purgeCompletedNonPiiOrders FAIL = " + ex.toString(), ex);
+            logger.error("purgeCompletedNonPiiOrders FAIL", ex);
         } finally {
             purgeRunning.set(false);
         }
     }
 
     private void purgeExtractByPolicy(String policyPrefix, String excludeReason, Date cutoffDate) {
-        logger.info("info "+"## purge: policy=" + policyPrefix + ", reason=" + excludeReason + ", cutoff=" + cutoffDate);
+        logger.info("purge: policy={}, reason={}, cutoff={}", policyPrefix, excludeReason, cutoffDate);
         TransactionStatus txStatus = transactionManager.getTransaction(new DefaultTransactionDefinition());
         try {
             // Step A: 통계 적재 (삭제 전)
@@ -321,10 +321,10 @@ public class JobScheduler {
             // Step C: 삭제
             int deleted = extractMapper.deletePurgedRecords(policyPrefix, excludeReason, cutoffDate);
             transactionManager.commit(txStatus);
-            logger.info("info "+"## purge deleted: " + deleted + " rows (policy=" + policyPrefix + ", reason=" + excludeReason + ")");
+            logger.info("purge deleted: {} rows (policy={}, reason={})", deleted, policyPrefix, excludeReason);
         } catch (Exception ex) {
             transactionManager.rollback(txStatus);
-            logger.error("error "+"## purge ROLLBACK: policy=" + policyPrefix + ", reason=" + excludeReason + " - " + ex.toString(), ex);
+            logger.error("purge ROLLBACK: policy={}, reason={}", policyPrefix, excludeReason, ex);
             // throw하지 않음 — 다른 policy 퍼지는 계속 실행
         }
     }
@@ -1284,8 +1284,8 @@ public class JobScheduler {
             }
             PiiDatabaseVO dbVO = databaseMapper.read(db);
             if (dbVO == null) {
-                logger.warn("DB config not found for db={}", db);
-                return;
+                logger.warn("DB config not found for db={}, skipping orderId={}", db, orderId);
+                continue;
             }
 
             try {
@@ -1417,7 +1417,6 @@ public class JobScheduler {
         piiorder.setOrderdate(" ");
         piiorder.setOrderuserid(piijob.getReguserid());
         orderMapper.insert(piiorder);
-        LogUtil.log("INFO", "2");
         List<PiiStepVO> steplist = stepMapper.getJobList(piijob.getJobid(), piijob.getVersion());
         for (PiiStepVO piistep : steplist) {
             if (piistep.getStatus().equals("INACTIVE"))
@@ -1463,7 +1462,6 @@ public class JobScheduler {
             piiorderstep.setVal5(piistep.getVal5());
 
             orderStepMapper.insert(piiorderstep);
-            LogUtil.log("INFO", "3");
             List<PiiStepTableVO> steptablelist = stepTableMapper.getJobStepTableList(piijob.getJobid(), piijob.getVersion(), piistep.getStepid());
             for (PiiStepTableVO piisteptable : steptablelist) {
                 piiordersteptable.setOrderid(newOrderId);
@@ -1538,7 +1536,7 @@ public class JobScheduler {
                 try {
                     dbtype = databaseMapper.read(piisteptable.getDb()).getDbtype();
                 } catch (Exception ex) {
-                    logger.warn("warn "+"piisteptable.getDb()=>" + piisteptable.getDb() + "  " + ex.getMessage());
+                    logger.warn("DB config not found: db={}", piisteptable.getDb(), ex);
                     throw ex;
                 }
                 String del_deadline = "NULL";
@@ -1592,7 +1590,7 @@ public class JobScheduler {
                         wherestr = wherestr.replaceAll("(?i)#DBNAME", piisteptable.getDb());// 20220517 for Catalog batch
                     }
                 } catch (NullPointerException ex) {
-                    logger.warn("warn "+"Wherestr is NULL => NullPointerException: "+piiordersteptable.getJobid()+" "+piiordersteptable.getTable_name());
+                    logger.warn("Wherestr is NULL: jobid={}, table={}", piiordersteptable.getJobid(), piiordersteptable.getTable_name());
                 }
 
                 //BROADCAST의 경우만 step의 원천db 정보를 읽고 그 외는 모두 테이블레벨의 db 정보를 읽는데 위에서 이미 세팅되었다.
@@ -1634,7 +1632,7 @@ public class JobScheduler {
                         sqlstr = sqlstr.replaceAll("(?i)#DBNAME", piisteptable.getDb());// 20220517 for Catalog batch
                     }
                 } catch (NullPointerException ex) {
-                    logger.warn("warn "+"Sqlstr is NULL => NullPointerException: " + piiordersteptable.getJobid() + " " + piiordersteptable.getTable_name());
+                    logger.warn("Sqlstr is NULL: jobid={}, table={}", piiordersteptable.getJobid(), piiordersteptable.getTable_name());
                     throw ex;
                 }
                 sqlstr = SqlUtil.convertDateformat(dbtype, sqlstr);
@@ -1680,7 +1678,6 @@ public class JobScheduler {
                         );
                     }
                 }
-                LogUtil.log("INFO", "5");
                 // Arc fields are not used
 //	        	piiordersteptable.setArccnt(null);
 //	        	piiordersteptable.setArctime(null);
@@ -1765,7 +1762,6 @@ public class JobScheduler {
             orderStepTableUpdateMapper.insert(piiordersteptableupdate);
 
         }
-        LogUtil.log("INFO", "7");
         //-----------------------------------------------------------------------------
     }
 
@@ -1777,11 +1773,12 @@ public class JobScheduler {
             PiiDatabaseVO dbVO = databaseMapper.read(piisteptable.getDb());
             PiiDatabaseVO dbArcVO = databaseMapper.read("DLMARC");
             PiiDatabaseVO dbHomeVO = databaseMapper.read("DLM");
-            AES256Util aes = null;
+            AES256Util aes;
             try {
                 aes = new AES256Util();
             } catch(Exception e) {
-
+                logger.error("registerArcTab: AES256Util init failed, skipping", e);
+                return resultcnt;
             }
             Connection conn = null;
             Connection connArc = null;
@@ -1794,9 +1791,6 @@ public class JobScheduler {
             PreparedStatement stmtArcIns = null;
             PreparedStatement stmtArcHome = null;
             try {
-//                logger.warn("warn "+"Connection creation dbVO"+ dbVO.toString());
-//                logger.warn("warn "+"Connection creation dbArcVO"+ dbArcVO.toString());
-//                logger.warn("warn "+"Connection creation dbHomeVO"+ dbHomeVO.toString());
                 conn = ConnectionProvider.getConnection(dbVO.getDbtype(), dbVO.getHostname(), dbVO.getPort(), dbVO.getId_type(), dbVO.getId(), dbVO.getDb(), dbVO.getDbuser(), aes.decrypt(dbVO.getPwd()));
                 connArc = ConnectionProvider.getConnection(dbArcVO.getDbtype(), dbArcVO.getHostname(), dbArcVO.getPort(), dbArcVO.getId_type(), dbArcVO.getId(), dbArcVO.getDb(), dbArcVO.getDbuser(), aes.decrypt(dbArcVO.getPwd()));
                 connHome = ConnectionProvider.getConnection(dbHomeVO.getDbtype(), dbHomeVO.getHostname(), dbHomeVO.getPort(), dbHomeVO.getId_type(), dbHomeVO.getId(), dbHomeVO.getDb(), dbHomeVO.getDbuser(), aes.decrypt(dbHomeVO.getPwd()));
@@ -1804,7 +1798,11 @@ public class JobScheduler {
                 connArc.setAutoCommit(false);
                 connHome.setAutoCommit(false);
             } catch(Exception e) {
-                e.printStackTrace();
+                logger.error("registerArcTab: Connection creation failed, aborting", e);
+                JdbcUtil.close(conn);
+                JdbcUtil.close(connArc);
+                JdbcUtil.close(connHome);
+                return resultcnt;
             }
             try {
                 String archiveTablePath = archiveNamingService.getArchiveTablePath(ArchiveNamingService.CONFIG_TYPE_PII, dbArcVO.getDb(), piisteptable.getOwner(), piisteptable.getTable_name());
@@ -1923,11 +1921,8 @@ public class JobScheduler {
                 JdbcUtil.rollback(conn);
                 JdbcUtil.rollback(connArc);
                 JdbcUtil.rollback(connHome);
-                e.printStackTrace();
+                logger.error("registerArcTab SQL error: db={}, owner={}, table={}", piisteptable.getDb(), piisteptable.getOwner(), piisteptable.getTable_name(), e);
             } finally {
-                JdbcUtil.commit(conn);
-                JdbcUtil.commit(connArc);
-                JdbcUtil.commit(connHome);
                 JdbcUtil.close(rs);
                 JdbcUtil.close(stmt);
                 JdbcUtil.close(stmtArc);
@@ -1947,15 +1942,16 @@ public class JobScheduler {
         LogUtil.log("DEBUG", "registerArcTabCols......cri  " + cri);
         int resultcnt = 0;
         if(tableMapper.getTotalCountNewArcTabCols(cri)>0){
-            LogUtil.log("DEBUG", "$$$$$$$$ 2 registerArcTabCols......piisteptable  " + piisteptable.toString());
+            LogUtil.log("DEBUG", "registerArcTabCols processing piisteptable=" + piisteptable.toString());
             PiiDatabaseVO dbVO = databaseMapper.read(piisteptable.getDb());
             PiiDatabaseVO dbArcVO = databaseMapper.read("DLMARC");
             PiiDatabaseVO dbHomeVO = databaseMapper.read("DLM");
-            AES256Util aes = null;
+            AES256Util aes;
             try {
                 aes = new AES256Util();
             } catch(Exception e) {
-
+                logger.error("registerArcTabCols: AES256Util init failed, skipping", e);
+                return resultcnt;
             }
             Connection conn = null;
             Connection connArc = null;
@@ -1974,11 +1970,11 @@ public class JobScheduler {
                 connArc.setAutoCommit(false);
                 connHome.setAutoCommit(false);
             } catch(Exception e) {
-                logger.warn("warn "+"Connection creation exception");
-                logger.warn("warn "+dbVO.toString());
-                logger.warn("warn "+dbArcVO.toString());
-                logger.warn("warn "+dbHomeVO.toString());
-                e.printStackTrace();
+                logger.error("registerArcTabCols: Connection creation failed, aborting. db={}, arcDb={}, homeDb={}", dbVO.getDb(), dbArcVO.getDb(), dbHomeVO.getDb(), e);
+                JdbcUtil.close(conn);
+                JdbcUtil.close(connArc);
+                JdbcUtil.close(connHome);
+                return resultcnt;
             }
             try {
                 // Create table
@@ -2098,12 +2094,8 @@ public class JobScheduler {
                 JdbcUtil.rollback(conn);
                 JdbcUtil.rollback(connArc);
                 JdbcUtil.rollback(connHome);
-                e.printStackTrace();
+                logger.error("registerArcTabCols SQL error: db={}, owner={}, table={}", piisteptable.getDb(), piisteptable.getOwner(), piisteptable.getTable_name(), e);
             } finally {
-
-                JdbcUtil.commit(conn);
-                JdbcUtil.commit(connArc);
-                JdbcUtil.commit(connHome);
                 JdbcUtil.close(rs);
                 JdbcUtil.close(stmt);
                 JdbcUtil.close(stmtArc);
@@ -2112,7 +2104,6 @@ public class JobScheduler {
                 JdbcUtil.close(conn);
                 JdbcUtil.close(connArc);
                 JdbcUtil.close(connHome);
-
             }
 
         }

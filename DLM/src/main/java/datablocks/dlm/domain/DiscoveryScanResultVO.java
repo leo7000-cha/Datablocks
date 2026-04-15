@@ -29,6 +29,9 @@ public class DiscoveryScanResultVO {
     private String matchedRule;     // 매칭된 규칙명
     private String matchedPattern;  // 매칭된 패턴
     private String sampleData;      // 샘플 데이터 (마스킹됨)
+    private String encryptionStatus;  // 암호화 상태 (NONE, HASHED, ENCRYPTED, UNKNOWN)
+    private String encryptionMethod;  // 탐지된 암호화 방법 (SHA-256, MD5, BCrypt, AES/Base64 등)
+    private Integer encryptionRatio;  // 암호화 비율 (0-100%, 샘플 중 암호화된 값의 비율)
     private String confirmStatus;   // PENDING, CONFIRMED, EXCLUDED
     private String confirmedBy;     // 확인자 ID
     private String confirmedDate;   // 확인일시

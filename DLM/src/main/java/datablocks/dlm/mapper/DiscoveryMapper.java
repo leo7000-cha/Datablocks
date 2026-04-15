@@ -190,6 +190,9 @@ public interface DiscoveryMapper {
     /** Dashboard용: Registry 통계 */
     java.util.Map<String, Object> selectRegistryStats();
 
+    /** Audit Policy 스크립트용: CONFIRMED PII 테이블 목록 */
+    List<java.util.Map<String, Object>> selectConfirmedPiiTables(@Param("dbName") String dbName);
+
     // ========== Meta Table Sync (DOMAIN 컬럼 업데이트) ==========
 
     /**
@@ -217,6 +220,34 @@ public interface DiscoveryMapper {
                       @Param("schemaName") String schemaName,
                       @Param("tableName") String tableName,
                       @Param("columnName") String columnName);
+
+    /** 오탐 제외 시 MetaTable val2='EXCLUDED' 세팅 */
+    int updateMetaTableExcluded(@Param("dbName") String dbName,
+                                 @Param("schemaName") String schemaName,
+                                 @Param("tableName") String tableName,
+                                 @Param("columnName") String columnName);
+
+    /** PII 확정 시 MetaTable piitype/encrit_flag/scramble_type 업데이트 */
+    int updateMetaTablePiiSettings(@Param("dbName") String dbName,
+                                    @Param("schemaName") String schemaName,
+                                    @Param("tableName") String tableName,
+                                    @Param("columnName") String columnName,
+                                    @Param("piiTypeCode") String piiTypeCode,
+                                    @Param("piiGrade") String piiGrade,
+                                    @Param("encryptFlag") String encryptFlag,
+                                    @Param("scrambleType") String scrambleType);
+
+    /** MetaTable에서 PII 확정 + 오탐 제외 컬럼 키 조회 (스캔 스킵용) */
+    List<String> selectMetaTablePiiColumnKeys(@Param("dbName") String dbName);
+
+    /** MetaTable 기반 PII 컬럼 목록 (columns 페이지용) */
+    List<datablocks.dlm.domain.MetaTableVO> selectMetaTablePiiColumns(datablocks.dlm.domain.Criteria cri);
+    int selectMetaTablePiiColumnsTotal(datablocks.dlm.domain.Criteria cri);
+    int selectMetaTablePiiCount(@Param("type") String type);
+
+    /** MetaTable 전체 컬럼 조회 (인벤토리 동일 - MetaTableMapper의 criteria 재사용) */
+    List<datablocks.dlm.domain.MetaTableVO> selectMetaTableAllColumns(datablocks.dlm.domain.Criteria cri);
+    int selectMetaTableAllColumnsTotal(datablocks.dlm.domain.Criteria cri);
 
     // ========== Meta Table 기반 스캔 (원천DB 카탈로그 직접 조회 대체) ==========
 

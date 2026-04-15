@@ -265,9 +265,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		  and seq1= #{seq1} and seq2= #{seq2} and seq3= #{seq3} 
 	</update>
 
-	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiStepTableVO"> 
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiStepTableVO">
 		<![CDATA[
-		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, wherestr, sqlstr, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
+		select jobid, version, stepid, db, owner, table_name, pagitype, pagitypedetail, exetype, archiveflag, status, preceding, succedding, seq1, seq2, seq3, pipeline, pk_col, where_col, where_key_name, parallelcnt, commitcnt, keymap_id, key_name, key_cols, key_refstr, sqltype,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(upddate,'%Y/%m/%d') as upddate, reguserid, upduserid, hintselect, hintinsert, uval1, uval2, uval3, uval4, uval5
 		  from cotdl.tbl_piisteptable a
 		where version in (select max(cast(version as INTEGER)) from cotdl.tbl_piisteptable where jobid = a.jobid and stepid = a.stepid )
 		]]>

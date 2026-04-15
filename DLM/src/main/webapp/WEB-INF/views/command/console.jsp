@@ -368,7 +368,6 @@
                 //alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
             },
             success: function (data) { ingHide();
-                //$("#GlobalSuccessMsgModal").modal("show");
                 //$('#sqlmsg').html(data);
                 //$('#sqlstr').html(data);
                 // $('#filecontents').html(data);
@@ -396,12 +395,12 @@
         var contents = textarea.value;
 
         if (isEmpty(filename)) {
-            alert("Please input the file name!");
+            dlmAlert("Please input the file name!");
             return;
         }
 
         if (type == "D") {
-            alert("This is not a file!");
+            dlmAlert("This is not a file!");
             return;
         }
 
@@ -427,7 +426,7 @@
             },
             success: function (data) { ingHide();
                 if (data == 'success') {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 } else {
                     $("#errormodalbody").html(data);
                     $("#errormodal").modal("show");
@@ -468,7 +467,6 @@
                 //alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
             },
             success: function (data) { ingHide();
-                //$("#GlobalSuccessMsgModal").modal("show");
                 //$('#sqlmsg').html(data);
                 //$('#sqlstr').html(data);
                 // $('#filecontents').html(data);
@@ -569,10 +567,10 @@
         var files = inputFile[0].files;
         formData.append("uploadFile", files[i]);
         if (files.length == 0) {
-            alert("Choose the upload file");
+            dlmAlert("Choose the upload file");
             return false;
         } else if (files.length > 1) {
-            alert("Choose only one file");
+            dlmAlert("Choose only one file");
             return false;
         }
 

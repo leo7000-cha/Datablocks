@@ -226,7 +226,7 @@
 
             url_view = "modify?jobid=" + serchkeyno1 + "&" + "stepid=" + serchkeyno2
                 + "&";
-            alert("/piistep/" + url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search);
+            //alert("/piistep/" + url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search);
             if (isEmpty(pagenum))
                 pagenum = 1;
             if (isEmpty(amount))

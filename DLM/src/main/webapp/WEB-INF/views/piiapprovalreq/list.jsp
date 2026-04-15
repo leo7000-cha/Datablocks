@@ -323,7 +323,7 @@
         });
 
         if (checkedcnt == 0) {
-            alert("<spring:message code="msg.selecttosend" text="Select to process"/>");
+            dlmAlert("<spring:message code="msg.selecttosend" text="Select to process"/>");
             return;
         }
 

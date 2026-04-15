@@ -16,7 +16,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <base href="/">
-    <title><c:choose><c:when test="${appMode == 'purge'}">X-Purge</c:when><c:when test="${appMode == 'gen'}">X-Gen</c:when><c:otherwise>X-One</c:otherwise></c:choose></title>
+    <title><c:choose><c:when test="${appMode == 'purge'}">X-Purge 개인정보 파기</c:when><c:when test="${appMode == 'gen'}">X-Gen 테스트데이터 생성</c:when><c:otherwise>X-One</c:otherwise></c:choose></title>
 
     <!-- Custom fonts for this template -->
     <link href="/resources/vendor/fontawesome-free-6.1.1-web/css/all.min.css" rel="stylesheet" type="text/css">
@@ -1055,33 +1055,65 @@
     var owner_steptable_index ;
     var table_name_steptable_index ;
 
+    // 공통 토스트 알림
+    function showToast(msg, isError) {
+        var $t = $('#globalToast');
+        if ($t.length === 0) {
+            $('body').append(
+                '<div id="globalToast" style="position:fixed;bottom:24px;right:24px;z-index:99999;' +
+                'padding:14px 28px;border-radius:10px;font-size:0.9rem;font-weight:500;color:#fff;' +
+                'box-shadow:0 4px 16px rgba(0,0,0,0.15);transform:translateY(100px);opacity:0;' +
+                'transition:all 0.3s;pointer-events:none;display:flex;align-items:center;gap:8px;"></div>'
+            );
+            $t = $('#globalToast');
+        }
+        var icon = isError ? 'times-circle' : 'check-circle';
+        $t.html('<i class="fas fa-' + icon + '"></i> ' + msg);
+        $t.css({ background: isError ? '#dc2626' : '#059669', transform: 'translateY(0)', opacity: 1 });
+        clearTimeout($t.data('timer'));
+        $t.data('timer', setTimeout(function() {
+            $t.css({ transform: 'translateY(100px)', opacity: 0 });
+        }, 2500));
+    }
+
     function checkResultModal(result) {
         if (result === '') {
             return;
         }
         if (result == 'success') {
-            $('#GlobalSuccessMsgModalBody').text("<spring:message code="msg.processcompleted" text="Process completed"/>");
-            $("#GlobalSuccessMsgModal").modal("show");
-        }else{//alert("1111<spring:message code="msg.processfailed" text="Process failed"/>");
-            $('#ErrorMsgModalBody').text("<spring:message code="msg.processfailed" text="Process failed"/>");
-            $("#ErrorMsgModal").modal("show");
-
+            showToast("<spring:message code="msg.processcompleted" text="처리가 완료되었습니다."/>", false);
+        } else {
+            showToast("<spring:message code="msg.processfailed" text="처리에 실패했습니다."/>", true);
         }
     }
 
     var _confirmCallback = null;
-    function showConfirm(message, callback) {
+    var _confirmCancelCallback = null;
+    var _confirmOkClicked = false;
+    function showConfirm(message, callback, cancelCallback) {
         $('#GlobalConfirmModalBody').text(message);
         _confirmCallback = callback;
+        _confirmCancelCallback = cancelCallback || null;
+        _confirmOkClicked = false;
         $("#GlobalConfirmModal").modal("show");
     }
     $(document).ready(function() {
         $('#GlobalConfirmModalOk').on('click', function() {
+            _confirmOkClicked = true;
             $("#GlobalConfirmModal").modal("hide");
             if (typeof _confirmCallback === 'function') {
                 _confirmCallback();
-                _confirmCallback = null;
             }
+            _confirmCallback = null;
+            _confirmCancelCallback = null;
+        });
+        $('#GlobalConfirmModal').on('hidden.bs.modal', function() {
+            if (!_confirmOkClicked && typeof _confirmCancelCallback === 'function') {
+                _confirmCancelCallback();
+            }
+            _confirmOkClicked = false;
+            _confirmCallback = null;
+            _confirmCancelCallback = null;
         });
     });
 
@@ -1206,7 +1238,7 @@
                 obj[this.name] = this.value;
             });
         } catch (e) {
-            alert(e.message);
+            dlmAlert(e.message);
         } finally {
         }
 
@@ -1218,6 +1250,160 @@
 
 
 </body>
+
+<!-- DLM Alert Modal (replaces native alert()) -->
+<style>
+    #DlmAlertModal .modal-content {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    #DlmAlertModal .dlm-alert-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #DlmAlertModal .dlm-alert-header h4 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    #DlmAlertModal .dlm-alert-header h4 i {
+        font-size: 1.2rem;
+    }
+    #DlmAlertModal .dlm-alert-header .close {
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 1.3rem;
+        line-height: 1;
+        opacity: 1;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+    #DlmAlertModal .dlm-alert-header .close:hover {
+        background: rgba(255,255,255,0.25);
+    }
+    #DlmAlertModal .dlm-alert-body {
+        padding: 28px 24px;
+        text-align: center;
+    }
+    #DlmAlertModal .dlm-alert-icon-wrapper {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        animation: dlmAlertPop 0.4s ease-out;
+    }
+    @keyframes dlmAlertPop {
+        0% { transform: scale(0.5); opacity: 0; }
+        70% { transform: scale(1.05); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    #DlmAlertModal .dlm-alert-icon-wrapper i {
+        font-size: 2rem;
+        color: #2563eb;
+    }
+    #DlmAlertModal .dlm-alert-message {
+        font-size: 0.95rem;
+        color: #1e293b;
+        font-weight: 500;
+        margin-bottom: 0;
+        line-height: 1.6;
+        word-break: break-word;
+        white-space: pre-line;
+    }
+    #DlmAlertModal .dlm-alert-footer {
+        padding: 16px 24px 24px;
+        display: flex;
+        justify-content: center;
+        border-top: none;
+    }
+    #DlmAlertModal .btn-dlm-alert-ok {
+        padding: 10px 36px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        border: none;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    #DlmAlertModal .btn-dlm-alert-ok:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+    #DlmAlertModal .btn-dlm-alert-ok:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+</style>
+<div class="modal fade" id="DlmAlertModal" tabindex="-1" role="dialog" style="z-index:1070;"
+     aria-labelledby="DlmAlertModalLabel">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+        <div class="modal-content">
+            <div class="dlm-alert-header">
+                <h4><i class="fas fa-info-circle"></i> <span id="DlmAlertModalTitle">Notice</span></h4>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="dlm-alert-body">
+                <div class="dlm-alert-icon-wrapper" id="DlmAlertIconWrapper">
+                    <i class="fas fa-info" id="DlmAlertIcon"></i>
+                </div>
+                <p class="dlm-alert-message" id="DlmAlertModalBody"></p>
+            </div>
+            <div class="dlm-alert-footer">
+                <button type="button" class="btn btn-dlm-alert-ok" data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+/**
+ * dlmAlert - Styled modal replacement for native alert()
+ * @param {string} message - Message to display
+ * @param {function} [callback] - Optional callback after modal is dismissed
+ */
+function dlmAlert(message, callback) {
+    var $modal = $('#DlmAlertModal');
+    // Set message (supports \n for newlines)
+    $('#DlmAlertModalBody').text(message);
+    // Reset to default info style
+    $('#DlmAlertModalTitle').text('Notice');
+    $('#DlmAlertIconWrapper').css('background', 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)');
+    $('#DlmAlertIcon').attr('class', 'fas fa-info').css('color', '#2563eb');
+    $('.dlm-alert-header').css('background', 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)');
+    // Handle callback on modal hidden
+    if (callback) {
+        $modal.one('hidden.bs.modal', callback);
+    }
+    $modal.modal('show');
+    // Auto-focus OK button for keyboard accessibility
+    $modal.one('shown.bs.modal', function() {
+        $modal.find('.btn-dlm-alert-ok').focus();
+    });
+}
+</script>
 
 <!-- Flatpickr 스크립트 -->
 <script src="/resources/js/flatpickr.min.js"></script>

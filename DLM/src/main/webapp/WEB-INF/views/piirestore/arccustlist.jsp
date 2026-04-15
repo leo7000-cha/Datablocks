@@ -110,7 +110,7 @@
             var elementForm = $("#searchForm");
 
             if (isEmpty($('#searchForm [name="custid"]').val())) {
-                alert("<spring:message code="msg.selectcustno" text="Select custno to browse!"/>");
+                dlmAlert("<spring:message code="msg.selectcustno" text="Select custno to browse!"/>");
                 return;
             }
 

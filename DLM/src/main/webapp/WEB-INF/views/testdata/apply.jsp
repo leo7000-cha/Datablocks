@@ -914,13 +914,13 @@
 
         var search4 = document.getElementById("search4");
         if (!search4.value) {
-            alert("Please select Testdata type from the dropdown!");
+            dlmAlert("Please select Testdata type from the dropdown!");
             if (callback) callback();
             return false;
         }
 
         if (customerTableBody.rows.length === 0) {
-            alert("<spring:message code="etc.notdatatoadd" text="No data to add!"/>");
+            dlmAlert("<spring:message code="etc.notdatatoadd" text="No data to add!"/>");
             if (callback) callback();
             return false;
         }
@@ -932,7 +932,7 @@
 
             for (var i = 0; i < inputs.length; i++) {
                 if (inputs[i].value.trim() === "") {
-                    alert("Row [" + (i + 1) + "], " + "<spring:message code="etc.alertinputtestfixedcustno" text="please enter the fixed customer number to generate test data!"/>");
+                    dlmAlert("Row [" + (i + 1) + "], " + "<spring:message code="etc.alertinputtestfixedcustno" text="please enter the fixed customer number to generate test data!"/>");
                     inputs[i].focus();
                     if (callback) callback();
                     return false;
@@ -983,12 +983,12 @@
             e.stopPropagation();
 
             if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-                alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+                dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
                 return;
             }
 
             if (isEmpty($('#checkin_reason').val())) {
-                alert("Enter request reason for CHECK-IN ");
+                dlmAlert("Enter request reason for CHECK-IN ");
                 return;
             }
 
@@ -1094,7 +1094,7 @@
                 if (data === "success") {
                     $("#requesttestdatamodal").modal("hide");
                     $("#requesttestdatamodal").one("hidden.bs.modal", function () {
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                     });
                     $("#GlobalSuccessMsgModal").one("shown.bs.modal", function () {
                         $(this).find("[data-dismiss='modal'], .btn, [role='button']").first().trigger("focus");

@@ -197,32 +197,32 @@
 
             // Validation
             if (isEmpty($('#piipolicy_register_form [name="policy_id"]').val())) {
-                alert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
+                dlmAlert('<spring:message code="col.policy_id" text="Policy_Id"/> is mandatory');
                 $('#piipolicy_register_form [name="policy_id"]').focus();
                 return;
             }
             if (isEmpty($('#piipolicy_register_form [name="policy_name"]').val())) {
-                alert('<spring:message code="col.policy_name" text="Policy_Name"/> is mandatory');
+                dlmAlert('<spring:message code="col.policy_name" text="Policy_Name"/> is mandatory');
                 $('#piipolicy_register_form [name="policy_name"]').focus();
                 return;
             }
             if (isEmpty($('#piipolicy_register_form [name="del_deadline"]').val())) {
-                alert('<spring:message code="col.del_deadline" text="Del_Deadline"/> is mandatory');
+                dlmAlert('<spring:message code="col.del_deadline" text="Del_Deadline"/> is mandatory');
                 $('#piipolicy_register_form [name="del_deadline"]').focus();
                 return;
             }
             if (isEmpty($('#piipolicy_register_form [name="del_deadline_unit"]').val())) {
-                alert('<spring:message code="col.del_deadline_unit" text="Del_Deadline_Unit"/> is mandatory');
+                dlmAlert('<spring:message code="col.del_deadline_unit" text="Del_Deadline_Unit"/> is mandatory');
                 $('#piipolicy_register_form [name="del_deadline_unit"]').focus();
                 return;
             }
             if (archive_flag == "Y" && isEmpty($('#piipolicy_register_form [name="arc_del_deadline"]').val())) {
-                alert('<spring:message code="col.arc_del_deadline" text="Arc_Del_Deadline"/> is mandatory');
+                dlmAlert('<spring:message code="col.arc_del_deadline" text="Arc_Del_Deadline"/> is mandatory');
                 $('#piipolicy_register_form [name="arc_del_deadline"]').focus();
                 return;
             }
             if (archive_flag == "Y" && isEmpty($('#piipolicy_register_form [name="arc_del_deadline_unit"]').val())) {
-                alert('<spring:message code="col.arc_del_deadline_unit" text="Arc_Del_Deadline_Unit"/> is mandatory');
+                dlmAlert('<spring:message code="col.arc_del_deadline_unit" text="Arc_Del_Deadline_Unit"/> is mandatory');
                 $('#piipolicy_register_form [name="arc_del_deadline_unit"]').focus();
                 return;
             }

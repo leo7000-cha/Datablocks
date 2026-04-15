@@ -18,25 +18,25 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<select id="getList" resultType="datablocks.dlm.domain.PiiMemberVO">
 		<![CDATA[
-		select userid, null as userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled, dept_cd, dept_name
+		select userid, null as userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled, dept_cd, dept_name, email, manager_id, position
 		  from cotdl.tbl_member where userid != 'admin'
 		 order by regdate desc
 		]]>
 	</select>
 
 	<insert id="insert">
-		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name)
-		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR})
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name, email, manager_id, position)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR}, #{email, jdbcType=VARCHAR}, #{manager_id, jdbcType=VARCHAR}, #{position, jdbcType=VARCHAR})
 	</insert>
 
 	<insert id="insertSelectKey">
-		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name)
-		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR})
+		insert into COTDL.tbl_member (userid, userpw, username, regdate, updatedate, enabled, dept_cd, dept_name, email, manager_id, position)
+		values (#{userid, jdbcType=VARCHAR}, #{userpw, jdbcType=VARCHAR}, #{username, jdbcType=VARCHAR}, NOW(), NOW(), #{enabled, jdbcType=VARCHAR}, upper(#{dept_cd, jdbcType=VARCHAR}), #{dept_name, jdbcType=VARCHAR}, #{email, jdbcType=VARCHAR}, #{manager_id, jdbcType=VARCHAR}, #{position, jdbcType=VARCHAR})
 	</insert>
 
 	<select id="read" resultType="datablocks.dlm.domain.PiiMemberVO">
 		select userid, userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled
-			 , dept_cd, dept_name
+			 , dept_cd, dept_name, email, manager_id, position
 		  from cotdl.tbl_member where userid= #{userid}
 	</select>
 	<select id="getPwdElapsedCount" resultType="int">
@@ -51,33 +51,39 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<update id="update">
 		update cotdl.tbl_member
-		set 
+		set
 			userpw= #{userpw, jdbcType=VARCHAR},
 			username= #{username, jdbcType=VARCHAR},
 			regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
 			updatedate= now(),
 			enabled= #{enabled, jdbcType=VARCHAR},
 			dept_cd= upper(#{dept_cd, jdbcType=VARCHAR}),
-			dept_name= #{dept_name, jdbcType=VARCHAR}
+			dept_name= #{dept_name, jdbcType=VARCHAR},
+			email= #{email, jdbcType=VARCHAR},
+			manager_id= #{manager_id, jdbcType=VARCHAR},
+			position= #{position, jdbcType=VARCHAR}
 		where userid= #{userid} and userid != 'admin'
 	</update>
 	<update id="updateWithoutPw">
 		update cotdl.tbl_member
-		set 
+		set
 			username= #{username, jdbcType=VARCHAR},
 			regdate= str_to_date(#{regdate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
 			updatedate= str_to_date(#{updatedate, jdbcType=VARCHAR},'%Y/%m/%d %H:%i:%s'),
 			enabled= #{enabled, jdbcType=VARCHAR},
 			dept_cd= upper(#{dept_cd, jdbcType=VARCHAR}),
-			dept_name= #{dept_name, jdbcType=VARCHAR}
+			dept_name= #{dept_name, jdbcType=VARCHAR},
+			email= #{email, jdbcType=VARCHAR},
+			manager_id= #{manager_id, jdbcType=VARCHAR},
+			position= #{position, jdbcType=VARCHAR}
 		where userid= #{userid} and userid != 'admin'
 	</update>
 
 	
-	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiMemberVO"> 
+	<select id="getListWithPaging" resultType="datablocks.dlm.domain.PiiMemberVO">
 		<![CDATA[
 		select userid, null as userpw, username,  DATE_FORMAT(regdate,'%Y/%m/%d') as regdate,  DATE_FORMAT(updatedate,'%Y/%m/%d') as updatedate, enabled
-			 , dept_cd, dept_name
+			 , dept_cd, dept_name, email, manager_id, position
 		  from cotdl.tbl_member
 		where userid != 'admin'
 		]]>

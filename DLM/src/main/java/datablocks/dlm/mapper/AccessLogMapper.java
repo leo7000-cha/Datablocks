@@ -38,6 +38,8 @@ public interface AccessLogMapper {
 
     AccessLogSourceVO selectSource(@Param("sourceId") String sourceId);
 
+    AccessLogSourceVO selectSourceByDbName(@Param("dbName") String dbName);
+
     List<AccessLogSourceVO> selectSourceList(Criteria cri);
 
     int selectSourceTotal(Criteria cri);
@@ -76,6 +78,43 @@ public interface AccessLogMapper {
                           @Param("status") String status,
                           @Param("resolvedBy") String resolvedBy,
                           @Param("resolveComment") String resolveComment);
+
+    int bulkUpdateAlertStatus(@Param("alertIds") List<Long> alertIds,
+                              @Param("status") String status,
+                              @Param("resolvedBy") String resolvedBy,
+                              @Param("resolveComment") String resolveComment);
+
+    int bulkUpdateAlertApproval(@Param("alertIds") List<Long> alertIds,
+                                @Param("approverId") String approverId,
+                                @Param("approvalComment") String approvalComment);
+
+    // -- Justification Workflow --
+    AccessLogAlertVO selectAlertByToken(@Param("token") String token);
+
+    int updateAlertNotification(@Param("alertId") Long alertId,
+                                @Param("token") String token,
+                                @Param("tokenExpiresAt") String tokenExpiresAt,
+                                @Param("targetUserEmail") String targetUserEmail,
+                                @Param("slaDeadline") String slaDeadline);
+
+    int updateAlertJustification(@Param("alertId") Long alertId,
+                                 @Param("justification") String justification,
+                                 @Param("justifiedBy") String justifiedBy);
+
+    int updateAlertApproval(@Param("alertId") Long alertId,
+                            @Param("status") String status,
+                            @Param("approverId") String approverId,
+                            @Param("approvalComment") String approvalComment,
+                            @Param("newToken") String newToken,
+                            @Param("newTokenExpiresAt") String newTokenExpiresAt);
+
+    List<AccessLogAlertVO> selectOverdueAlerts();
+
+    List<AccessLogAlertVO> selectEscalationAlerts();
+
+    int updateAlertEscalation(@Param("alertId") Long alertId,
+                              @Param("status") String status,
+                              @Param("escalationLevel") int escalationLevel);
 
     // ========== Alert Rule (탐지 규칙) ==========
     void insertAlertRule(AccessLogAlertRuleVO rule);
@@ -136,11 +175,58 @@ public interface AccessLogMapper {
                               @Param("status") String status,
                               @Param("errorMsg") String errorMsg);
 
+    // ========== Agent Heartbeat ==========
+    int updateAgentHeartbeat(@Param("agentId") String agentId,
+                             @Param("agentStatus") String agentStatus);
+
+    AccessLogSourceVO selectSourceByAgentId(@Param("agentId") String agentId);
+
+    // ========== Audit Policy ==========
+    /** MetaTable에서 PII 테이블 목록 (스키마.테이블 그룹) */
+    List<java.util.Map<String, Object>> selectMetaPiiTables(@Param("dbName") String dbName);
+
+    /** Audit 대상 테이블 저장 (VAL4 = 'AUDIT' / NULL) */
+    int updateAuditTarget(@Param("dbName") String dbName, @Param("owner") String owner,
+                          @Param("tableName") String tableName, @Param("auditYn") String auditYn);
+
+    /** Audit 대상 일괄 초기화 */
+    int clearAuditTargets(@Param("dbName") String dbName);
+
+    // ========== BCI Target ==========
+    List<BciTargetVO> selectBciTargets(@Param("dbName") String dbName);
+    int insertBciTarget(BciTargetVO target);
+    int deleteBciTarget(@Param("targetId") String targetId);
+    int clearBciTargets(@Param("dbName") String dbName);
+    List<java.util.Map<String, Object>> selectBciPolicyColumns(@Param("dbName") String dbName);
+    List<java.util.Map<String, Object>> selectAllTablesForBci(@Param("dbName") String dbName);
+
+    // ========== Exclude SQL Patterns ==========
+    List<java.util.Map<String, Object>> selectExcludeSqlPatterns(@Param("sourceType") String sourceType);
+    int insertExcludeSqlPattern(@Param("sourceType") String sourceType, @Param("pattern") String pattern,
+                                @Param("matchType") String matchType, @Param("description") String description,
+                                @Param("regUserId") String regUserId);
+    int updateExcludeSqlPattern(@Param("patternId") int patternId, @Param("pattern") String pattern,
+                                @Param("matchType") String matchType, @Param("description") String description,
+                                @Param("isActive") String isActive);
+    int deleteExcludeSqlPattern(@Param("patternId") int patternId);
+
     // ========== Scheduler ==========
     List<AccessLogSourceVO> selectActiveSourceList();
 
     // ========== Alert Count ==========
     int selectNewAlertCount();
+
+    /** 규칙+사용자별 미처리 알림 일괄 DISMISSED */
+    int dismissByRuleAndUser(@Param("ruleId") String ruleId,
+                             @Param("targetUserId") String targetUserId,
+                             @Param("resolvedBy") String resolvedBy,
+                             @Param("comment") String comment);
+
+    // ========== Compliance Stats (법규 준수현황) ==========
+    AccessLogStatVO getComplianceStats();
+
+    // ========== Member Email Lookup ==========
+    Map<String, Object> selectMemberEmail(@Param("userId") String userId);
 
     // ========== Detection Queries ==========
     List<Map<String, Object>> detectVolumeAnomaly(@Param("timeWindowMin") int timeWindowMin,
@@ -162,4 +248,48 @@ public interface AccessLogMapper {
     List<Map<String, Object>> detectNewIp();
 
     List<Map<String, Object>> detectInactiveAccount(@Param("inactiveDays") int inactiveDays);
+
+    // ========== Alert Suppression (알림 예외 규칙) ==========
+    void insertSuppression(AlertSuppressionVO suppression);
+
+    AlertSuppressionVO selectSuppression(@Param("suppressionId") Long suppressionId);
+
+    List<AlertSuppressionVO> selectSuppressionList(Criteria cri);
+
+    int selectSuppressionTotal(Criteria cri);
+
+    int updateSuppressionReview(@Param("suppressionId") Long suppressionId,
+                                @Param("reviewedBy") String reviewedBy,
+                                @Param("reviewComment") String reviewComment,
+                                @Param("nextReviewAt") String nextReviewAt);
+
+    int deactivateSuppression(@Param("suppressionId") Long suppressionId,
+                              @Param("deactivatedBy") String deactivatedBy,
+                              @Param("deactivateReason") String deactivateReason);
+
+    int extendSuppression(@Param("suppressionId") Long suppressionId,
+                          @Param("effectiveUntil") String effectiveUntil,
+                          @Param("updUserId") String updUserId);
+
+    /** 탐지 시 억제 규칙 확인: 해당 사용자+규칙에 활성 억제가 있는지 */
+    int countActiveSuppression(@Param("ruleId") String ruleId,
+                               @Param("targetUserId") String targetUserId);
+
+    /** 해당 사용자+규칙의 활성 억제 규칙 조회 (중복 방지/연장용) */
+    AlertSuppressionVO selectActiveSuppressionByRuleAndUser(@Param("ruleId") String ruleId,
+                                                            @Param("targetUserId") String targetUserId);
+
+    /** 검토 기한 도래 억제 규칙 조회 */
+    List<AlertSuppressionVO> selectSuppressionsDueForReview();
+
+    /** 만료된 억제 규칙 자동 비활성화 */
+    int deactivateExpiredSuppressions();
+
+    // ========== Suppression Audit Log ==========
+    void insertSuppressionAudit(@Param("suppressionId") Long suppressionId,
+                                @Param("actionType") String actionType,
+                                @Param("actionDetail") String actionDetail,
+                                @Param("actionBy") String actionBy);
+
+    List<Map<String, Object>> selectSuppressionAuditList(@Param("suppressionId") Long suppressionId);
 }

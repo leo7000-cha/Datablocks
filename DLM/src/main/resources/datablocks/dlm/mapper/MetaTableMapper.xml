@@ -84,7 +84,10 @@
                 and val2 is not null and val2 like '%|%'
             </if>
             <if test="search16 == 'N'.toString()">
-                and (val2 is null or val2 not like '%|%')
+                and (val2 is null or (val2 not like '%|%' and val2 != 'EXCLUDED'))
+            </if>
+            <if test="search16 == 'EXCLUDED'.toString()">
+                and val2 = 'EXCLUDED'
             </if>
         </trim>
     </sql>

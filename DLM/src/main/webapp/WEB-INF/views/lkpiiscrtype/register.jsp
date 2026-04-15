@@ -93,6 +93,15 @@
                                 <tr>
                                     <th scope="row" class="th-get"><spring:message code="col.decfunc" text="Decfunc" /></th><td class="td-get"><input type="text" class="form-control form-control-sm" name='decfunc' value='<c:out value="${lkpiiscrtype.decfunc}" />'></td>
                                 </tr>
+                                <tr>
+                                    <th scope="row" class="th-get">사용여부</th>
+                                    <td class="td-get">
+                                        <select class="form-control form-control-sm" name="visible" style="width: 80px;">
+                                            <option value="Y" <c:if test="${lkpiiscrtype.visible ne 'N'}">selected</c:if>>Y</option>
+                                            <option value="N" <c:if test="${lkpiiscrtype.visible eq 'N'}">selected</c:if>>N</option>
+                                        </select>
+                                    </td>
+                                </tr>
                                 </tbody>
                             </table>
 
@@ -146,53 +155,53 @@
             //var system_info = $('#lkpiiscrtype_modify_form [name="system_info"]').val();
 
             if (piicode === null || piicode === undefined || piicode.trim() === '') {
-                alert("piicode is madatory value for " + piicode);
+                dlmAlert("piicode is madatory value for " + piicode);
                 $('#lkpiiscrtype_modify_form [name="piicode"]').focus();
                 return;
             }
             if (piigradeid === null || piigradeid === undefined || piigradeid.trim() === '') {
-                alert("piigradeid is madatory value for " + piigradeid);
+                dlmAlert("piigradeid is madatory value for " + piigradeid);
                 $('#lkpiiscrtype_modify_form [name="piigradeid"]').focus();
                 return;
             }
             if (piigradename === null || piigradename === undefined || piigradename.trim() === '') {
-                alert("piigradename is madatory value for " + piigradename);
+                dlmAlert("piigradename is madatory value for " + piigradename);
                 $('#lkpiiscrtype_modify_form [name="piigradename"]').focus();
                 return;
             }
             if (piigroupid === null || piigroupid === undefined || piigroupid.trim() === '') {
-                alert("piigroupid is madatory value for " + piigroupid);
+                dlmAlert("piigroupid is madatory value for " + piigroupid);
                 $('#lkpiiscrtype_modify_form [name="piigroupid"]').focus();
                 return;
             }
             if (piigroupname === null || piigroupname === undefined || piigroupname.trim() === '') {
-                alert("piigroupname is madatory value for " + piigroupname);
+                dlmAlert("piigroupname is madatory value for " + piigroupname);
                 $('#lkpiiscrtype_modify_form [name="piigroupname"]').focus();
                 return;
             }
 
             if (piitypeid === null || piitypeid === undefined || piitypeid.trim() === '') {
-                alert("piitypeid is madatory value for " + piitypeid);
+                dlmAlert("piitypeid is madatory value for " + piitypeid);
                 $('#lkpiiscrtype_modify_form [name="piitypeid"]').focus();
                 return;
             }
             if (piitypename === null || piitypename === undefined || piitypename.trim() === '') {
-                alert("piitypename is madatory value for " + piitypename);
+                dlmAlert("piitypename is madatory value for " + piitypename);
                 $('#lkpiiscrtype_modify_form [name="piitypename"]').focus();
                 return;
             }
             if (scrtype === null || scrtype === undefined || scrtype.trim() === '') {
-                alert("scrtype is madatory value for " + scrtype);
+                dlmAlert("scrtype is madatory value for " + scrtype);
                 $('#lkpiiscrtype_modify_form [name="scrtype"]').focus();
                 return;
             }
             if (scrmethod === null || scrmethod === undefined || scrmethod.trim() === '') {
-                alert("scrmethod is madatory value for " + scrmethod);
+                dlmAlert("scrmethod is madatory value for " + scrmethod);
                 $('#lkpiiscrtype_modify_form [name="scrmethod"]').focus();
                 return;
             }
             if (scrcategory === null || scrcategory === undefined || scrcategory.trim() === '') {
-                alert("scrcategory is madatory value for " + scrcategory);
+                dlmAlert("scrcategory is madatory value for " + scrcategory);
                 $('#lkpiiscrtype_modify_form [name="scrcategory"]').focus();
                 return;
             }
@@ -211,7 +220,7 @@
                 },
                 success: function (data) { ingHide();
                     elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 }
             });
 
@@ -219,26 +228,24 @@
 
         $("button[data-oper='remove']").on("click", function (e) {
             e.preventDefault();e.stopPropagation();
-            var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-            if (confirmflag == false) {
-                return;
-            }
-            var elementForm = $("#lkpiiscrtype_modify_form");
-            var elementResult = $("#content_home");
-            ingShow(); $.ajax({
-                type: "POST",
-                url: "/lkpiiscrtype/remove",
-                dataType: "html",
-                //data:$('form').serialize(),
-                data: elementForm.serialize(),
-                error: function (request, error) { ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (data) { ingHide();
-                    elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
-                }
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                var elementForm = $("#lkpiiscrtype_modify_form");
+                var elementResult = $("#content_home");
+                ingShow(); $.ajax({
+                    type: "POST",
+                    url: "/lkpiiscrtype/remove",
+                    dataType: "html",
+                    //data:$('form').serialize(),
+                    data: elementForm.serialize(),
+                    error: function (request, error) { ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    },
+                    success: function (data) { ingHide();
+                        elementResult.html(data); //받아온 data 실행
+                        showToast("처리가 완료되었습니다.", false);
+                    }
+                });
             });
 
         });

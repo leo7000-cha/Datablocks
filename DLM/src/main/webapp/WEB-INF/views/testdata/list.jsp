@@ -292,7 +292,7 @@
             var clickedButton = $(this);
             var testdataid = $(this).data("testid");
 
-            if (confirm("Are you sure you want to dispose this test data?\nThis action cannot be undone.")) {
+            showConfirm("Are you sure you want to dispose this test data?\nThis action cannot be undone.", function() {
                 $.ajax({
                     type: "POST",
                     url: "/testdata/disposal/" + testdataid,
@@ -305,17 +305,17 @@
                         }
                     },
                     error: function (request, error) {
-                        alert("Error: " + request.responseText);
+                        dlmAlert("Error: " + request.responseText);
                     },
                     success: function (response) {
                         var disposingStatusHtml = '<span class="policy-badge" style="background:#fef3c7; color:#d97706;"><i class="fas fa-spinner fa-spin"></i> <spring:message code="etc.disposing" text="Disposing"/></span>';
                         var statusCell = clickedButton.closest('tr').find('.status-cell');
                         statusCell.html(disposingStatusHtml);
                         clickedButton.remove();
-                        $("#GlobalSuccessMsgModal").modal("show");
+                        showToast("처리가 완료되었습니다.", false);
                     }
                 });
-            }
+            });
         });
 
         // Editable date handler
@@ -376,7 +376,7 @@
                 },
                 error: function (request, status, error) {
                     td.html('<span class="editable-date">' + (originalDate || "") + '</span>');
-                    alert("Error updating date: " + request.responseText);
+                    dlmAlert("Error updating date: " + request.responseText);
                 }
             });
         }

@@ -373,7 +373,7 @@
 
     diologAction = function(serchkeyno1) {
         var serchkeyno = "orderid="+serchkeyno1;
-        alert(serchkeyno);
+        //alert(serchkeyno);
         doubleSubmitFlag = true;
         $("#actionmodal").modal();
         return;

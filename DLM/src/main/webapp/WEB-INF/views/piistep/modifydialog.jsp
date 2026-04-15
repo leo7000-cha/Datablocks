@@ -160,7 +160,7 @@
                 }
             }
         } else {
-            alert("Select a step to move.");
+            dlmAlert("Select a step to move.");
         }
 
         $('#modifydial-step > tr').each(function (index, tr) {

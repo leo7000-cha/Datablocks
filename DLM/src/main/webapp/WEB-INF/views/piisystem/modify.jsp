@@ -101,12 +101,12 @@
             //var system_info = $('#piisystem_modify_form [name="system_info"]').val();
 
             if (system_id === null || system_id === undefined || system_id.trim() === '') {
-                alert("system_id is madatory value for " + system_id);
+                dlmAlert("system_id is madatory value for " + system_id);
                 $('#piisystem_modify_form [name="system_id"]').focus();
                 return;
             }
             if (system_name === null || system_name === undefined || system_name.trim() === '') {
-                alert("system_name is madatory value for " + system_name);
+                dlmAlert("system_name is madatory value for " + system_name);
                 $('#piisystem_modify_form [name="system_name"]').focus();
                 return;
             }
@@ -125,7 +125,7 @@
                 },
                 success: function (data) { ingHide();
                     elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 }
             });
 
@@ -133,26 +133,24 @@
 
         $("button[data-oper='remove']").on("click", function (e) {
             e.preventDefault();e.stopPropagation();
-            var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-            if (confirmflag == false) {
-                return;
-            }
-            var elementForm = $("#piisystem_modify_form");
-            var elementResult = $("#content_home");
-            $.ajax({
-                type: "POST",
-                url: "/piisystem/remove",
-                dataType: "html",
-                //data:$('form').serialize(),
-                data: elementForm.serialize(),
-                error: function (request, error) { ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (data) { ingHide();
-                    elementResult.html(data); //받아온 data 실행
-                    $("#GlobalSuccessMsgModal").modal("show");
-                }
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                var elementForm = $("#piisystem_modify_form");
+                var elementResult = $("#content_home");
+                $.ajax({
+                    type: "POST",
+                    url: "/piisystem/remove",
+                    dataType: "html",
+                    //data:$('form').serialize(),
+                    data: elementForm.serialize(),
+                    error: function (request, error) { ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    },
+                    success: function (data) { ingHide();
+                        elementResult.html(data); //받아온 data 실행
+                        showToast("처리가 완료되었습니다.", false);
+                    }
+                });
             });
 
         });

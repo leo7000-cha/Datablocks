@@ -188,6 +188,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			  AND status IN ('Ended OK', 'Recovered')
 			  AND realendtime <= #{cutoffDate}
 		);
+		DELETE FROM cotdl.tbl_piimasterkeymap
+		WHERE orderid IN (
+			SELECT orderid FROM cotdl.tbl_piiorder
+			WHERE jobtype != 'PII'
+			  AND jobid NOT LIKE 'ARC_DATA_DELETE%'
+			  AND jobid NOT LIKE 'RESTORE_CUSTID%'
+			  AND status IN ('Ended OK', 'Recovered')
+			  AND realendtime <= #{cutoffDate}
+		);
 		DELETE FROM cotdl.tbl_piiordersteptable
 		WHERE orderid IN (
 			SELECT orderid FROM cotdl.tbl_piiorder

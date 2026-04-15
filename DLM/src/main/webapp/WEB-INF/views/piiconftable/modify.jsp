@@ -181,27 +181,25 @@
         });
 
         $("button[data-oper='remove']").on("click", function (e) {
-            var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-            if (confirmflag == false) {
-                return;
-            }
-            var elementForm = $("#piiconftable_modify_form");
-            var elementResult = $("#content_home");
-            $.ajax({
-                type: "POST",
-                url: "/piiconftable/remove",
-                dataType: "html",
-                //data:$('form').serialize(),
-                data: elementForm.serialize(),
-                error: function (request, error) { ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                },
-                success: function (data) { ingHide();
-                    alert("Successful!");
-                    elementResult.html(data); //받아온 data 실행
-                    //elementResult.text(Parse_data); //받아온 data 실행
-                }
+            showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+                var elementForm = $("#piiconftable_modify_form");
+                var elementResult = $("#content_home");
+                $.ajax({
+                    type: "POST",
+                    url: "/piiconftable/remove",
+                    dataType: "html",
+                    //data:$('form').serialize(),
+                    data: elementForm.serialize(),
+                    error: function (request, error) { ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    },
+                    success: function (data) { ingHide();
+                        dlmAlert("Successful!");
+                        elementResult.html(data); //받아온 data 실행
+                        //elementResult.text(Parse_data); //받아온 data 실행
+                    }
+                });
             });
 
         });

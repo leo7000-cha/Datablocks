@@ -309,11 +309,11 @@
         var search9 = $('#filter_search9').val();
 
         if (isEmpty(search4)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
         if (isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -432,7 +432,7 @@
             success: function (data, textStatus, jqXHR) {
                 ingHide();
                 if (data == "success") {
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     searchAction(pagenum);
                 } else {
                     $("#errormodalbody").html(data);
@@ -473,7 +473,7 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4) || isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -489,7 +489,7 @@
         });
 
         if (checkedcnt == 0) {
-            alert("<spring:message code='msg.selecttoapplyrealdoc' text='Please select a approval target'/>");
+            dlmAlert("<spring:message code='msg.selecttoapplyrealdoc' text='Please select a approval target'/>");
             return;
         }
 
@@ -520,12 +520,12 @@
         e.stopPropagation();
 
         if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-            alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+            dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
             return;
         }
 
         if (isEmpty($('#checkin_reason').val())) {
-            alert("Enter request reason for approval");
+            dlmAlert("Enter request reason for approval");
             return;
         }
 
@@ -551,7 +551,7 @@
         if (search5.length == 6) search5 = search5.substring(0, 5) + "0" + search5.substring(5, 6);
 
         if (isEmpty(search4) || isEmpty(search5)) {
-            alert("<spring:message code='msg.period' text='Please enter the period to report'/>");
+            dlmAlert("<spring:message code='msg.period' text='Please enter the period to report'/>");
             return;
         }
 
@@ -580,7 +580,7 @@
             success: function (data) {
                 ingHide();
                 $('#content_home').html(data);
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
             }
         });
     }

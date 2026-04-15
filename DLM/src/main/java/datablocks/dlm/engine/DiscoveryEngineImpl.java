@@ -383,15 +383,18 @@ public class DiscoveryEngineImpl implements DiscoveryEngine {
             }
 
             // 8-1. 진행률 스케줄러 종료 (완료 처리 전에 중지하여 DB 충돌 방지)
-            progressScheduler.shutdown();
+            // runningExecutions를 먼저 false로 설정하여 스케줄러의 isRunning() 체크로 DB 업데이트 차단
+            boolean wasRunning = isRunning(executionId);
+            runningExecutions.put(executionId, false);
+            progressScheduler.shutdownNow();  // 큐에 남은 태스크도 즉시 취소
             try {
                 progressScheduler.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                progressScheduler.shutdownNow();
+                // ignore
             }
 
             // 9. 완료 처리
-            if (isRunning(executionId)) {
+            if (wasRunning) {
                 progressVO.setStatus("COMPLETED");
                 progressVO.setProgress(100);
                 // DB 상태 업데이트: RUNNING -> COMPLETED
@@ -829,6 +832,36 @@ public class DiscoveryEngineImpl implements DiscoveryEngine {
         }
         result.setScore(totalScore);
 
+        // 암호화 탐지 (샘플값 기반 후처리)
+        if (matchResult != null && !matchResult.sampleValues.isEmpty()) {
+            EncryptionDetector.EncryptionResult encResult = EncryptionDetector.detect(matchResult.sampleValues);
+            result.setEncryptionStatus(encResult.status);
+            result.setEncryptionMethod(encResult.method);
+            result.setEncryptionRatio(encResult.ratio);
+
+            if (!"NONE".equals(encResult.status)) {
+                // 암호화 감지 시 patternScore에 반영 (기존 패턴 점수가 없는 경우만)
+                if (patternScore == 0) {
+                    patternScore = encResult.ratio;
+                    patternMatch = true;
+                    result.setPatternScore(patternScore);
+                    result.setPatternMatch("Y");
+                    // 최종 점수 재계산
+                    totalScore = calculateTotalScore(metaScore, patternScore, aiScore, enableMeta, enablePattern, enableAI);
+                    result.setScore(totalScore);
+                }
+                // NOT_PII → ENCRYPTED_PII로 유형 변경
+                if ("NOT_PII".equals(result.getPiiTypeCode())) {
+                    result.setPiiTypeCode("ENCRYPTED_PII");
+                    result.setPiiTypeName("암호화 PII");
+                }
+                result.setConfirmStatus("PENDING");
+            }
+        } else {
+            result.setEncryptionStatus("NONE");
+            result.setEncryptionRatio(0);
+        }
+
         return result;
     }
 
@@ -1065,13 +1098,13 @@ public class DiscoveryEngineImpl implements DiscoveryEngine {
     private Set<String> getRegisteredColumns(String dbName) {
         Set<String> registered = new HashSet<>();
         try {
-            // Registry 테이블에서 등록된 모든 컬럼 키 조회
-            List<String> registeredKeys = mapper.selectRegisteredPiiColumnKeys(dbName);
-            registered.addAll(registeredKeys);
+            // MetaTable에서 PII 확정 + 오탐 제외 컬럼 키 조회
+            List<String> piiKeys = mapper.selectMetaTablePiiColumnKeys(dbName);
+            registered.addAll(piiKeys);
 
-            logger.info("Loaded {} registered columns from PII Registry", registered.size());
+            logger.info("Loaded {} PII/EXCLUDED columns from MetaTable for skip", registered.size());
         } catch (Exception e) {
-            logger.error("Error getting registered columns from Registry", e);
+            logger.error("Error getting PII columns from MetaTable", e);
         }
         return registered;
     }
@@ -1530,6 +1563,36 @@ public class DiscoveryEngineImpl implements DiscoveryEngine {
             result.setPiiTypeName(getPiiTypeName(matchedPiiType));
             result.setScore(totalScore);
             result.setConfirmStatus("PENDING");
+        }
+
+        // 암호화 탐지 (샘플데이터 기반 후처리)
+        if (sampleDataForResult != null && !sampleDataForResult.isEmpty()) {
+            java.util.List<String> samples = java.util.Arrays.asList(sampleDataForResult.split("\n"));
+            EncryptionDetector.EncryptionResult encResult = EncryptionDetector.detect(samples);
+            result.setEncryptionStatus(encResult.status);
+            result.setEncryptionMethod(encResult.method);
+            result.setEncryptionRatio(encResult.ratio);
+
+            if (!"NONE".equals(encResult.status)) {
+                // 암호화 감지 시 patternScore에 반영 (기존 패턴 점수가 없는 경우만)
+                if (patternScore == 0) {
+                    patternScore = encResult.ratio;
+                    patternMatch = true;
+                    result.setPatternScore(patternScore);
+                    result.setPatternMatch("Y");
+                    totalScore = calculateTotalScore(metaScore, patternScore, aiScore, enableMeta, enablePattern, enableAI);
+                    result.setScore(totalScore);
+                }
+                // NOT_PII → ENCRYPTED_PII로 유형 변경
+                if ("NOT_PII".equals(result.getPiiTypeCode())) {
+                    result.setPiiTypeCode("ENCRYPTED_PII");
+                    result.setPiiTypeName("암호화 PII");
+                }
+                result.setConfirmStatus("PENDING");
+            }
+        } else {
+            result.setEncryptionStatus("NONE");
+            result.setEncryptionRatio(0);
         }
 
         return result;

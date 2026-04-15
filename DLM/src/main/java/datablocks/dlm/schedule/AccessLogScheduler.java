@@ -5,6 +5,7 @@ import datablocks.dlm.domain.AccessLogSourceVO;
 import datablocks.dlm.engine.AccessLogCollector;
 import datablocks.dlm.engine.AccessLogDetectionEngine;
 import datablocks.dlm.mapper.AccessLogMapper;
+import datablocks.dlm.service.AccessLogService;
 import datablocks.dlm.util.LogUtil;
 
 import org.slf4j.Logger;
@@ -37,6 +38,31 @@ public class AccessLogScheduler {
 
     @Autowired
     private AccessLogDetectionEngine detectionEngine;
+
+    @Autowired
+    private AccessLogService accessLogService;
+
+    /**
+     * SLA 초과 체크 & 에스컬레이션 (매 30분)
+     */
+    @Scheduled(cron = "0 0 * * * *")
+    public void checkSlaAndEscalation() {
+        AccessLogConfigVO schedulerCfg = mapper.selectConfigByKey("SCHEDULER_ENABLED");
+        if (schedulerCfg != null && "N".equals(schedulerCfg.getConfigValue())) {
+            return;
+        }
+        try {
+            accessLogService.checkSlaAndEscalate();
+        } catch (Exception e) {
+            logger.error("AccessLogScheduler: SLA check failed", e);
+        }
+        // 만료 억제 규칙 자동 비활성화 + 검토 기한 도래 건 체크
+        try {
+            accessLogService.processExpiredAndReviewDue();
+        } catch (Exception e) {
+            logger.error("AccessLogScheduler: Suppression maintenance failed", e);
+        }
+    }
 
     @Scheduled(cron = "0 * * * * *")
     public void scheduledCollect() {
@@ -76,6 +102,18 @@ public class AccessLogScheduler {
 
             for (AccessLogSourceVO source : sources) {
                 try {
+                    // 소스별 수집 주기 확인 (마지막 수집 시간 + collectInterval 경과 여부)
+                    int srcInterval = source.getCollectInterval() != null && source.getCollectInterval() > 0
+                            ? source.getCollectInterval() : intervalMin;
+                    if (source.getLastCollectTime() != null) {
+                        try {
+                            LocalDateTime lastCollect = LocalDateTime.parse(source.getLastCollectTime(),
+                                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            if (lastCollect.plusMinutes(srcInterval).isAfter(LocalDateTime.now())) {
+                                continue; // 아직 수집 주기 미도래
+                            }
+                        } catch (Exception ignored) {} // 파싱 실패 시 수집 진행
+                    }
                     int collected = collector.collect(source);
                     totalCollected += collected;
                 } catch (Exception e) {

@@ -95,7 +95,7 @@
 	        //data:$('form').serialize(), 
 	        data:elementForm.serialize(),
 	        error: function(request, error){ ingHide();
-	            $("#errormodalbody").html(request.responseText);$("#errormodal").modal("show");alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error)
+	            $("#errormodalbody").html(request.responseText);$("#errormodal").modal("show");//alert("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error)
 	        },
 	        success: function(data){ ingHide();
 	        	elementResult.html(data); //받아온 data 실행

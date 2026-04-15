@@ -1,6 +1,7 @@
 package datablocks.dlm.agent.interceptor;
 
 import datablocks.dlm.agent.AgentConfig;
+import datablocks.dlm.agent.analyzer.PiiPolicyCache;
 import datablocks.dlm.agent.analyzer.SqlAnalyzer;
 import datablocks.dlm.agent.buffer.LogBuffer;
 import datablocks.dlm.agent.context.UserContext;
@@ -123,6 +124,15 @@ public class PreparedStatementInterceptor {
                     }
                 }
 
+                // 감사 대상 테이블 필터링
+                PiiPolicyCache cache = PiiPolicyCache.getInstance();
+                java.util.Map<String, java.util.Set<String>> tableColumns = SqlAnalyzer.extractColumns(sql);
+                if (cache != null && cache.getTargetTableCount() > 0) {
+                    if (!cache.hasAnyTargetTable(tableColumns.keySet())) return;
+                } else if (cache != null && cache.getTargetTableCount() == 0) {
+                    return; // 감사 대상 미등록 → 캡처 안 함
+                }
+
                 long elapsed = (System.nanoTime() - startTime) / 1_000_000; // ms
 
                 UserContext ctx = UserContext.current();
@@ -143,8 +153,8 @@ public class PreparedStatementInterceptor {
                 entry.setSuccess(thrown == null);
                 entry.setActionType(SqlAnalyzer.detectActionType(sql));
 
-                // PII 분석
-                SqlAnalyzer.enrichPiiInfo(entry);
+                // PII 분석 (이미 추출한 tableColumns 활용)
+                SqlAnalyzer.enrichPiiInfoFromParsed(entry, tableColumns);
 
                 // 비동기 버퍼에 추가
                 LogBuffer.getInstance().offer(entry);

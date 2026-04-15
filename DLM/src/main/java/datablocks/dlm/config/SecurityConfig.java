@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .requestMatchers(ant("/pii/database/bridgeQuery")).permitAll()
                 .requestMatchers(ant("/dlmapi/**")).permitAll()
                 .requestMatchers(ant("/api/agent/**")).permitAll()
+                .requestMatchers(ant("/accesslog/justify/**")).permitAll()
 
                 .requestMatchers(ant("/hub")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/index")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
@@ -68,6 +69,7 @@ public class SecurityConfig {
                 .requestMatchers(ant("/piijob/checkout")).hasAnyRole("IT","ADMIN")
                 .requestMatchers(ant("/piijob/checkin")).hasAnyRole("IT","ADMIN")
                 .requestMatchers(ant("/piijob/order")).hasAnyRole("IT","ADMIN")
+                .requestMatchers(ant("/piijob/api/**")).hasAnyRole("ADMIN")
                 .requestMatchers(ant("/piijob/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
 
                 .requestMatchers(ant("/piistep/register")).hasAnyRole("IT","ADMIN")
@@ -207,6 +209,11 @@ public class SecurityConfig {
                 .loginPage("/customLogin")
                 .loginProcessingUrl("/login")
                 .successHandler(loginSuccessHandler())
+                .failureHandler((request, response, exception) -> {
+                    datablocks.dlm.util.LogUtil.log("INFO", "Login FAILED - " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
+                    request.getSession().setAttribute("SPRING_SECURITY_LAST_EXCEPTION", exception);
+                    response.sendRedirect("/customLogin?error");
+                })
                 .permitAll()
         );
     /*
@@ -214,14 +221,14 @@ public class SecurityConfig {
     * */
 
         http.csrf(csrf -> csrf
-                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"), ant("/accesslog/api/**"), ant("/api/agent/**"))
+                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"), ant("/accesslog/api/**"), ant("/api/agent/**"), ant("/accesslog/justify/**"))
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
         );
 
         http.logout(logout -> logout
                 .logoutUrl("/customLogout")
                 .invalidateHttpSession(true)
-                .deleteCookies("remember-me","JSESSION_ID")
+                .deleteCookies("remember-me","DLMSESSIONID")
         );
 
         http.rememberMe(rm -> rm
@@ -259,6 +266,14 @@ public class SecurityConfig {
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception{
         SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
         sessionFactory.setDataSource(dataSource);
+
+        // application.properties의 mybatis 설정이 커스텀 빈에 의해 무시되므로 직접 설정
+        // mapUnderscoreToCamelCase=false: VO 필드가 underscore 네이밍(pk_col, table_name 등)이므로 변환하지 않음
+        // camelCase가 필요한 매핑은 resultMap에서 명시적으로 처리 (MemberMapper 등)
+        org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
+        configuration.setMapUnderscoreToCamelCase(false);
+        sessionFactory.setConfiguration(configuration);
+
         return sessionFactory.getObject();
     }
 

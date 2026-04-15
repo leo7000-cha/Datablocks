@@ -195,6 +195,37 @@
         //$("#menupath").html(Menupath +">Details>Modify");
         $("#menupath").html(Menupath + '<i class="fas fa-chevron-right" style="font-size: 18px; margin: 0 6px; color: #888;"></i>' + "<spring:message code="memu.job" text="Job"/>" + ">Modify")
 
+        // ADMIN 전용: Phase 더블클릭 토글
+        $(document).off('dblclick.phaseToggle').on('dblclick.phaseToggle', '#phaseToggle', function() {
+            var $el = $(this);
+            if ($el.data('processing')) return;
+            $el.data('processing', true);
+            var jobid = $('#jobget_global_jobid').val();
+            var version = $('#jobget_global_version').val();
+            var current = $el.text().trim();
+            var next = (current === 'CHECKIN') ? 'CHECKOUT' : 'CHECKIN';
+            showConfirm('Phase를 ' + current + ' → ' + next + ' 로 변경하시겠습니까?', function() {
+                $.ajax({
+                    url: '/piijob/api/force-toggle-phase',
+                    type: 'POST', contentType: 'application/json',
+                    beforeSend: function(xhr) { xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}"); },
+                    data: JSON.stringify({ jobid: jobid, version: version }),
+                    success: function(res) {
+                        if (res.success) {
+                            $el.text(res.phase);
+                            $('#jobget_global_phase').val(res.phase);
+                            $('input[name="phase"]').val(res.phase);
+                            $('input[name="ori_phase"]').val(res.phase);
+                        } else {
+                            dlmAlert('변경 실패: ' + (res.message || ''));
+                        }
+                    },
+                    complete: function() { $el.data('processing', false); }
+                });
+            }, function() {
+                $el.data('processing', false);
+            });
+        });
     });
     var textCountLimit = 1000;
 
@@ -457,7 +488,7 @@
 
         //alert($('#jobget_global_phase').val());
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job is not Checkin status !!!");
+            dlmAlert("Job is not Checkin status !!!");
             return;
         }
         var serchkeyno1 = $('#jobget_global_jobid').val();
@@ -518,74 +549,74 @@
                 if ($('#piijob_modify_form [name="version"]').val() != $('#piijob_modify_form_ori [name="ori_version"]').val() ){alert('Version is changed. Press the savejob button if you want to save');return;}
          */
         if ($('#piijob_modify_form [name="jobname"]').val() != $('#piijob_modify_form_ori [name="ori_jobname"]').val()) {
-            alert('Jobname is changed. Press the savejob button if you want to save');
+            dlmAlert('Jobname is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="system"]').val() != $('#piijob_modify_form_ori [name="ori_system"]').val()) {
-            alert('System is changed. Press the savejob button if you want to save');
+            dlmAlert('System is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="policy_id"]').val() != $('#piijob_modify_form_ori [name="ori_policy_id"]').val()) {
-            alert('Policy_Id is changed. Press the savejob button if you want to save');
+            dlmAlert('Policy_Id is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="keymap_id"]').val() != $('#piijob_modify_form_ori [name="ori_keymap_id"]').val()) {
-            alert('Keymap_Id is changed. Press the savejob button if you want to save');
+            dlmAlert('Keymap_Id is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="jobtype"]').val() != $('#piijob_modify_form_ori [name="ori_jobtype"]').val()) {
-            alert('Jobtype is changed. Press the savejob button if you want to save');
+            dlmAlert('Jobtype is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="runtype"]').val() != $('#piijob_modify_form_ori [name="ori_runtype"]').val()) {
-            alert('Runtype is changed. Press the savejob button if you want to save');
+            dlmAlert('Runtype is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="calendar"]').val() != $('#piijob_modify_form_ori [name="ori_calendar"]').val()) {
-            alert('Calendar is changed. Press the savejob button if you want to save');
-            alert($('#piijob_modify_form [name="calendar"]').val());
-            alert($('#piijob_modify_form_ori [name="ori_calendar"]').val());
+            dlmAlert('Calendar is changed. Press the savejob button if you want to save');
+            dlmAlert($('#piijob_modify_form [name="calendar"]').val());
+            dlmAlert($('#piijob_modify_form_ori [name="ori_calendar"]').val());
             return;
         }
         if ($('#piijob_modify_form [name="time"]').val() != $('#piijob_modify_form_ori [name="ori_time"]').val()) {
-            alert('Time is changed. Press the savejob button if you want to save');
+            dlmAlert('Time is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="cronval"]').val() != $('#piijob_modify_form_ori [name="ori_cronval"]').val()) {
-            alert('Cronval is changed. Press the savejob button if you want to save');
+            dlmAlert('Cronval is changed. Press the savejob button if you want to save');
             return;
         }
         //if ($('#piijob_modify_form [name="confirmflag"]').val() != $('#piijob_modify_form_ori [name="ori_confirmflag"]').val() ){alert('Confirmflag is changed. Press the savejob button if you want to save');return;}
         if ($('#piijob_modify_form [name="status"]').val() != $('#piijob_modify_form_ori [name="ori_status"]').val()) {
-            alert('Status is changed. Press the savejob button if you want to save');
+            dlmAlert('Status is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="phase"]').val() != $('#piijob_modify_form_ori [name="ori_phase"]').val()) {
-            alert('Phase is changed. Press the savejob button if you want to save');
+            dlmAlert('Phase is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_id1"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_id1"]').val()) {
-            alert('Job_Owner_Id1 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Id1 is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_name1"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_name1"]').val()) {
-            alert('Job_Owner_Name1 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Name1 is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_id2"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_id2"]').val()) {
-            alert('Job_Owner_Id2 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Id2 is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_name2"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_name2"]').val()) {
-            alert('Job_Owner_Name2 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Name2 is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_id3"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_id3"]').val()) {
-            alert('Job_Owner_Id3 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Id3 is changed. Press the savejob button if you want to save');
             return;
         }
         if ($('#piijob_modify_form [name="job_owner_name3"]').val() != $('#piijob_modify_form_ori [name="ori_job_owner_name3"]').val()) {
-            alert('Job_Owner_Name3 is changed. Press the savejob button if you want to save');
+            dlmAlert('Job_Owner_Name3 is changed. Press the savejob button if you want to save');
             return;
         }
         var aprovalid = "JOB_APPROVAL";
@@ -610,12 +641,12 @@
         e.preventDefault();e.stopPropagation();
 
         if (isEmpty($('input[name="aprvlineid"]:checked').val())) {
-            alert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
+            dlmAlert("<spring:message code='msg.select_approval_line' text='Please select an approval line'/>");
             return;
         }
 
         if (isEmpty($('#checkin_reason').val())) {
-            alert("Enter request reason for CHECK-IN ");
+            dlmAlert("Enter request reason for CHECK-IN ");
             return;
         }
 
@@ -669,7 +700,7 @@
                 $("#errormodal").modal("show");
             },
             success: function (data) { ingHide();
-                alert("성공");
+                dlmAlert("성공");
                 $('#content_home').html(data);
                 //$('#content_home').load(data);
             }
@@ -868,7 +899,7 @@
                 $("#errormodal").modal("show");
             },
             success: function (data) { ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 //$('#orderresult').text("Successfully ordered on "+serchkeyno3);
 
                 //$('#orderresult').text("The order failed on "+serchkeyno3);

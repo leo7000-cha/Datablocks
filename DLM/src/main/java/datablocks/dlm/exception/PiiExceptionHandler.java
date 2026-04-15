@@ -18,30 +18,39 @@ import org.springframework.web.servlet.ModelAndView;
 public class PiiExceptionHandler {
 	private static final Logger logger = LoggerFactory.getLogger(PiiExceptionHandler.class);
 
-	@ExceptionHandler(value = Exception.class) 
-	@ResponseStatus (HttpStatus.INTERNAL_SERVER_ERROR) 
-	public ModelAndView exceptionHandler( HttpServletRequest request, HttpServletResponse response, Exception exception) { 
-		String contentType = request.getHeader("Content-Type"); 
-		ModelAndView model=null; 
+	@ExceptionHandler(value = Exception.class)
+	@ResponseStatus (HttpStatus.INTERNAL_SERVER_ERROR)
+	public ModelAndView exceptionHandler( HttpServletRequest request, HttpServletResponse response, Exception exception) {
+		String contentType = request.getHeader("Content-Type");
+		ModelAndView model=null;
 		String reason= HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase();
-		int statusCode= HttpStatus.INTERNAL_SERVER_ERROR.value(); 
-		
-		// Content-Type 확인, json 만 View를 따로 처리함. 
+		int statusCode= HttpStatus.INTERNAL_SERVER_ERROR.value();
+
+		// 상세 에러 메시지 구성
+		String errorDetail = exception.getClass().getSimpleName() + ": "
+			+ (exception.getMessage() != null ? exception.getMessage() : "(no message)");
+		if (exception.getCause() != null) {
+			errorDetail += " / Caused by: " + exception.getCause().getClass().getSimpleName()
+				+ ": " + exception.getCause().getMessage();
+		}
+
+		// Content-Type 확인, json 만 View를 따로 처리함.
 		if(contentType!=null && MediaType.APPLICATION_JSON_VALUE.equals(contentType)){
-			model = new ModelAndView("jsonView"); 
-			ResponseStatus annotation = exception.getClass().getAnnotation(ResponseStatus.class); 
-			if(annotation!=null){ 
-				reason = annotation.reason(); 
-				statusCode = annotation.value().value(); 
-			} 
+			model = new ModelAndView("jsonView");
+			ResponseStatus annotation = exception.getClass().getAnnotation(ResponseStatus.class);
+			if(annotation!=null){
+				reason = annotation.reason();
+				statusCode = annotation.value().value();
+			}
 		} else {
 			//json 이 아닐경우 error page 로 이동
 			model = new ModelAndView("error_page");
-			logger.warn("warn "+"contentType: " +contentType+ "   exception: " +exception.getMessage());
+			logger.warn("warn contentType: {} exception: {}", contentType, errorDetail);
+			logger.warn("warn stacktrace:", exception);
 		}
-		model.addObject("reason",reason); 
-		model.addObject("statusCode",statusCode); 
-		response.setStatus(statusCode); 
-		return model; 
+		model.addObject("reason", errorDetail);
+		model.addObject("statusCode",statusCode);
+		response.setStatus(statusCode);
+		return model;
 	} 
 }

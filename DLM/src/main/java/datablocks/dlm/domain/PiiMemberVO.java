@@ -12,4 +12,7 @@ public class PiiMemberVO {
 	private String enabled;
 	private String dept_cd;
 	private String dept_name;
+	private String email;
+	private String manager_id;
+	private String position;
 }

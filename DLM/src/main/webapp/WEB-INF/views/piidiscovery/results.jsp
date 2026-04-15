@@ -134,6 +134,13 @@
                         <option value="CONFIRMED">PII 확정</option>
                         <option value="EXCLUDED">오탐 제외</option>
                     </select>
+                    <select class="form-control form-control-sm filter-field" style="width: 120px !important;" id="filterEncryption">
+                        <option value="">암호화 상태</option>
+                        <option value="NONE">평문</option>
+                        <option value="HASHED">해시(Hash)</option>
+                        <option value="ENCRYPTED">대칭암호화</option>
+                        <option value="UNKNOWN">미확인</option>
+                    </select>
                     <select class="form-control form-control-sm filter-field" style="width: 130px !important;" id="filterDb">
                         <option value="">데이터베이스</option>
                     </select>
@@ -143,24 +150,18 @@
                     <button class="btn btn-sm btn-primary filter-btn" type="button" onclick="applyFilters()">
                         <i class="fas fa-search"></i> 검색
                     </button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearFilters()" title="필터 초기화">
+                        <i class="fas fa-redo"></i>
+                    </button>
                 </div>
-                <div class="d-flex align-items-center" style="gap: 8px;">
-                    <button class="btn btn-sm btn-outline-secondary action-btn" onclick="clearFilters()">
-                        <i class="fas fa-redo"></i> 초기화
-                    </button>
-                    <button class="btn btn-sm btn-outline-primary action-btn" onclick="refreshAll()">
-                        <i class="fas fa-sync-alt"></i> 새로고침
-                    </button>
-                    <span class="text-muted" id="selectedCount" style="display: none; margin: 0 4px;">
+                <span id="selectionActions" style="display: none; gap: 6px; align-items: center;">
+                    <span class="text-muted" id="selectedCount">
                         <strong id="selectedNum">0</strong> 건 선택
                     </span>
-                    <button class="btn btn-outline-success btn-sm action-btn" id="btnConfirmSelected" onclick="confirmSelected('CONFIRMED')" disabled>
-                        <i class="fas fa-check"></i> 확인
+                    <button class="btn btn-sm" id="btnExcludeSelected" onclick="confirmSelected('EXCLUDED')" style="background: #ef4444; color: #fff; border: none; font-weight: 600;">
+                        <i class="fas fa-ban"></i> 오탐 제외
                     </button>
-                    <button class="btn btn-outline-warning btn-sm action-btn" id="btnExcludeSelected" onclick="confirmSelected('EXCLUDED')" disabled>
-                        <i class="fas fa-ban"></i> 제외
-                    </button>
-                </div>
+                </span>
             </div>
         </div>
     </div>
@@ -191,6 +192,7 @@
                                     <th>데이터 타입</th>
                                     <th>개인정보 유형</th>
                                     <th style="width: 100px;">점수</th>
+                                    <th style="width: 90px;">암호화</th>
                                     <th>방법</th>
                                     <th style="width: 100px;">상태</th>
                                     <th style="width: 100px;">작업</th>
@@ -214,6 +216,20 @@
                                                   title="클릭하여 상세 보기">
                                                 ${result.score}% <i class="fas fa-search-plus" style="font-size: 0.7em; margin-left: 3px;"></i>
                                             </span>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${result.encryptionStatus == 'HASHED'}">
+                                                    <span class="badge badge-danger" title="${result.encryptionMethod}">${result.encryptionRatio}% 해시</span>
+                                                </c:when>
+                                                <c:when test="${result.encryptionStatus == 'ENCRYPTED'}">
+                                                    <span class="badge badge-warning" title="${result.encryptionMethod}">${result.encryptionRatio}% 암호화</span>
+                                                </c:when>
+                                                <c:when test="${result.encryptionStatus == 'UNKNOWN'}">
+                                                    <span class="badge badge-secondary">${result.encryptionRatio}% 미확인</span>
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">-</span></c:otherwise>
+                                            </c:choose>
                                         </td>
                                         <td>
                                             <c:if test="${result.metaMatch == 'Y'}"><span class="badge badge-info" style="margin-right: 3px;">메타</span></c:if>
@@ -241,12 +257,12 @@
                                                     </c:when>
                                                     <c:otherwise>
                                                         <c:if test="${result.confirmStatus != 'CONFIRMED'}">
-                                                            <button class="btn btn-outline-success" title="PII 확정" onclick="confirmSingle('${result.resultId}', 'CONFIRMED')">
+                                                            <button class="btn btn-outline-success" title="PII 확정" onclick="showPiiConfirmDialog('${result.resultId}')">
                                                                 <i class="fas fa-check"></i>
                                                             </button>
                                                         </c:if>
                                                         <c:if test="${result.confirmStatus != 'EXCLUDED'}">
-                                                            <button class="btn btn-outline-secondary" title="제외" onclick="confirmSingle('${result.resultId}', 'EXCLUDED')">
+                                                            <button class="btn btn-outline-danger" title="오탐 제외" onclick="confirmSingle('${result.resultId}', 'EXCLUDED')">
                                                                 <i class="fas fa-ban"></i>
                                                             </button>
                                                         </c:if>
@@ -306,7 +322,7 @@
 </div>
 
 <!-- Detail Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1" role="dialog">
+<div class="modal fade" id="detailModal" tabindex="-1" role="dialog" style="z-index: 1060;">
     <div class="modal-dialog modal-xl" role="document" style="max-width: 1300px;">
         <div class="modal-content">
             <div class="modal-header" style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
@@ -326,7 +342,136 @@
     </div>
 </div>
 
+<!-- PII 확정 다이얼로그 -->
+<div class="modal fade" id="piiConfirmModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 1100px;">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="padding: 16px 24px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0;">
+                <h5 class="modal-title" style="font-size: 1.1rem; font-weight: 600;"><i class="fas fa-check-circle" style="color: #22c55e;"></i> PII 확정 및 인벤토리 세팅</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <input type="hidden" id="piiConfirmResultId">
+
+                <!-- 컬럼 정보 + 스캔 결과 + 세팅 -->
+                <div style="margin-bottom: 20px;">
+                    <table class="table table-sm table-bordered" style="margin: 0; font-size: 0.85rem;">
+                        <!-- 1행: 컬럼 정보 -->
+                        <tr style="background: #f8fafc;">
+                            <td rowspan="1" style="background:#e2e8f0; font-weight:700; color:#334155; text-align:center; width:40px; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">컬럼</td>
+                            <th style="background:#eef2f7;">데이터베이스</th><td id="piiConfirmDb">-</td>
+                            <th style="background:#eef2f7;">스키마</th><td id="piiConfirmSchema">-</td>
+                            <th style="background:#eef2f7;">테이블</th><td id="piiConfirmTable">-</td>
+                            <th style="background:#eef2f7;">컬럼</th><td id="piiConfirmColumn">-</td>
+                            <th style="background:#eef2f7;">데이터타입</th><td id="piiConfirmDataType">-</td>
+                        </tr>
+                        <!-- 2행: 탐지 결과 -->
+                        <tr style="background: #eff6ff;">
+                            <td style="background:#bfdbfe; font-weight:700; color:#1e40af; text-align:center; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">탐지</td>
+                            <th style="background:#dbeafe; color:#1e40af;">탐지 유형</th><td id="piiConfirmDetectedType">-</td>
+                            <th style="background:#dbeafe; color:#1e40af;">점수</th><td id="piiConfirmScore">-</td>
+                            <th style="background:#dbeafe; color:#1e40af;">암호화</th><td id="piiConfirmEncStatus" colspan="3">-</td>
+                            <td colspan="2" style="text-align:center;">
+                                <button type="button" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem; padding:2px 10px;" onclick="showDetailModal($('#piiConfirmResultId').val())">
+                                    <i class="fas fa-search-plus"></i> 탐지결과 상세보기
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- 3행: 세팅 입력 -->
+                        <tr style="background: #f0fdf4;">
+                            <td style="background:#bbf7d0; font-weight:700; color:#166534; text-align:center; writing-mode:vertical-lr; letter-spacing:2px; font-size:0.75rem;">설정</td>
+                            <th style="background:#dcfce7; color:#166534;">개인정보</th><td id="piiConfirmSelectedType" style="color:#166534; font-weight:600;">-</td>
+                            <th style="background:#dcfce7; color:#166534;">변환타입</th>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" id="piiConfirmScramble" readonly style="background:#f1f5f9; padding:2px 6px; height:26px;">
+                            </td>
+                            <th style="background:#dcfce7; color:#166534;">암호화</th>
+                            <td>
+                                <select class="form-control form-control-sm" id="piiConfirmEncrypt" style="width:70px; padding:2px 6px; height:26px; border-color:#86efac;">
+                                    <option value="">-</option><option value="Y">Y</option>
+                                </select>
+                            </td>
+                            <td colspan="4"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- PII Classification (메타데이터 수정 화면 스타일) -->
+                <div class="pii-confirm-box">
+                    <div class="pii-confirm-header">
+                        <span><i class="fas fa-shield-alt"></i> 해당하는 개인정보 항목을 선택하세요</span>
+                        <button type="button" class="btn-pii-reset" onclick="$('input[name=piiTypeRadio]:checked').prop('checked',false); $('#piiConfirmScramble').val(''); $('#piiConfirmSelectedType').text('-');">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                    <div class="pii-confirm-body" id="piiTypeSelector">
+                        <!-- 동적 로드 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 12px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                <button type="button" class="btn" onclick="submitPiiConfirm()" style="background: #22c55e; color: #fff; font-weight: 600;">
+                    <i class="fas fa-check-circle"></i> PII 확정
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+/* PII 확정 다이얼로그 - 메타데이터 수정 화면 스타일 */
+.pii-confirm-box { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.pii-confirm-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-bottom: 1px solid #bbf7d0; font-weight: 600; font-size: 0.95rem; color: #166534;
+}
+.pii-confirm-header .btn-pii-reset {
+    padding: 3px 10px; font-size: 11px; background: #fff; border: 1px solid #d1d5db;
+    border-radius: 4px; cursor: pointer; color: #6b7280;
+}
+.pii-confirm-header .btn-pii-reset:hover { background: #f3f4f6; }
+.pii-confirm-body { overflow-y: auto; }
+.pii-confirm-body .pc-row {
+    display: flex; border-bottom: 1px solid #e5e7eb; min-height: 30px; background: #fff;
+}
+.pii-confirm-body .pc-row:last-child { border-bottom: none; }
+.pc-grade {
+    width: 36px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.pc-grade.g1 { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.pc-grade.g2 { background: linear-gradient(135deg, #f97316, #ea580c); }
+.pc-grade.g3 { background: linear-gradient(135deg, #eab308, #ca8a04); }
+.pc-grade.g4 { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.pc-grade.g0 { background: linear-gradient(135deg, #9ca3af, #6b7280); }
+.pc-category {
+    width: 180px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #1e3a5f;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border-right: 1px solid #cbd5e1; display: flex; align-items: center; flex-shrink: 0; line-height: 1.3;
+}
+.pc-items { flex: 1; padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pc-chip { position: relative; }
+.pc-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pc-chip label {
+    display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 500; color: #334155;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.pc-chip label:hover {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border-color: #38bdf8; color: #0369a1; box-shadow: 0 2px 6px rgba(56, 189, 248, 0.2);
+}
+.pc-chip input:checked + label {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    border-color: #1e40af; color: #fff; font-weight: 600;
+    box-shadow: 0 3px 8px rgba(29, 78, 216, 0.35);
+}
+.pii-confirm-body::-webkit-scrollbar { width: 5px; }
+.pii-confirm-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
 .progress-stats-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -599,10 +744,10 @@ function formatDateNoSeconds(dateStr) {
 }
 
 function loadExecutionList() {
-    $.get(contextPath + '/piidiscovery/api/executions', function(response) {
-        var html = '<option value="">실행 이력</option>';
-        // API 응답 형식: {executions: [...], total: n}
+    // 최근 5건만 로드
+    $.get(contextPath + '/piidiscovery/api/executions', { amount: 5, pageNum: 1 }, function(response) {
         var executions = response.executions || response;
+        var html = '<option value="">전체 실행 이력</option>';
         if (executions && executions.length > 0) {
             executions.forEach(function(exec) {
                 var selected = (currentExecutionId === exec.executionId) ? ' selected' : '';
@@ -618,18 +763,16 @@ function loadExecutionList() {
         // currentExecutionId가 있으면 명시적으로 선택
         if (currentExecutionId) {
             $('#filterExecution').val(currentExecutionId);
-            // Progress API로 실시간 상태를 확인 (DB 상태보다 정확)
             checkAndShowProgress(currentExecutionId);
             loadResults();
         }
-        // currentExecutionId가 없으면 가장 최근(RUNNING 우선, 없으면 첫번째) 선택
+        // 기본: 가장 최근 실행 (RUNNING 우선) 자동 선택
         else if (executions && executions.length > 0) {
             var runningExec = executions.find(function(e) { return e.status === 'RUNNING'; });
             var latestExec = runningExec || executions[0];
             if (latestExec) {
                 currentExecutionId = latestExec.executionId;
                 $('#filterExecution').val(currentExecutionId);
-                // Progress API로 실시간 상태를 확인 (DB 상태보다 정확)
                 checkAndShowProgress(currentExecutionId);
                 loadResults();
             }
@@ -812,6 +955,8 @@ function updateProgress() {
                     if (status === 'COMPLETED') {
                         $('#mainProgressBar').removeClass('progress-bar-animated').css('background', '#10b981');
                         showToast('success', i18nResults.scanCompletedWithPii.replace('{0}', progress.piiCount || 0));
+                        // 실행 이력 드롭다운 갱신 ("실행 중" → "완료")
+                        loadExecutionList();
                         // 결과 테이블 새로고침
                         console.log('[Results] Scan completed, refreshing results...');
                         loadResults();
@@ -1002,6 +1147,7 @@ function clearFilters() {
     $('#filterPiiType').val('');
     $('#filterScore').val('');
     $('#filterStatus').val('');
+    $('#filterEncryption').val('');
     $('#filterDb').val('');
     $('#filterSchema').val('');
     $('#filterTable').val('');
@@ -1021,6 +1167,7 @@ function loadResults() {
         search3: $('#filterPiiType').val(),
         search5: $('#filterScore').val(),
         search4: $('#filterStatus').val(),
+        search7: $('#filterEncryption').val(),
         search1: $('#filterDb').val(),
         search2: $('#filterSchema').val(),
         filterTable: $('#filterTable').val(),
@@ -1095,6 +1242,7 @@ function goToPage(page) {
         search3: $('#filterPiiType').val(),
         search5: $('#filterScore').val(),
         search4: $('#filterStatus').val(),
+        search7: $('#filterEncryption').val(),
         search1: $('#filterDb').val(),
         search2: $('#filterSchema').val(),
         filterTable: $('#filterTable').val(),
@@ -1113,11 +1261,130 @@ function toggleSelectAll() {
 function updateSelection() {
     var checkedCount = $('.result-checkbox:checked').length;
     $('#selectedNum').text(checkedCount);
-    $('#selectedCount').toggle(checkedCount > 0);
-    $('#btnConfirmSelected, #btnExcludeSelected').prop('disabled', checkedCount === 0);
+    if (checkedCount > 0) {
+        $('#selectionActions').css('display', 'flex');
+    } else {
+        $('#selectionActions').hide();
+    }
 }
 
 // ========== Actions ==========
+// ========== PII 확정 다이얼로그 ==========
+var lkPiiTypes = null; // 캐시
+
+function loadLkPiiTypes(callback) {
+    if (lkPiiTypes) { callback(lkPiiTypes); return; }
+    $.get(contextPath + '/piidiscovery/api/lk-pii-types', function(types) {
+        lkPiiTypes = types || [];
+        callback(lkPiiTypes);
+    });
+}
+
+function showPiiConfirmDialog(resultId) {
+    $('#piiConfirmResultId').val(resultId);
+    $('#piiConfirmScramble').val('');
+    $('#piiConfirmMasterKey').val('');
+
+    // 결과 상세 정보 로드
+    $.get(contextPath + '/piidiscovery/api/results/' + resultId, function(r) {
+        $('#piiConfirmDb').text(r.dbName || '-');
+        $('#piiConfirmSchema').text(r.schemaName || '-');
+        $('#piiConfirmTable').html('<strong>' + (r.tableName || '-') + '</strong>');
+        $('#piiConfirmColumn').html('<code>' + (r.columnName || '-') + '</code>');
+        $('#piiConfirmDetectedType').html('<span class="badge badge-info">' + (r.piiTypeName || '-') + '</span>');
+        $('#piiConfirmScore').html('<span class="score-badge ' + (r.score >= 80 ? 'high' : r.score >= 50 ? 'medium' : 'low') + '">' + (r.score || 0) + '%</span>');
+        var encHtml = '-';
+        if (r.encryptionStatus === 'HASHED') encHtml = '<span class="badge badge-danger">' + (r.encryptionRatio || 0) + '% 해시</span>';
+        else if (r.encryptionStatus === 'ENCRYPTED') encHtml = '<span class="badge badge-warning">' + (r.encryptionRatio || 0) + '% 암호화</span>';
+        if (r.encryptionMethod) encHtml += ' <small>' + r.encryptionMethod + '</small>';
+        $('#piiConfirmEncStatus').html(encHtml);
+        $('#piiConfirmDataType').html('<span class="badge badge-secondary">' + (r.dataType || '-') + '</span>');
+
+        // 암호화 프리셋
+        $('#piiConfirmEncrypt').val(r.encryptionStatus && r.encryptionStatus !== 'NONE' ? 'Y' : '');
+
+        var detectedPiiCode = r.piiTypeCode;
+
+        loadLkPiiTypes(function(types) {
+        var html = '';
+        var currentGroupId = '';
+        types.forEach(function(t) {
+            if (t.piigroupid !== currentGroupId) {
+                if (currentGroupId) html += '</div></div>';
+                currentGroupId = t.piigroupid;
+                html += '<div class="pc-row">';
+                html += '<div class="pc-grade g' + t.piigradeid + '">' + t.piigradeid + '</div>';
+                html += '<div class="pc-category">' + t.piigroupname + '</div>';
+                html += '<div class="pc-items">';
+            }
+            var checked = (detectedPiiCode && detectedPiiCode === t.piicode) ? ' checked' : '';
+            html += '<div class="pc-chip"><input type="radio" name="piiTypeRadio" id="pii_' + t.piicode + '" value="' + t.piicode + '"' +
+                    ' data-scrtype="' + (t.scrtype || '') + '" data-grade="' + (t.piigradeid || '') + '"' + checked + '>' +
+                    '<label for="pii_' + t.piicode + '">' + t.piitypename + '</label></div>';
+        });
+        if (currentGroupId) html += '</div></div>';
+
+        $('#piiTypeSelector').html(html);
+
+        // 라디오 변경 시 변환타입 + 개인정보 표시 자동 세팅
+        $('input[name="piiTypeRadio"]').change(function() {
+            var scrtype = $(this).data('scrtype');
+            $('#piiConfirmScramble').val(scrtype || '');
+            $('#piiConfirmSelectedType').text($(this).next('label').text());
+        });
+
+        // 프리셋된 항목의 변환타입 + 개인정보 표시
+        var $checked = $('input[name="piiTypeRadio"]:checked');
+        if ($checked.length > 0) {
+            $('#piiConfirmScramble').val($checked.data('scrtype') || '');
+            $('#piiConfirmSelectedType').text($checked.next('label').text());
+        } else {
+            $('#piiConfirmSelectedType').text('-');
+        }
+
+        $('#piiConfirmModal').modal('show');
+    }); // loadLkPiiTypes
+    }); // $.get result detail
+}
+
+function submitPiiConfirm() {
+    var resultId = $('#piiConfirmResultId').val();
+    var $selected = $('input[name="piiTypeRadio"]:checked');
+    if ($selected.length === 0) {
+        showToast('warning', '개인정보 유형을 선택해주세요');
+        return;
+    }
+
+    var settings = {
+        piiTypeCode: $selected.val(),
+        piiGrade: $selected.data('grade') + '',
+        encryptFlag: $('#piiConfirmEncrypt').val(),
+        scrambleType: $('#piiConfirmScramble').val()
+    };
+
+    $.ajax({
+        url: contextPath + '/piidiscovery/api/results/' + resultId + '/confirm-with-settings',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(settings),
+        beforeSend: function(xhr) {
+            if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#piiConfirmModal').modal('hide');
+                showToast('success', 'PII 확정 및 인벤토리 세팅 완료');
+                loadResults();
+            } else {
+                showToast('error', response.message || '실패');
+            }
+        },
+        error: function() {
+            showToast('error', 'PII 확정 실패');
+        }
+    });
+}
+
 function confirmSingle(resultId, status) {
     $.ajax({
         url: contextPath + '/piidiscovery/api/results/' + resultId + '/confirm?status=' + status,
@@ -1205,6 +1472,10 @@ function showToast(type, message) {
 function showDetailModal(resultId) {
     $('#detailContent').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">로딩중...</p></div>');
     $('#detailModal').modal('show');
+    // 다른 모달 위에 뜰 때 backdrop z-index 조정
+    setTimeout(function() {
+        $('.modal-backdrop').last().css('z-index', 1055);
+    }, 100);
 
     $.ajax({
         url: contextPath + '/piidiscovery/api/results/' + resultId,
@@ -1238,6 +1509,21 @@ function showDetailModal(resultId) {
             html += '<tr><th>패턴</th><td>' + (result.patternScore || 0) + '% ' + (result.patternMatch === 'Y' ? '<span class="badge badge-success">일치</span>' : '') + '</td></tr>';
             html += '<tr><th>규칙</th><td>' + (result.matchedRule || '-') + '</td></tr>';
             html += '<tr><th>상태</th><td><span class="status-badge ' + (result.confirmStatus || 'pending').toLowerCase() + '">' + translateStatus(result.confirmStatus || 'PENDING') + '</span></td></tr>';
+            // 암호화 상태
+            var encStatus = result.encryptionStatus || 'NONE';
+            var encRatio = result.encryptionRatio || 0;
+            var encHtml = '-';
+            if (encStatus === 'HASHED') {
+                encHtml = '<span class="badge badge-danger">' + encRatio + '% 해시</span>';
+            } else if (encStatus === 'ENCRYPTED') {
+                encHtml = '<span class="badge badge-warning">' + encRatio + '% 암호화</span>';
+            } else if (encStatus === 'UNKNOWN') {
+                encHtml = '<span class="badge badge-secondary">' + encRatio + '% 미확인</span>';
+            }
+            if (result.encryptionMethod) {
+                encHtml += ' <span class="badge badge-secondary">' + escapeHtml(result.encryptionMethod) + '</span>';
+            }
+            html += '<tr><th>암호화</th><td>' + encHtml + '</td></tr>';
             html += '</table>';
             html += '</div>';
 

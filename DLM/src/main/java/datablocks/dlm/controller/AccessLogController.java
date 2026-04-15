@@ -25,6 +25,9 @@ import org.springframework.web.bind.annotation.*;
 
 import datablocks.dlm.domain.*;
 import datablocks.dlm.engine.AccessLogCollector;
+import datablocks.dlm.mapper.AccessLogMapper;
+import datablocks.dlm.mapper.DiscoveryMapper;
+import datablocks.dlm.schedule.AccessLogHashVerifyScheduler;
 import datablocks.dlm.service.AccessLogService;
 import datablocks.dlm.service.PiiDatabaseService;
 import datablocks.dlm.util.LogUtil;
@@ -48,6 +51,15 @@ public class AccessLogController {
     @Autowired
     private PiiDatabaseService piiDatabaseService;
 
+    @Autowired
+    private AccessLogHashVerifyScheduler hashVerifyScheduler;
+
+    @Autowired
+    private DiscoveryMapper discoveryMapper;
+
+    @Autowired
+    private AccessLogMapper accessLogMapper;
+
     // ========== Page Controllers ==========
 
     @GetMapping("/index")
@@ -55,30 +67,30 @@ public class AccessLogController {
         LogUtil.log("INFO", "AccessLog index page");
         // 대시보드 초기 데이터
         AccessLogStatVO stats = accessLogService.getDashboardStats(null);
+        AccessLogStatVO compliance = accessLogService.getComplianceStats();
         model.addAttribute("stats", stats);
+        model.addAttribute("compliance", compliance);
         return "accesslog/index";
     }
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         AccessLogStatVO stats = accessLogService.getDashboardStats(null);
+        AccessLogStatVO compliance = accessLogService.getComplianceStats();
         List<AccessLogAlertVO> latestAlerts = accessLogService.getLatestAlerts(5);
         Criteria cri = new Criteria();
         cri.setAmount(100);
         List<AccessLogSourceVO> sources = accessLogService.getSourceList(cri);
         model.addAttribute("stats", stats);
+        model.addAttribute("compliance", compliance);
         model.addAttribute("latestAlerts", latestAlerts);
         model.addAttribute("sources", sources);
         return "accesslog/dashboard";
     }
 
     @GetMapping("/logs")
-    public String logs(@ModelAttribute Criteria cri, Model model) {
-        List<AccessLogVO> list = accessLogService.getAccessLogList(cri);
-        int total = accessLogService.getAccessLogTotal(cri);
-        model.addAttribute("list", list);
-        model.addAttribute("total", total);
-        model.addAttribute("pageMaker", new PageDTO(cri, total));
+    public String logs(Model model) {
+        // 초기 로드 시 조회하지 않음 — 필터 조건 입력 후 AJAX로 조회
         return "accesslog/logs";
     }
 
@@ -89,7 +101,93 @@ public class AccessLogController {
         model.addAttribute("list", list);
         model.addAttribute("total", total);
         model.addAttribute("pageMaker", new PageDTO(cri, total));
+        model.addAttribute("ruleList", accessLogService.getAlertRuleList());
         return "accesslog/alerts";
+    }
+
+    @GetMapping("/policy")
+    public String policy(Model model) {
+        model.addAttribute("dbList", piiDatabaseService.getList());
+        return "accesslog/policy";
+    }
+
+    @GetMapping("/exclude-patterns")
+    public String excludePatterns() {
+        return "accesslog/exclude-patterns";
+    }
+
+    // ========== Exclude SQL Pattern API ==========
+    @GetMapping("/api/exclude-patterns")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getExcludePatterns(
+            @RequestParam(value = "sourceType", required = false) String sourceType) {
+        return ResponseEntity.ok(accessLogMapper.selectExcludeSqlPatterns(sourceType));
+    }
+
+    @PostMapping("/api/exclude-patterns")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> addExcludePattern(@RequestBody Map<String, String> body, Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String userId = principal != null ? principal.getName() : "admin";
+            accessLogMapper.insertExcludeSqlPattern(
+                body.get("sourceType"), body.get("pattern"), body.get("matchType"),
+                body.get("description"), userId);
+            result.put("success", true);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/api/exclude-patterns/{patternId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updateExcludePattern(
+            @PathVariable int patternId, @RequestBody Map<String, String> body) {
+        Map<String, Object> result = new HashMap<>();
+        accessLogMapper.updateExcludeSqlPattern(patternId, body.get("pattern"),
+            body.get("matchType"), body.get("description"), body.get("isActive"));
+        result.put("success", true);
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/api/exclude-patterns/{patternId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteExcludePattern(@PathVariable int patternId) {
+        Map<String, Object> result = new HashMap<>();
+        accessLogMapper.deleteExcludeSqlPattern(patternId);
+        result.put("success", true);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 감사 정책 요약 목록 (전체 DB별 Audit/BCI 개수)
+     */
+    @GetMapping("/api/policy/list")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getPolicyList() {
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        List<PiiDatabaseVO> dbs = piiDatabaseService.getList();
+        for (PiiDatabaseVO db : dbs) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("dbName", db.getDb());
+            item.put("dbType", db.getDbtype());
+            item.put("hostname", db.getHostname());
+            item.put("port", db.getPort());
+            item.put("system", db.getSystem());
+            // DB Audit 대상 수
+            List<Map<String, Object>> piiTables = accessLogMapper.selectMetaPiiTables(db.getDb());
+            long auditCount = piiTables != null ? piiTables.stream().filter(t -> "Y".equals(t.get("auditYn"))).count() : 0;
+            long piiTotal = piiTables != null ? piiTables.size() : 0;
+            item.put("piiTableCount", piiTotal);
+            item.put("auditCount", auditCount);
+            // BCI 대상 수
+            List<BciTargetVO> bciTargets = accessLogMapper.selectBciTargets(db.getDb());
+            item.put("bciCount", bciTargets != null ? bciTargets.size() : 0);
+            result.add(item);
+        }
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/sources")
@@ -99,14 +197,39 @@ public class AccessLogController {
         model.addAttribute("list", list);
         model.addAttribute("total", total);
         model.addAttribute("pageMaker", new PageDTO(cri, total));
+        model.addAttribute("dbList", piiDatabaseService.getList());
         return "accesslog/sources";
     }
 
     @GetMapping("/settings")
     public String settings(Model model) {
-        model.addAttribute("configs", accessLogService.getConfigList());
-        model.addAttribute("alertRules", accessLogService.getAlertRuleList());
+        List<AccessLogConfigVO> allConfigs = accessLogService.getConfigList();
+        // configType별 그룹핑
+        Map<String, List<AccessLogConfigVO>> grouped = new java.util.LinkedHashMap<>();
+        // 표시 순서 정의
+        String[] typeOrder = {"GENERAL", "COLLECT", "ALERT", "RETENTION", "ARCHIVE"};
+        for (String t : typeOrder) {
+            grouped.put(t, new java.util.ArrayList<>());
+        }
+        for (AccessLogConfigVO c : allConfigs) {
+            String type = c.getConfigType() != null ? c.getConfigType() : "GENERAL";
+            grouped.computeIfAbsent(type, k -> new java.util.ArrayList<>()).add(c);
+        }
+        // 빈 그룹 제거
+        grouped.entrySet().removeIf(e -> e.getValue().isEmpty());
+        model.addAttribute("configGroups", grouped);
         return "accesslog/settings";
+    }
+
+    @GetMapping("/alert-rules")
+    public String alertRules(Model model) {
+        model.addAttribute("alertRules", accessLogService.getAlertRuleList());
+        return "accesslog/alert-rules";
+    }
+
+    @GetMapping("/hash-verify")
+    public String hashVerify() {
+        return "accesslog/hash-verify";
     }
 
     // ========== REST APIs ==========
@@ -192,6 +315,118 @@ public class AccessLogController {
         return ResponseEntity.ok(result);
     }
 
+    // --- Batch Operations ---
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/source/batch-start")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> batchStartCollection(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> sourceIds = (List<String>) body.get("sourceIds");
+        if (sourceIds == null || sourceIds.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "선택된 대상이 없습니다.");
+            return ResponseEntity.ok(result);
+        }
+        int successCount = 0;
+        for (String sourceId : sourceIds) {
+            try {
+                AccessLogSourceVO source = accessLogService.getSource(sourceId);
+                if (source != null) {
+                    accessLogCollector.startCollection(sourceId);
+                    accessLogCollector.collect(source);
+                    successCount++;
+                }
+            } catch (Exception e) {
+                logger.warn("Batch start failed for source {}: {}", sourceId, e.getMessage());
+            }
+        }
+        result.put("success", true);
+        result.put("message", successCount + "건 수집이 시작되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/source/batch-stop")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> batchStopCollection(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> sourceIds = (List<String>) body.get("sourceIds");
+        if (sourceIds == null || sourceIds.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "선택된 대상이 없습니다.");
+            return ResponseEntity.ok(result);
+        }
+        for (String sourceId : sourceIds) {
+            accessLogCollector.stopCollection(sourceId);
+        }
+        result.put("success", true);
+        result.put("message", sourceIds.size() + "건 수집이 중지되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/source/batch-delete")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> batchDeleteSources(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> sourceIds = (List<String>) body.get("sourceIds");
+        if (sourceIds == null || sourceIds.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "선택된 대상이 없습니다.");
+            return ResponseEntity.ok(result);
+        }
+        int deleted = 0;
+        for (String sourceId : sourceIds) {
+            if (accessLogService.removeSource(sourceId)) deleted++;
+        }
+        result.put("success", true);
+        result.put("message", deleted + "건이 삭제되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/source/test-connection")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> testConnection(@RequestBody Map<String, String> body) {
+        Map<String, Object> result = new HashMap<>();
+        String dbName = body.get("dbName");
+        String hostname = body.get("hostname");
+        String port = body.get("port");
+        String dbType = body.get("dbType");
+        try {
+            // 간단한 JDBC 연결 테스트
+            String jdbcUrl;
+            if ("ORACLE".equalsIgnoreCase(dbType)) {
+                jdbcUrl = "jdbc:oracle:thin:@" + hostname + ":" + port + ":ORCL";
+            } else if ("MSSQL".equalsIgnoreCase(dbType)) {
+                jdbcUrl = "jdbc:sqlserver://" + hostname + ":" + port;
+            } else {
+                jdbcUrl = "jdbc:mysql://" + hostname + ":" + port + "/" + (dbName != null ? dbName : "");
+            }
+            java.sql.Connection conn = null;
+            try {
+                conn = java.sql.DriverManager.getConnection(jdbcUrl, "test", "test");
+                result.put("success", true);
+                result.put("message", "연결 성공");
+            } catch (java.sql.SQLException e) {
+                // 인증 실패도 네트워크 연결은 된 것으로 판단
+                String msg = e.getMessage();
+                if (msg != null && (msg.contains("Access denied") || msg.contains("password") || msg.contains("authentication"))) {
+                    result.put("success", true);
+                    result.put("message", "네트워크 연결 확인 (인증 정보 별도 설정 필요)");
+                } else {
+                    result.put("success", false);
+                    result.put("message", "연결 실패: " + msg);
+                }
+            } finally {
+                if (conn != null) try { conn.close(); } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "연결 테스트 오류: " + e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
     // --- Collection Control ---
     @PostMapping("/api/collection/{sourceId}/start")
     @ResponseBody
@@ -248,6 +483,227 @@ public class AccessLogController {
         return ResponseEntity.ok(result);
     }
 
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/alert/bulk-dismiss")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkDismissAlerts(@RequestBody Map<String, Object> body,
+                                                                  Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        List<Integer> rawIds = (List<Integer>) body.get("alertIds");
+        if (rawIds == null || rawIds.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "선택된 알림이 없습니다.");
+            return ResponseEntity.ok(result);
+        }
+        List<Long> alertIds = rawIds.stream().map(Integer::longValue).collect(java.util.stream.Collectors.toList());
+        String comment = (String) body.getOrDefault("comment", "");
+        String userId = principal != null ? principal.getName() : "system";
+        int updated = accessLogService.bulkDismissAlerts(alertIds, userId, comment);
+        result.put("success", true);
+        result.put("updated", updated);
+        result.put("message", updated + "건이 무시 처리되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/alert/bulk-approve")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkApproveAlerts(@RequestBody Map<String, Object> body,
+                                                                   Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        List<Integer> rawIds = (List<Integer>) body.get("alertIds");
+        if (rawIds == null || rawIds.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "선택된 알림이 없습니다.");
+            return ResponseEntity.ok(result);
+        }
+        List<Long> alertIds = rawIds.stream().map(Integer::longValue).collect(java.util.stream.Collectors.toList());
+        String comment = (String) body.getOrDefault("comment", "");
+        String approverId = principal != null ? principal.getName() : "system";
+        int updated = accessLogService.bulkApproveAlerts(alertIds, approverId, comment);
+        result.put("success", true);
+        result.put("updated", updated);
+        result.put("message", updated + "건이 승인 처리되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 무시 처리 + 예외 등록 통합 API
+     * 규칙+사용자 조합 목록에 대해: DB 전체의 미처리 알림 일괄 무시 + 예외 규칙 등록/연장
+     */
+    @SuppressWarnings("unchecked")
+    @PostMapping("/api/alert/dismiss-with-suppression")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> dismissWithSuppression(@RequestBody Map<String, Object> body,
+                                                                       Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String userId = principal != null ? principal.getName() : "system";
+        String comment = (String) body.getOrDefault("comment", "");
+
+        // 1) 지정된 alertIds가 있으면 먼저 무시 처리
+        List<Integer> rawIds = (List<Integer>) body.get("alertIds");
+        int dismissed = 0;
+        if (rawIds != null && !rawIds.isEmpty()) {
+            List<Long> alertIds = rawIds.stream().map(Integer::longValue).collect(java.util.stream.Collectors.toList());
+            dismissed = accessLogService.bulkDismissAlerts(alertIds, userId, comment);
+        }
+
+        // 2) combos별로: DB 전체 같은 규칙+사용자 미처리 알림 무시 + 예외 등록
+        List<Map<String, Object>> combos = (List<Map<String, Object>>) body.get("combos");
+        List<Map<String, Object>> suppressionResults = new java.util.ArrayList<>();
+        if (combos != null) {
+            for (Map<String, Object> combo : combos) {
+                String ruleId = (String) combo.get("ruleId");
+                String ruleCode = (String) combo.get("ruleCode");
+                String targetUserId = (String) combo.get("targetUserId");
+                String severity = (String) combo.get("severity");
+                String effectiveUntil = (String) combo.get("effectiveUntil");
+                Integer reviewCycleDays = combo.get("reviewCycleDays") != null
+                        ? ((Number) combo.get("reviewCycleDays")).intValue() : 90;
+
+                // 2a) DB 전체에서 같은 규칙+사용자 미처리 알림 무시
+                int extra = accessLogService.dismissByRuleAndUser(ruleId, targetUserId, userId, comment);
+                dismissed += extra;
+
+                // 2b) 예외 등록/연장
+                AlertSuppressionVO suppression = new AlertSuppressionVO();
+                suppression.setRuleId(ruleId);
+                suppression.setRuleCode(ruleCode);
+                suppression.setTargetUserId(targetUserId);
+                suppression.setSuppressionType("SUPPRESS");
+                suppression.setReason(comment);
+                suppression.setSeverityAtTime(severity);
+                suppression.setEffectiveUntil(effectiveUntil);
+                suppression.setReviewCycleDays(reviewCycleDays);
+                suppression.setApprovedBy(userId);
+                suppression.setRegUserId(userId);
+
+                Map<String, Object> regResult = accessLogService.registerOrExtendSuppression(suppression, userId);
+                regResult.put("ruleCode", ruleCode);
+                regResult.put("targetUserId", targetUserId);
+                suppressionResults.add(regResult);
+            }
+        }
+
+        result.put("success", true);
+        result.put("dismissed", dismissed);
+        result.put("suppressions", suppressionResults);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/alert/{alertId}/detail")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAlertDetail(@PathVariable Long alertId) {
+        Map<String, Object> result = new HashMap<>();
+        AccessLogAlertVO alert = accessLogService.getAlert(alertId);
+        result.put("alert", alert);
+        // TBL_MEMBER에서 이메일 조회
+        if (alert != null && alert.getTargetUserId() != null) {
+            result.put("memberInfo", accessLogService.getMemberEmail(alert.getTargetUserId()));
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // --- Justification Workflow (관리자) ---
+    @PostMapping("/api/alert/{alertId}/notify")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> sendJustificationRequest(@PathVariable Long alertId,
+                                                                         @RequestBody Map<String, String> body,
+                                                                         HttpServletRequest request,
+                                                                         Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String targetEmail = body.get("targetEmail");
+        if (targetEmail == null || targetEmail.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("message", "대상자 이메일을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        String baseUrl = request.getScheme() + "://" + request.getServerName()
+                + (request.getServerPort() != 80 && request.getServerPort() != 443 ? ":" + request.getServerPort() : "");
+        String requesterId = principal != null ? principal.getName() : "system";
+        boolean sent = accessLogService.sendJustificationRequest(alertId, targetEmail.trim(), baseUrl, requesterId);
+        result.put("success", sent);
+        result.put("message", sent ? "소명 요청 이메일이 발송되었습니다." : "발송에 실패했습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/alert/{alertId}/approve")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> approveAlert(@PathVariable Long alertId,
+                                                              @RequestBody Map<String, String> body,
+                                                              Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String comment = body.get("comment");
+        String approverId = principal != null ? principal.getName() : "system";
+        result.put("success", accessLogService.approveAlert(alertId, approverId, comment));
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/alert/{alertId}/reject")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> rejectAlert(@PathVariable Long alertId,
+                                                             @RequestBody Map<String, String> body,
+                                                             HttpServletRequest request,
+                                                             Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String comment = body.get("comment");
+        String approverId = principal != null ? principal.getName() : "system";
+        String baseUrl = request.getScheme() + "://" + request.getServerName()
+                + (request.getServerPort() != 80 && request.getServerPort() != 443 ? ":" + request.getServerPort() : "");
+        result.put("success", accessLogService.rejectAlert(alertId, approverId, comment, baseUrl));
+        return ResponseEntity.ok(result);
+    }
+
+    // --- Justification Page (대상자용, 로그인 불필요) ---
+    @GetMapping("/justify/{token}")
+    public String justifyPage(@PathVariable String token, Model model) {
+        AccessLogAlertVO alert = accessLogService.getAlertByToken(token);
+        if (alert == null) {
+            model.addAttribute("error", "유효하지 않은 링크입니다.");
+            return "accesslog/justify";
+        }
+        // 토큰 만료 체크
+        if (alert.getTokenExpiresAt() != null) {
+            try {
+                java.time.LocalDateTime expires = java.time.LocalDateTime.parse(alert.getTokenExpiresAt(),
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                if (java.time.LocalDateTime.now().isAfter(expires)) {
+                    model.addAttribute("error", "링크가 만료되었습니다. 관리자에게 문의하세요.");
+                    return "accesslog/justify";
+                }
+            } catch (Exception e) { /* parse fail - allow access */ }
+        }
+        // 이미 소명 제출된 경우
+        if ("JUSTIFIED".equals(alert.getStatus()) || "RESOLVED".equals(alert.getStatus())) {
+            model.addAttribute("error", "이미 소명이 제출되었습니다.");
+            return "accesslog/justify";
+        }
+        model.addAttribute("alert", alert);
+        model.addAttribute("token", token);
+        return "accesslog/justify";
+    }
+
+    @PostMapping("/justify/{token}/submit")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitJustification(@PathVariable String token,
+                                                                     @RequestBody Map<String, String> body) {
+        Map<String, Object> result = new HashMap<>();
+        String justification = body.get("justification");
+        String justifiedBy = body.get("justifiedBy");
+        if (justification == null || justification.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("message", "소명 사유를 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        if (justifiedBy == null || justifiedBy.trim().isEmpty()) {
+            justifiedBy = "대상자";
+        }
+        boolean ok = accessLogService.submitJustification(token, justification.trim(), justifiedBy.trim());
+        result.put("success", ok);
+        result.put("message", ok ? "소명이 제출되었습니다." : "소명 제출에 실패했습니다. 링크가 만료되었거나 이미 처리되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
     // --- Alert Rule ---
     @PostMapping("/api/alert-rule")
     @ResponseBody
@@ -295,7 +751,19 @@ public class AccessLogController {
         Map<String, Object> result = new HashMap<>();
         config.setConfigId(configId);
         config.setUpdUserId(principal != null ? principal.getName() : "system");
-        result.put("success", accessLogService.modifyConfig(config));
+        boolean success = accessLogService.modifyConfig(config);
+        result.put("success", success);
+        // 스케줄 설정 변경 시 동적 반영
+        if (success) {
+            try {
+                AccessLogConfigVO saved = accessLogService.getConfigByKey("HASH_VERIFY_SCHEDULE");
+                if (saved != null && saved.getConfigId().equals(configId)) {
+                    hashVerifyScheduler.reschedule();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to reschedule hash verify", e);
+            }
+        }
         return ResponseEntity.ok(result);
     }
 
@@ -314,6 +782,102 @@ public class AccessLogController {
     @ResponseBody
     public ResponseEntity<List<Map<String, Object>>> getHashVerifyList(@ModelAttribute Criteria cri) {
         return ResponseEntity.ok(accessLogService.getHashVerifyList(cri));
+    }
+
+    // --- Alert Suppression (알림 예외 규칙) ---
+    @GetMapping("/suppressions")
+    public String suppressions(@ModelAttribute Criteria cri, Model model) {
+        List<AlertSuppressionVO> list = accessLogService.getSuppressionList(cri);
+        int total = accessLogService.getSuppressionTotal(cri);
+        model.addAttribute("list", list);
+        model.addAttribute("total", total);
+        model.addAttribute("pageMaker", new PageDTO(cri, total));
+        model.addAttribute("ruleList", accessLogService.getAlertRuleList());
+        return "accesslog/suppressions";
+    }
+
+    @PostMapping("/api/suppression")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> registerSuppression(@RequestBody AlertSuppressionVO suppression,
+                                                                     Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String userId = principal != null ? principal.getName() : "system";
+        suppression.setApprovedBy(userId);
+        suppression.setRegUserId(userId);
+        if (suppression.getReviewCycleDays() <= 0) suppression.setReviewCycleDays(90);
+        // 중복 체크: 기존 활성 건이 있으면 연장, 없으면 신규 등록
+        Map<String, Object> regResult = accessLogService.registerOrExtendSuppression(suppression, userId);
+        result.put("success", true);
+        result.put("action", regResult.get("action"));           // CREATED or EXTENDED
+        result.put("suppressionId", regResult.get("suppressionId"));
+        if ("EXTENDED".equals(regResult.get("action"))) {
+            result.put("message", "이미 동일 조건의 예외 규칙이 있어 유효기간이 연장되었습니다.");
+            result.put("existingUntil", regResult.get("existingUntil"));
+        } else {
+            result.put("message", "알림 예외 규칙이 등록되었습니다.");
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /** 특정 규칙+사용자의 활성 예외 존재 여부 확인 */
+    @GetMapping("/api/suppression/check")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> checkActiveSuppression(
+            @RequestParam String ruleId, @RequestParam String targetUserId) {
+        Map<String, Object> result = new HashMap<>();
+        AlertSuppressionVO existing = accessLogService.getActiveSuppression(ruleId, targetUserId);
+        result.put("exists", existing != null);
+        if (existing != null) {
+            result.put("suppressionId", existing.getSuppressionId());
+            result.put("effectiveUntil", existing.getEffectiveUntil());
+            result.put("reason", existing.getReason());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/suppression/{suppressionId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getSuppressionDetail(@PathVariable Long suppressionId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("suppression", accessLogService.getSuppression(suppressionId));
+        result.put("auditLog", accessLogService.getSuppressionAuditList(suppressionId));
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/suppression/{suppressionId}/review")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> reviewSuppression(@PathVariable Long suppressionId,
+                                                                    @RequestBody Map<String, String> body,
+                                                                    Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String reviewedBy = principal != null ? principal.getName() : "system";
+        String comment = body.get("comment");
+        result.put("success", accessLogService.reviewSuppression(suppressionId, reviewedBy, comment));
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/suppression/{suppressionId}/deactivate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deactivateSuppression(@PathVariable Long suppressionId,
+                                                                       @RequestBody Map<String, String> body,
+                                                                       Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String userId = principal != null ? principal.getName() : "system";
+        String reason = body.getOrDefault("reason", "관리자 비활성화");
+        result.put("success", accessLogService.deactivateSuppression(suppressionId, userId, reason));
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/suppression/{suppressionId}/extend")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> extendSuppression(@PathVariable Long suppressionId,
+                                                                    @RequestBody Map<String, String> body,
+                                                                    Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        String userId = principal != null ? principal.getName() : "system";
+        String effectiveUntil = body.get("effectiveUntil");
+        result.put("success", accessLogService.extendSuppression(suppressionId, effectiveUntil, userId));
+        return ResponseEntity.ok(result);
     }
 
     // --- Download (Excel Export) ---
@@ -369,5 +933,259 @@ public class AccessLogController {
 
             workbook.write(response.getOutputStream());
         }
+    }
+
+    // ========== Audit Policy Script Generation ==========
+
+    /**
+     * 설정 프로세스 상태 확인 API
+     * MetaTable 마스터 기반으로 PII 테이블 목록 반환
+     */
+    @GetMapping("/api/setup/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getSetupStatus(@RequestParam String dbName) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            // 1단계: DB 등록 여부
+            PiiDatabaseVO dbInfo = piiDatabaseService.get(dbName);
+            result.put("dbRegistered", dbInfo != null);
+            result.put("dbType", dbInfo != null ? dbInfo.getDbtype() : null);
+
+            // 2단계: MetaTable에서 PII 테이블 목록 (piitype이 있고 notpii가 아닌 것)
+            List<Map<String, Object>> piiTables = accessLogMapper.selectMetaPiiTables(dbName);
+            result.put("piiTableCount", piiTables != null ? piiTables.size() : 0);
+            result.put("piiTables", piiTables);
+
+            // BCI 대상 테이블 목록
+            List<BciTargetVO> bciTargets = accessLogMapper.selectBciTargets(dbName);
+            result.put("bciTargetCount", bciTargets != null ? bciTargets.size() : 0);
+            result.put("bciTargets", bciTargets);
+
+            // 전체 테이블 목록 (BCI용, PII+비PII)
+            List<Map<String, Object>> allTables = accessLogMapper.selectAllTablesForBci(dbName);
+            result.put("allTableCount", allTables != null ? allTables.size() : 0);
+            result.put("allTables", allTables);
+
+            // 수집 대상 등록 여부
+            AccessLogSourceVO source = accessLogService.getSourceByDbName(dbName);
+            result.put("sourceRegistered", source != null);
+            result.put("sourceStatus", source != null ? source.getStatus() : null);
+
+            result.put("success", true);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Audit 대상 테이블 개별 저장 (체크박스 변경 시 즉시 호출)
+     */
+    @PostMapping("/api/audit-policy/save")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> saveAuditTarget(@RequestBody Map<String, String> body) {
+        Map<String, Object> result = new HashMap<>();
+        accessLogMapper.updateAuditTarget(body.get("dbName"), body.get("owner"), body.get("tableName"), body.get("auditYn"));
+        result.put("success", true);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Audit 대상 테이블 일괄 저장 (전체 선택/해제 시)
+     */
+    @PostMapping("/api/audit-policy/save-batch")
+    @ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> saveAuditTargetBatch(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        String dbName = (String) body.get("dbName");
+        String auditYn = (String) body.get("auditYn");
+        List<Map<String, String>> tables = (List<Map<String, String>>) body.get("tables");
+        for (Map<String, String> t : tables) {
+            accessLogMapper.updateAuditTarget(dbName, t.get("owner"), t.get("tableName"), auditYn);
+        }
+        result.put("success", true);
+        result.put("count", tables.size());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Oracle Audit Policy 스크립트 생성 API
+     * 사용자가 선택한 테이블 목록 기반으로 스크립트 생성
+     */
+    @PostMapping("/api/audit-policy/script")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> generateAuditPolicyScript(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String dbName = (String) body.get("dbName");
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> selectedTables = (List<Map<String, String>>) body.get("tables");
+
+            PiiDatabaseVO dbInfo = piiDatabaseService.get(dbName);
+            if (dbInfo == null) {
+                result.put("success", false);
+                result.put("message", "등록된 DB를 찾을 수 없습니다: " + dbName);
+                return ResponseEntity.ok(result);
+            }
+
+            if (selectedTables == null || selectedTables.isEmpty()) {
+                result.put("success", false);
+                result.put("message", "Audit 대상 테이블을 선택하세요.");
+                return ResponseEntity.ok(result);
+            }
+
+            String script = buildAuditPolicyScript(dbInfo, selectedTables);
+            result.put("success", true);
+            result.put("script", script);
+            result.put("dbName", dbName);
+            result.put("dbType", dbInfo.getDbtype());
+            result.put("tableCount", selectedTables.size());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Audit Policy + 자동 정리 통합 스크립트 생성
+     */
+    private String buildAuditPolicyScript(PiiDatabaseVO dbInfo, List<Map<String, String>> tables) {
+        StringBuilder sb = new StringBuilder();
+        String dbType = dbInfo.getDbtype();
+        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date());
+
+        sb.append("-- ============================================================\n");
+        sb.append("-- DLM 감사 정책 스크립트 (자동 생성: ").append(now).append(")\n");
+        sb.append("-- DB: ").append(dbInfo.getDb()).append(" (").append(dbType).append(")\n");
+        sb.append("-- 대상: 선택된 PII 테이블 ").append(tables.size()).append("개\n");
+        sb.append("-- ============================================================\n\n");
+
+        if ("ORACLE".equalsIgnoreCase(dbType)) {
+            buildOracleAuditScript(sb, tables);
+        } else if ("MARIADB".equalsIgnoreCase(dbType) || "MYSQL".equalsIgnoreCase(dbType)) {
+            buildMariaDbAuditScript(sb, dbInfo, tables);
+        }
+
+        return sb.toString();
+    }
+
+    private void buildOracleAuditScript(StringBuilder sb, List<Map<String, String>> tables) {
+        sb.append("-- [1단계] 기존 DLM 감사 정책 제거\n");
+        sb.append("-- (정책이 없으면 오류 발생하므로 무시하세요)\n");
+        sb.append("NOAUDIT POLICY XAUDIT_PII_POLICY;\n");
+        sb.append("DROP AUDIT POLICY XAUDIT_PII_POLICY;\n\n");
+
+        sb.append("-- [2단계] PII 테이블 대상 감사 정책 생성\n");
+        sb.append("CREATE AUDIT POLICY XAUDIT_PII_POLICY\n");
+        sb.append("  ACTIONS\n");
+
+        boolean first = true;
+        for (Map<String, String> table : tables) {
+            String schema = table.get("owner");
+            String tableName = table.get("tableName");
+            String piiCols = table.get("piiColumns");
+
+            String fullName = (schema != null && !schema.isEmpty())
+                    ? schema + "." + tableName : tableName;
+
+            sb.append("    -- PII 컬럼: ").append(piiCols != null ? piiCols : "").append("\n");
+            String[] actions = {"SELECT", "INSERT", "UPDATE", "DELETE"};
+            for (String action : actions) {
+                if (!first) sb.append(",\n");
+                sb.append("    ").append(action).append(" ON ").append(fullName);
+                first = false;
+            }
+            sb.append("\n");
+        }
+        sb.append(";\n\n");
+
+        sb.append("-- [3단계] 감사 정책 활성화 (전체 사용자 대상)\n");
+        sb.append("AUDIT POLICY XAUDIT_PII_POLICY;\n\n");
+
+        sb.append("-- [4단계] 기존 감사 로그 정리 (선택사항 - 용량 확보)\n");
+        sb.append("-- 주의: 실행 시 기존 감사 기록이 모두 삭제됩니다.\n");
+        sb.append("-- BEGIN\n");
+        sb.append("--   DBMS_AUDIT_MGMT.CLEAN_AUDIT_TRAIL(\n");
+        sb.append("--     audit_trail_type => DBMS_AUDIT_MGMT.AUDIT_TRAIL_UNIFIED,\n");
+        sb.append("--     use_last_arch_timestamp => FALSE\n");
+        sb.append("--   );\n");
+        sb.append("-- END;\n");
+        sb.append("-- /\n\n");
+
+        sb.append("-- [5단계] 감사 로그 자동 정리 (권장 - 30일 보존)\n");
+        sb.append("BEGIN\n");
+        sb.append("  DBMS_AUDIT_MGMT.CREATE_PURGE_JOB(\n");
+        sb.append("    audit_trail_type           => DBMS_AUDIT_MGMT.AUDIT_TRAIL_UNIFIED,\n");
+        sb.append("    audit_trail_purge_interval => 24,\n");
+        sb.append("    audit_trail_purge_name     => 'XAUDIT_PURGE',\n");
+        sb.append("    use_last_arch_timestamp    => TRUE\n");
+        sb.append("  );\n");
+        sb.append("END;\n");
+        sb.append("/\n\n");
+
+        sb.append("-- [확인] 적용된 정책 확인\n");
+        sb.append("SELECT POLICY_NAME, AUDIT_OPTION, OBJECT_SCHEMA, OBJECT_NAME\n");
+        sb.append("FROM AUDIT_UNIFIED_POLICIES\n");
+        sb.append("WHERE POLICY_NAME = 'XAUDIT_PII_POLICY';\n\n");
+        sb.append("SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES\n");
+        sb.append("WHERE POLICY_NAME = 'XAUDIT_PII_POLICY';\n");
+    }
+
+    private void buildMariaDbAuditScript(StringBuilder sb, PiiDatabaseVO dbInfo, List<Map<String, String>> tables) {
+        sb.append("-- MariaDB/MySQL: General Log 활성화\n");
+        sb.append("-- 주의: General Log는 테이블 단위 필터링이 불가합니다.\n");
+        sb.append("-- DLM 수집 대상 설정에서 아래 테이블 필터를 사용하세요.\n\n");
+        sb.append("SET GLOBAL general_log = 'ON';\n");
+        sb.append("SET GLOBAL log_output = 'TABLE';\n\n");
+        sb.append("-- DLM 수집 대상 > 대상 테이블에 아래를 입력하세요:\n");
+        StringBuilder tableList = new StringBuilder();
+        for (Map<String, String> t : tables) {
+            if (tableList.length() > 0) tableList.append(", ");
+            tableList.append(t.get("tableName"));
+        }
+        sb.append("-- ").append(tableList).append("\n");
+    }
+
+    // ========== BCI Target API ==========
+
+    /**
+     * BCI 대상 일괄 저장 (기존 초기화 후 새 목록 등록)
+     */
+    @PostMapping("/api/bci-target/save")
+    @ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> saveBciTargets(@RequestBody Map<String, Object> body, Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String dbName = (String) body.get("dbName");
+            List<Map<String, String>> tables = (List<Map<String, String>>) body.get("tables");
+            String userId = principal != null ? principal.getName() : "admin";
+
+            // 기존 초기화
+            accessLogMapper.clearBciTargets(dbName);
+
+            // 새 목록 등록
+            for (Map<String, String> t : tables) {
+                BciTargetVO target = new BciTargetVO();
+                target.setTargetId(java.util.UUID.randomUUID().toString());
+                target.setDbName(dbName);
+                target.setOwner(t.get("owner") != null ? t.get("owner") : "");
+                target.setTableName(t.get("tableName"));
+                target.setTargetType(t.get("targetType") != null ? t.get("targetType") : "PII");
+                target.setDescription(t.get("description"));
+                target.setRegUserId(userId);
+                accessLogMapper.insertBciTarget(target);
+            }
+
+            result.put("success", true);
+            result.put("count", tables.size());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
     }
 }

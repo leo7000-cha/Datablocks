@@ -207,17 +207,18 @@ public class PiiStepTableController {
 
         PiiDatabaseVO dbVO_Prod = null;
         /** 메타 정보가 운영계 기준으로 정의되어 있어서 입력된 DB 의 시스템 기준 운영 DB로 변경해준다. 20240428*/
-//        if("SCRAMBLE".equalsIgnoreCase(piisteptable.getExetype())){
-//            /** SCRAMBLE은 step의 DB가 source 임. 20241013*/
-//            String sourcedb = piistep.getDb();
-//            dbVO_Prod = databaseservice.get(sourcedb);
-//        } else {
-            dbVO_Prod = databaseservice.getBySystem(databaseservice.get(piisteptable.getDb()).getSystem());
-//        }
-        cri_metatable.setSearch1(dbVO_Prod.getDb());
-        cri_metatable.setSearch2(piisteptable.getOwner());
-        cri_metatable.setSearch3(piisteptable.getTable_name());
-        model.addAttribute("listscramblecolumn", metaTableService.getListForOneTable(cri_metatable));
+        PiiDatabaseVO dbVO = databaseservice.get(piisteptable.getDb());
+        if (dbVO != null) {
+            dbVO_Prod = databaseservice.getBySystem(dbVO.getSystem());
+        }
+        if (dbVO_Prod != null) {
+            cri_metatable.setSearch1(dbVO_Prod.getDb());
+            cri_metatable.setSearch2(piisteptable.getOwner());
+            cri_metatable.setSearch3(piisteptable.getTable_name());
+            model.addAttribute("listscramblecolumn", metaTableService.getListForOneTable(cri_metatable));
+        } else {
+            model.addAttribute("listscramblecolumn", java.util.Collections.emptyList());
+        }
         model.addAttribute("listlkPiiScrType", lkPiiScrTypeService.getList());
 
     }

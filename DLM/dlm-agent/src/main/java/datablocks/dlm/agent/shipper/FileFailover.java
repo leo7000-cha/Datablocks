@@ -38,7 +38,7 @@ public class FileFailover {
                 Files.createDirectories(dir);
             }
         } catch (IOException e) {
-            System.err.println("[DLM-Agent] Failed to create failover dir: " + e.getMessage());
+            System.err.println("[XAudit-Agent] Failed to create failover dir: " + e.getMessage());
         }
     }
 
@@ -55,9 +55,9 @@ public class FileFailover {
         try (Writer writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(filePath.toFile()), StandardCharsets.UTF_8))) {
             GSON.toJson(batch, writer);
-            System.out.println("[DLM-Agent] Failover saved: " + filePath + " (" + batch.size() + " entries)");
+            System.out.println("[XAudit-Agent] Failover saved: " + filePath + " (" + batch.size() + " entries)");
         } catch (IOException e) {
-            System.err.println("[DLM-Agent] Failover save failed: " + e.getMessage());
+            System.err.println("[XAudit-Agent] Failover save failed: " + e.getMessage());
         }
     }
 }

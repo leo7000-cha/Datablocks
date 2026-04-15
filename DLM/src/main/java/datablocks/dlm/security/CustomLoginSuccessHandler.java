@@ -1,6 +1,7 @@
 package datablocks.dlm.security;
 
 import datablocks.dlm.mapper.PiiMemberMapper;
+import datablocks.dlm.util.LogUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,7 +80,7 @@ public class CustomLoginSuccessHandler implements AuthenticationSuccessHandler {
 			return;
 		}
 */
-		logger.info("[PERF] Login SUCCESS - user={}, redirecting to /", auth.getName());
+		LogUtil.log("INFO", "Login SUCCESS - user=" + auth.getName() + ", authorities=" + auth.getAuthorities() + ", sessionId=" + request.getSession().getId());
 		response.sendRedirect("/");
 	}
 }

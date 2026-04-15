@@ -1,7 +1,7 @@
 # DLM 배포 가이드 — JB우리캐피탈
 
 > 폐쇄망 Rocky Linux 9 / MariaDB 호스트 OS 직접 설치 / Docker 미설치
-> 작성일: 2026-04-08 | 갱신: 2026-04-10
+> 작성일: 2026-04-08 | 갱신: 2026-04-15
 
 ---
 
@@ -60,24 +60,34 @@ deploy/jbwoori/ 폴더
 
 ```
 deploy/jbwoori/
-├── docker-rpms/                    ← Docker RPM 패키지 (Rocky 9 / EL9)
+├── docker-rpms/                       ← Docker RPM 패키지 (Rocky 9 / EL9)
 │   ├── containerd.io-2.2.2
 │   ├── docker-ce-29.4.0
 │   ├── docker-ce-cli-29.4.0
 │   └── docker-compose-plugin-5.1.1
 ├── images/
-│   ├── dlm-app.tar.gz             ← DLM 이미지 (301MB)
-│   └── dlm-privacy-ai.tar.gz     ← Privacy-AI 이미지 (78MB)
-├── docker-compose.jbwoori.yml     ← JB우리캐피탈 전용 Docker Compose
-├── .env.jbwoori                   ← JB우리캐피탈 전용 환경변수
+│   ├── dlm-app.tar.gz                ← DLM 이미지 (~301MB)
+│   └── dlm-privacy-ai.tar.gz        ← Privacy-AI 이미지 (~78MB)
+├── docker-compose.jbwoori.yml        ← JB우리캐피탈 전용 Docker Compose
+├── .env.jbwoori                      ← JB우리캐피탈 전용 환경변수
 ├── mariadb/
-│   ├── DLM_DATABASE_INIT.sql      ← DB/계정 초기화 SQL (★ 변수 치환 후 실행)
-│   ├── cotdl_dump.sql.data        ← DB 스키마 + 데이터
-│   └── custom-prod.cnf            ← MariaDB 권장 설정 (DBA 전달)
+│   ├── DLM_DATABASE_INIT.sql         ← DB/계정 초기화 SQL (★ 변수 치환 후 실행)
+│   ├── cotdl_dump.sql.data           ← DB 스키마 + 데이터
+│   ├── custom-prod.cnf               ← MariaDB 권장 설정 (DBA 전달)
+│   ├── DLM_DDL_MASTER_CORE.sql       ← 코어 테이블 마스터 DDL
+│   ├── DLM_DDL_MASTER_ACCESSLOG.sql  ← 접속기록관리 테이블 (9개)
+│   ├── DLM_DDL_MASTER_DISCOVERY.sql  ← PII 탐지 테이블 (8개)
+│   ├── COTDL_BACKUP_RESTORE.txt      ← DB 백업/복원 가이드
+│   └── patches/                      ← 스키마 패치 (고객사별)
+├── dlm-agent/                        ← WAS 접속기록 에이전트 (선택)
+│   ├── dlm-agent-1.0.0.jar
+│   ├── dlm-agent.properties
+│   ├── install.sh
+│   └── README-Agent설치가이드.md
 ├── scripts/
-│   ├── install-docker.sh          ← Docker 오프라인 설치 (Rocky 9)
-│   └── deploy.sh                  ← DLM 배포 스크립트
-└── README-JB우리캐피탈.md          ← 이 문서
+│   ├── install-docker.sh             ← Docker 오프라인 설치 (Rocky 9)
+│   └── deploy.sh                     ← DLM 배포 스크립트
+└── README-JB우리캐피탈.md             ← 이 문서
 ```
 
 ---
@@ -196,7 +206,43 @@ mysql -u root -p -e "SELECT User, Host FROM mysql.user WHERE User='cotdl';"  # c
 
 ---
 
-## 4. DLM 배포
+## 4. DDL 패치 적용
+
+> **반드시 아래 순서대로 실행합니다.**
+
+### STEP 1: 접속기록관리 테이블 (ACCESSLOG)
+
+```bash
+mysql -u cotdl -p cotdl < mariadb/DLM_DDL_MASTER_ACCESSLOG.sql
+```
+
+### STEP 2: PII 탐지 테이블 (DISCOVERY)
+
+```bash
+mysql -u cotdl -p cotdl < mariadb/DLM_DDL_MASTER_DISCOVERY.sql
+```
+
+### STEP 3: 고객사별 패치 (patches/ 하위 파일이 있는 경우)
+
+```bash
+# 예시 — 파일이 있는 경우만 실행
+mysql -u cotdl -p cotdl < mariadb/patches/PATCH_파일명.sql
+```
+
+### 패치 검증
+
+```bash
+# 핵심 신규 테이블 확인
+mysql -u cotdl -p -e "SHOW TABLES LIKE 'tbl_access_log%';" cotdl
+mysql -u cotdl -p -e "SHOW TABLES LIKE 'tbl_discovery%';" cotdl
+
+# 테이블 수 확인
+mysql -u cotdl -p -e "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='cotdl';" cotdl
+```
+
+---
+
+## 5. DLM 배포
 
 ### 스크립트로 실행 (권장)
 
@@ -223,7 +269,7 @@ bash scripts/deploy.sh
 
 ---
 
-## 5. tbl_piidatabase 설정 (★ 중요)
+## 6. tbl_piidatabase 설정 (★ 중요)
 
 DLM이 Job 실행 시 대상 DB에 JDBC로 접속할 때 `tbl_piidatabase` 테이블의 `hostname` 컬럼을 사용합니다.
 
@@ -254,7 +300,7 @@ SELECT db, hostname, port FROM cotdl.tbl_piidatabase;
 
 ---
 
-## 6. 환경변수 (.env.jbwoori)
+## 7. 환경변수 (.env.jbwoori)
 
 수정이 필요한 항목만 ★ 표시:
 
@@ -280,7 +326,7 @@ docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
 
 ---
 
-## 7. 동작 확인
+## 8. 동작 확인
 
 ```bash
 docker ps
@@ -295,7 +341,7 @@ docker ps
 
 ---
 
-## 8. 운영 명령어
+## 9. 운영 명령어
 
 ### 기본 명령어
 
@@ -352,9 +398,9 @@ docker system df                                     # 디스크 사용량
 
 ---
 
-## 9. 패치 적용
+## 10. 패치 적용 (이미지 업데이트)
 
-### 9-1. 개발PC에서 이미지 준비 (WSL)
+### 10-1. 개발PC에서 이미지 준비 (WSL)
 
 ```bash
 cd /app/Datablocks
@@ -371,7 +417,7 @@ docker save datablocks-dlm-privacy-ai:latest | gzip > deploy/jbwoori/images/dlm-
 cp -r deploy/jbwoori/images/ /mnt/c/Users/사용자명/Desktop/jbwoori-patch/
 ```
 
-### 9-2. JB우리캐피탈 서버에서 패치 적용
+### 10-2. JB우리캐피탈 서버에서 패치 적용
 
 ```bash
 # 0. 현재 이미지 백업 (권장)
@@ -401,13 +447,16 @@ docker logs -f --tail 50 dlm-app
 docker logs dlm-app 2>&1 | grep -i "error\|exception" | tail -10
 ```
 
-### 9-3. DB 패치가 있는 경우
+### 10-3. DB 패치가 있는 경우
 
 ```bash
-mysql -u cotdl -p cotdl < /tmp/patch/PATCH_YYYYMMDD_설명.sql
+# 순서: ACCESSLOG → DISCOVERY → 고객사 패치 순
+mysql -u cotdl -p'!Dlm1234' cotdl < /tmp/patch/DLM_DDL_MASTER_ACCESSLOG.sql
+mysql -u cotdl -p'!Dlm1234' cotdl < /tmp/patch/DLM_DDL_MASTER_DISCOVERY.sql
+mysql -u cotdl -p'!Dlm1234' cotdl < /tmp/patch/PATCH_파일명.sql
 ```
 
-### 9-4. 롤백 (문제 발생 시)
+### 10-4. 롤백 (문제 발생 시)
 
 ```bash
 cd /app/Datablocks
@@ -418,7 +467,7 @@ docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
 
 ---
 
-## 10. 서버 재부팅 시
+## 11. 서버 재부팅 시
 
 Docker에 `restart: unless-stopped` 설정이 되어 있으므로:
 
@@ -434,7 +483,7 @@ sudo systemctl is-enabled mariadb      # enabled 이면 OK
 
 ---
 
-## 11. 트러블슈팅
+## 12. 트러블슈팅
 
 | 증상 | 원인 | 해결 |
 |------|------|------|
@@ -469,7 +518,7 @@ mysql -u cotdl -p cotdl -e "SELECT db, hostname, port FROM tbl_piidatabase;"
 
 ---
 
-## 12. 방화벽 설정 (Rocky 9)
+## 13. 방화벽 설정 (Rocky 9)
 
 ```bash
 sudo firewall-cmd --permanent --add-port=8080/tcp
@@ -498,6 +547,12 @@ DB 준비
   ☐ mysql -u root -p < DLM_DATABASE_INIT.sql 실행
   ☐ mysql -u root -p cotdl < cotdl_dump.sql.data 실행
   ☐ DB/계정 생성 확인 (SHOW DATABASES, SELECT User FROM mysql.user)
+
+DDL 패치
+  ☐ mysql -u cotdl -p cotdl < DLM_DDL_MASTER_ACCESSLOG.sql
+  ☐ mysql -u cotdl -p cotdl < DLM_DDL_MASTER_DISCOVERY.sql
+  ☐ 고객사별 패치 실행 (있는 경우)
+  ☐ 패치 검증 (테이블 수, 인덱스 확인)
 
 DLM 배포
   ☐ bash scripts/deploy.sh 실행

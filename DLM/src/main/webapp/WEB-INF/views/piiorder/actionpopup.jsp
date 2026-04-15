@@ -81,7 +81,7 @@
         if (!isEmpty(search4)) {
             url_search += "&search4=" + search4;
         }
-        alert("/piiorder/" + url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search);
+        //alert("/piiorder/" + url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search);
         ingShow(); $.ajax({
             type: "GET",
             url: "/piiorder/" + url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search,

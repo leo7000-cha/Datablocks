@@ -373,6 +373,35 @@
     $(function () {
         $("#menupath").html(Menupath + '<i class="fas fa-chevron-right" style="font-size: 18px; margin: 0 6px; color: #888;"></i>' + "<spring:message code="memu.job" text="Job"/>" + ">Details")
         var selectedStepid = "";
+
+        // ADMIN 전용: Phase 더블클릭 토글
+        $(document).off('dblclick.phaseToggle').on('dblclick.phaseToggle', '#phaseToggle', function() {
+            var $el = $(this);
+            if ($el.data('processing')) return;
+            $el.data('processing', true);
+            var jobid = $('#jobget_global_jobid').val();
+            var version = $('#jobget_global_version').val();
+            var current = $el.text().trim();
+            var next = (current === 'CHECKIN') ? 'CHECKOUT' : 'CHECKIN';
+            showConfirm('Phase를 ' + current + ' → ' + next + ' 로 변경하시겠습니까?', function() {
+                $.ajax({
+                    url: '/piijob/api/force-toggle-phase',
+                    type: 'POST', contentType: 'application/json',
+                    beforeSend: function(xhr) { xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}"); },
+                    data: JSON.stringify({ jobid: jobid, version: version }),
+                    success: function(res) {
+                        if (res.success) {
+                            searchJobAction(null, 'get?jobid=' + jobid + '&version=' + version + '&');
+                        } else {
+                            dlmAlert('변경 실패: ' + (res.message || ''));
+                        }
+                    },
+                    complete: function() { $el.data('processing', false); }
+                });
+            }, function() {
+                $el.data('processing', false);
+            });
+        });
     });
 
     $(function () {
@@ -930,7 +959,7 @@
     requestOrder = function () {
 
         if ($('#jobget_global_phase').val() != "CHECKIN") {
-            alert("Job is not Checkin status !");
+            dlmAlert("Job is not Checkin status !");
             return;
         }
         // if ($('input[name=status]').val() != "ACTIVE") {
@@ -996,7 +1025,7 @@
         e.preventDefault();e.stopPropagation();
 
         if ($('#jobget_global_phase').val() != "CHECKIN") {
-            alert("Job is not Checkin status !");
+            dlmAlert("Job is not Checkin status !");
             return;
         }
         var serchkeyno1 = $('#jobget_global_jobid').val();
@@ -1131,7 +1160,7 @@
                 },
                 success: function (data) { ingHide();
                     elementResult.html(data);
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                 }
             });
         });

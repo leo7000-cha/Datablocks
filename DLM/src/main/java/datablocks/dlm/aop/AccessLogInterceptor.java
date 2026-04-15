@@ -81,7 +81,7 @@ public class AccessLogInterceptor {
         String userAccount = principal != null ? principal.getName() : "anonymous";
 
         AccessLogVO log = new AccessLogVO();
-        log.setSourceSystemId("DLM_SELF");
+        log.setSourceSystemId("WAS_AGENT");
         log.setUserAccount(userAccount);
         log.setAccessTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")));
         log.setClientIp(getClientIp(request));

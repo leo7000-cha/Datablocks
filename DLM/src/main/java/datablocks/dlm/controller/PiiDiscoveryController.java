@@ -51,6 +51,12 @@ public class PiiDiscoveryController {
     @Autowired
     private PrivacyAiClient privacyAiClient;
 
+    @Autowired
+    private datablocks.dlm.service.LkPiiScrTypeService lkPiiScrTypeService;
+
+    @Autowired
+    private datablocks.dlm.service.MetaTableService metaTableService;
+
     // ========== Page Controllers ==========
 
     /**
@@ -152,36 +158,50 @@ public class PiiDiscoveryController {
     }
 
     /**
-     * Columns - PII 컬럼 레지스트리 (CONFIRMED / EXCLUDED 탭)
-     * NOTE: Registry 테이블 (TBL_DISCOVERY_PII_REGISTRY) 사용
+     * Columns - PII 컬럼 목록 (MetaTable 기반)
+     * 탭: confirmed = piitype IS NOT NULL, excluded = val2 = 'EXCLUDED'
      */
     @GetMapping("/columns")
     @PreAuthorize("isAuthenticated()")
-    public void columns(Criteria cri, @RequestParam(value = "tab", defaultValue = "confirmed") String tab, Model model) {
-        LogUtil.log("INFO", "PiiDiscovery columns list (Registry) - tab: " + tab);
+    public void columns(Criteria cri, Model model) {
+        LogUtil.log("INFO", "PiiDiscovery columns list (MetaTable full)");
 
-        // 탭에 따라 상태 필터 설정
-        String status = "excluded".equals(tab) ? "EXCLUDED" : "CONFIRMED";
-        cri.setSearch4(status);
+        // 페이징 offset 계산
+        try { cri.setOffset((cri.getPagenum() - 1) * cri.getAmount()); } catch (Exception e) { cri.setOffset(0); }
 
-        // Registry 테이블에서 조회
-        List<DiscoveryPiiRegistryVO> columnList = discoveryService.getPiiRegistryList(cri);
-        model.addAttribute("columnList", columnList);
+        // MetaTable 전체 조회 (데이터 인벤토리와 동일)
+        @SuppressWarnings("unchecked")
+        List<datablocks.dlm.domain.MetaTableVO> columnList = (List<datablocks.dlm.domain.MetaTableVO>)(List<?>)
+                discoveryService.getMetaTableAllColumns(cri);
+        model.addAttribute("list", columnList);
 
-        int total = discoveryService.getPiiRegistryTotal(cri);
+        int total = discoveryService.getMetaTableAllColumnsTotal(cri);
         PageDTO pageMaker = new PageDTO(cri, total);
         model.addAttribute("pageMaker", pageMaker);
 
-        // 탭 정보
-        model.addAttribute("currentTab", tab);
+        // PII 유형 목록 (서치 필터 + 코드→이름 매핑)
+        model.addAttribute("listlkPiiScrType", lkPiiScrTypeService.getList());
+        java.util.Map<String, String> piiTypeNames = new java.util.HashMap<>();
+        for (datablocks.dlm.domain.LkPiiScrTypeVO t : lkPiiScrTypeService.getListAll()) {
+            piiTypeNames.put(t.getPiicode(), t.getPiitypename());
+        }
+        model.addAttribute("piiTypeNames", piiTypeNames);
 
-        // 각 상태별 카운트 (Registry 테이블에서)
-        Criteria countCri = new Criteria();
-        int confirmedCount = discoveryService.getPiiRegistryCountByStatus("CONFIRMED", countCri);
-        int excludedCount = discoveryService.getPiiRegistryCountByStatus("EXCLUDED", countCri);
+        // 통계
+        model.addAttribute("stats", metaTableService.getStats());
+    }
 
-        model.addAttribute("confirmedCount", confirmedCount);
-        model.addAttribute("excludedCount", excludedCount);
+    /**
+     * PII Policy - 민감정보 분류·보호 정책 (기존 LkPiiScrType 관리)
+     */
+    @GetMapping("/piipolicy")
+    @PreAuthorize("isAuthenticated()")
+    public void piipolicy(Criteria cri, Model model) {
+        LogUtil.log("INFO", "PiiDiscovery piipolicy (LkPiiScrType)");
+        try { cri.setOffset((cri.getPagenum() - 1) * cri.getAmount()); } catch (Exception e) { cri.setOffset(0); }
+        model.addAttribute("list", lkPiiScrTypeService.getList(cri));
+        int total = lkPiiScrTypeService.getTotal(cri);
+        model.addAttribute("pageMaker", new PageDTO(cri, total));
     }
 
     /**
@@ -531,6 +551,73 @@ public class PiiDiscoveryController {
             result.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
+    }
+
+    /**
+     * PII 확정 + 인벤토리 세팅 API (단건)
+     * 개인정보 유형, 암호화 여부, 변환타입, 보모키를 한 번에 세팅
+     */
+    @PostMapping("/api/results/{resultId}/confirm-with-settings")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> confirmWithSettings(
+            @PathVariable String resultId,
+            @RequestBody Map<String, String> settings,
+            Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String piiTypeCode = settings.get("piiTypeCode");
+            String encryptFlag = settings.get("encryptFlag");
+            String scrambleType = settings.get("scrambleType");
+            String piiGrade = settings.get("piiGrade");
+
+            discoveryService.confirmWithSettings(resultId, principal.getName(),
+                    piiTypeCode, piiGrade, encryptFlag, scrambleType);
+
+            result.put("success", true);
+            result.put("message", "PII 확정 및 인벤토리 세팅 완료");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Failed to confirm with settings", e);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    /**
+     * MetaTable PII 설정 직접 업데이트 API (개인정보 컬럼 페이지용)
+     */
+    @PostMapping("/api/meta-pii-update")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> metaPiiUpdate(
+            @RequestBody Map<String, String> data) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            discoveryService.updateMetaTablePiiDirect(
+                    data.get("db"), data.get("schema"),
+                    data.get("table"), data.get("column"),
+                    data.get("piiTypeCode"), data.get("piiGrade"),
+                    data.get("encryptFlag"), data.get("scrambleType"));
+            result.put("success", true);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Failed to update MetaTable PII settings", e);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    /**
+     * LkPiiScrType 목록 조회 API (PII 확정 다이얼로그용)
+     */
+    @GetMapping("/api/lk-pii-types")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseBody
+    public ResponseEntity<java.util.List<datablocks.dlm.domain.LkPiiScrTypeVO>> getLkPiiTypes() {
+        return ResponseEntity.ok(lkPiiScrTypeService.getList());
     }
 
     /**
@@ -901,7 +988,7 @@ public class PiiDiscoveryController {
 
         // 헤더 행 생성
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"Database", "Schema", "Table", "Column", "Data Type", "PII Type", "Score", "Detection", "Status", "Registered By", "Registered Date"};
+        String[] headers = {"Database", "Schema", "Table", "Column", "Data Type", "PII Type", "Score", "Detection", "Encryption Status", "Encryption Method", "Encryption Ratio(%)", "Status", "Registered By", "Registered Date"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
@@ -920,9 +1007,12 @@ public class PiiDiscoveryController {
             row.createCell(5).setCellValue(item.getPiiTypeName() != null ? item.getPiiTypeName() : "");
             row.createCell(6).setCellValue(item.getConfidenceScore() != null ? item.getConfidenceScore() : 0);
             row.createCell(7).setCellValue(item.getDetectionMethod() != null ? item.getDetectionMethod() : "");
-            row.createCell(8).setCellValue(item.getStatus() != null ? item.getStatus() : "");
-            row.createCell(9).setCellValue(item.getRegisteredBy() != null ? item.getRegisteredBy() : "");
-            row.createCell(10).setCellValue(item.getRegisteredDate() != null ? item.getRegisteredDate() : "");
+            row.createCell(8).setCellValue(item.getEncryptionStatus() != null ? item.getEncryptionStatus() : "NONE");
+            row.createCell(9).setCellValue(item.getEncryptionMethod() != null ? item.getEncryptionMethod() : "");
+            row.createCell(10).setCellValue(item.getEncryptionRatio() != null ? item.getEncryptionRatio() : 0);
+            row.createCell(11).setCellValue(item.getStatus() != null ? item.getStatus() : "");
+            row.createCell(12).setCellValue(item.getRegisteredBy() != null ? item.getRegisteredBy() : "");
+            row.createCell(13).setCellValue(item.getRegisteredDate() != null ? item.getRegisteredDate() : "");
         }
 
         // 컬럼 너비 자동 조정

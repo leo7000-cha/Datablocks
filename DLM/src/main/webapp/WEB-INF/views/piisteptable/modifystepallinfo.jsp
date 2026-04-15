@@ -542,16 +542,16 @@
         var files = inputFile[0].files;
 
         if (files.length == 0) {
-            alert("Choose the upload file");
+            dlmAlert("Choose the upload file");
             return false;
         } else if (files.length > 1) {
-            alert("Choose only one file");
+            dlmAlert("Choose only one file");
             return false;
         }
 
         for (var i = 0; i < files.length; i++) {
             if (!$('#uploadFileInput').val().toUpperCase().endsWith(".XLS") && !$('#uploadFileInput').val().toUpperCase().endsWith(".XLSX")) {
-                alert("Only EXCEL file type can be uploaded. You can download the template file.");
+                dlmAlert("Only EXCEL file type can be uploaded. You can download the template file.");
                 return false;
             }
             formData.append("uploadFile", files[i]);
@@ -619,10 +619,7 @@
     });
     //$("button[data-oper='uploadfromDB']").on("click", function (e) {
      uploadfromDB = function () {
-         if(confirm("Are you sure to delete all current steptable data and upload data from 'tbl_piiupload_template' table to config steptables?")){
-         }else{
-             return;
-         }
+        showConfirm("Are you sure to delete all current steptable data and upload data from 'tbl_piiupload_template' table to config steptables?", function() {
         doubleSubmitFlag = true;
         var formData = new FormData();
         //formData.append("uploadFile", files[i]);
@@ -681,6 +678,7 @@
 
         }); //$.ajax
 
+        }); // showConfirm
     };
     $("button[data-oper='piisteptable_remove']").on("click", function (e) {
         e.preventDefault();e.stopPropagation();
@@ -700,73 +698,71 @@
             $("#messagemodal").modal("show");
             return;
         }
-        var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-        if (confirmflag == false) {
-            return;
-        }
-        checkbox.each(function (i) {
-            //console.log(index);console.log(tr);
-            tr = checkbox.parent().parent().eq(i);
-            td = tr.children();
-            var data = {
-                jobid: td.eq(1).text(),
-                version: td.eq(2).text(),
-                stepid: td.eq(3).text(),
-                db: td.eq(7).text(),
-                owner: td.eq(8).text(),
-                table_name: td.eq(9).text(),
-                pagitype: null,
-                pagitypedetail: null,
-                exetype: td.eq(10).text(),
-                archiveflag: null,
-                status: null,
-                preceding: null,
-                succedding: null,
-                seq1: td.eq(4).text(),
-                seq2: td.eq(5).text(),
-                seq3: td.eq(6).text(),
-                pipeline: null,
-                pk_col: null,
-                where_col: null,
-                where_key_name: null,
-                parallelcnt: null,
-                commitcnt: null,
-                wherestr: null,
-                sqlstr: null,
-                keymap_id: null,
-                key_name: null,
-                key_cols: null,
-                key_refstr: null,
-                sqltype: null,
-                regdate: null,
-                upddate: null,
-                reguserid: null,
-                upduserid: null
-            };
+        showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+            checkbox.each(function (i) {
+                //console.log(index);console.log(tr);
+                tr = checkbox.parent().parent().eq(i);
+                td = tr.children();
+                var data = {
+                    jobid: td.eq(1).text(),
+                    version: td.eq(2).text(),
+                    stepid: td.eq(3).text(),
+                    db: td.eq(7).text(),
+                    owner: td.eq(8).text(),
+                    table_name: td.eq(9).text(),
+                    pagitype: null,
+                    pagitypedetail: null,
+                    exetype: td.eq(10).text(),
+                    archiveflag: null,
+                    status: null,
+                    preceding: null,
+                    succedding: null,
+                    seq1: td.eq(4).text(),
+                    seq2: td.eq(5).text(),
+                    seq3: td.eq(6).text(),
+                    pipeline: null,
+                    pk_col: null,
+                    where_col: null,
+                    where_key_name: null,
+                    parallelcnt: null,
+                    commitcnt: null,
+                    wherestr: null,
+                    sqlstr: null,
+                    keymap_id: null,
+                    key_name: null,
+                    key_cols: null,
+                    key_refstr: null,
+                    sqltype: null,
+                    regdate: null,
+                    upddate: null,
+                    reguserid: null,
+                    upduserid: null
+                };
 
-            param.push(data);
-        });
+                param.push(data);
+            });
 
-        //console.log("param "+param.length);
-        ingShow();
-        $.ajax({
-            url: "/piisteptable/removeList",
-            dataType: "text",
-            contentType: "application/json; charset=UTF-8",
-            type: "post",
-            data: JSON.stringify(param),//{"str" : JSON.stringify(param)},
-            beforeSend: function (xhr) {   /*데이터를 전송하기 전에 헤더에 csrf값을 설정한다*/
-                xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-            },
-            success: function (data, textStatus, jqXHR) {ingHide();
-                $("#" + stepid).trigger("click");
-                $("#GlobalSuccessMsgModal").modal("show");
-            },
-            error: function (request, error) { ingHide();
-                $("#errormodalbody").html(request.responseText);
-                $("#errormodal").modal("show");
-            }
+            //console.log("param "+param.length);
+            ingShow();
+            $.ajax({
+                url: "/piisteptable/removeList",
+                dataType: "text",
+                contentType: "application/json; charset=UTF-8",
+                type: "post",
+                data: JSON.stringify(param),//{"str" : JSON.stringify(param)},
+                beforeSend: function (xhr) {   /*데이터를 전송하기 전에 헤더에 csrf값을 설정한다*/
+                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                },
+                success: function (data, textStatus, jqXHR) {ingHide();
+                    $("#" + stepid).trigger("click");
+                    showToast("처리가 완료되었습니다.", false);
+                },
+                error: function (request, error) { ingHide();
+                    $("#errormodalbody").html(request.responseText);
+                    $("#errormodal").modal("show");
+                }
 
+            });
         });
 
     });
@@ -778,7 +774,7 @@
         var global_version = $('#jobget_global_version').val();
 
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
         //var serchkeyno = $('input[name=jobid]').val();
@@ -826,7 +822,7 @@
         var global_version = $('#jobget_global_version').val();
 
         if ($('#jobget_global_phase').val() != "CHECKOUT") {
-            alert("Job's status is not CHECKOUT");
+            dlmAlert("Job's status is not CHECKOUT");
             return;
         }
         ingShow();
@@ -852,7 +848,7 @@
             },
             error: function(xhr, status, error) { ingHide();
                 // 요청이 실패했을 때 실행할 동작
-                alert('Error:', error);
+                dlmAlert('Error: ' + error);
                 // 에러 처리 로직을 추가할 수 있습니다.
             }
         });

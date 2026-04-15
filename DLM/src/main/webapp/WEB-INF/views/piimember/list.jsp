@@ -65,12 +65,15 @@
         <table class="member-table member-table-header">
             <thead>
             <tr>
-                <th style="width: 15%;"><spring:message code="col.userid" text="Userid"/></th>
-                <th style="width: 15%;"><spring:message code="col.username" text="Username"/></th>
-                <th style="width: 12%;"><spring:message code="col.dept_cd" text="Dept_Cd"/></th>
-                <th style="width: 18%;"><spring:message code="col.dept_name" text="Dept_Name"/></th>
-                <th style="width: 18%;"><spring:message code="col.regdate" text="Regdate"/></th>
-                <th style="width: 18%;"><spring:message code="col.updatedate" text="Updatedate"/></th>
+                <th style="width: 11%;"><spring:message code="col.userid" text="Userid"/></th>
+                <th style="width: 10%;"><spring:message code="col.username" text="Username"/></th>
+                <th style="width: 8%;"><spring:message code="col.dept_cd" text="Dept_Cd"/></th>
+                <th style="width: 12%;"><spring:message code="col.dept_name" text="Dept_Name"/></th>
+                <th style="width: 16%;">Email</th>
+                <th style="width: 8%;">직위</th>
+                <th style="width: 9%;">상위결재자</th>
+                <th style="width: 12%;"><spring:message code="col.regdate" text="Regdate"/></th>
+                <th style="width: 12%;"><spring:message code="col.updatedate" text="Updatedate"/></th>
                 <th class="th-hidden"><spring:message code="col.enabled" text="Enabled"/></th>
             </tr>
             </thead>
@@ -80,12 +83,15 @@
                 <tbody>
                 <c:forEach items="${list}" var="member">
                     <tr data-userid="${member.userid}">
-                        <td style="width: 15%;"><c:out value="${member.userid}"/></td>
-                        <td style="width: 15%;"><c:out value="${member.username}"/></td>
-                        <td style="width: 12%;"><c:out value="${member.dept_cd}"/></td>
-                        <td style="width: 18%;"><c:out value="${member.dept_name}"/></td>
-                        <td style="width: 18%;"><c:out value="${member.regdate}"/></td>
-                        <td style="width: 18%;"><c:out value="${member.updatedate}"/></td>
+                        <td style="width: 11%;"><c:out value="${member.userid}"/></td>
+                        <td style="width: 10%;"><c:out value="${member.username}"/></td>
+                        <td style="width: 8%;"><c:out value="${member.dept_cd}"/></td>
+                        <td style="width: 12%;"><c:out value="${member.dept_name}"/></td>
+                        <td style="width: 16%;"><c:out value="${member.email}"/></td>
+                        <td style="width: 8%;"><c:out value="${member.position}"/></td>
+                        <td style="width: 9%;"><c:out value="${member.manager_id}"/></td>
+                        <td style="width: 12%;"><c:out value="${member.regdate}"/></td>
+                        <td style="width: 12%;"><c:out value="${member.updatedate}"/></td>
                         <td class="td-hidden">
                             <c:choose>
                                 <c:when test="${member.enabled eq '1'}">Y</c:when>
@@ -107,7 +113,7 @@
 
 <!-- Register Modal -->
 <div class="modal fade" id="registerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 480px;">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 680px;">
         <div class="modal-content">
             <div class="modal-header member-modal-header">
                 <h5 class="modal-title"><i class="fas fa-user-plus mr-2"></i><spring:message code="btn.register" text="Register User"/></h5>
@@ -117,21 +123,35 @@
             </div>
             <div class="modal-body member-modal-body">
                 <form id="registerForm">
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.userid" text="Userid"/> <span class="text-danger">*</span></label>
-                        <input type="text" class="member-form-input" name="userid" required autofocus placeholder="Enter user ID">
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.username" text="Username"/> <span class="text-danger">*</span></label>
-                        <input type="text" class="member-form-input" name="username" required placeholder="Enter username">
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.dept_cd" text="Dept_Cd"/></label>
-                        <input type="text" class="member-form-input" name="dept_cd" placeholder="Enter department code">
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.dept_name" text="Dept_Name"/></label>
-                        <input type="text" class="member-form-input" name="dept_name" placeholder="Enter department name">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px;">
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.userid" text="Userid"/> <span class="text-danger">*</span></label>
+                            <input type="text" class="member-form-input" name="userid" required autofocus placeholder="Enter user ID">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">Email</label>
+                            <input type="email" class="member-form-input" name="email" placeholder="user@example.com">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.username" text="Username"/> <span class="text-danger">*</span></label>
+                            <input type="text" class="member-form-input" name="username" required placeholder="Enter username">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">직위</label>
+                            <input type="text" class="member-form-input" name="position" placeholder="예: 팀장, 과장, 대리">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.dept_cd" text="Dept_Cd"/></label>
+                            <input type="text" class="member-form-input" name="dept_cd" placeholder="Enter department code">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">상위결재자 ID</label>
+                            <input type="text" class="member-form-input" name="manager_id" placeholder="상위 결재자 User ID">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.dept_name" text="Dept_Name"/></label>
+                            <input type="text" class="member-form-input" name="dept_name" placeholder="Enter department name">
+                        </div>
                     </div>
                     <div class="member-form-info">
                         <i class="fas fa-info-circle"></i> <spring:message code="msg.initialpwd" text="The initial pwd is '#USERID'"/>
@@ -155,7 +175,7 @@
 
 <!-- Modify Modal -->
 <div class="modal fade" id="modifyModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 480px;">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 680px;">
         <div class="modal-content">
             <div class="modal-header member-modal-header-modify">
                 <h5 class="modal-title"><i class="fas fa-user-edit mr-2"></i><spring:message code="btn.modify" text="Modify User"/></h5>
@@ -165,31 +185,47 @@
             </div>
             <div class="modal-body member-modal-body">
                 <form id="modifyForm">
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.userid" text="Userid"/></label>
-                        <input type="text" class="member-form-input" name="userid" readonly>
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.username" text="Username"/> <span class="text-danger">*</span></label>
-                        <input type="text" class="member-form-input" name="username" required>
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.dept_cd" text="Dept_Cd"/></label>
-                        <input type="text" class="member-form-input" name="dept_cd">
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.dept_name" text="Dept_Name"/></label>
-                        <input type="text" class="member-form-input" name="dept_name">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px;">
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.userid" text="Userid"/></label>
+                            <input type="text" class="member-form-input" name="userid" readonly>
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">Email</label>
+                            <input type="email" class="member-form-input" name="email" placeholder="user@example.com">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.username" text="Username"/> <span class="text-danger">*</span></label>
+                            <input type="text" class="member-form-input" name="username" required>
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">직위</label>
+                            <input type="text" class="member-form-input" name="position">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.dept_cd" text="Dept_Cd"/></label>
+                            <input type="text" class="member-form-input" name="dept_cd">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label">상위결재자 ID</label>
+                            <input type="text" class="member-form-input" name="manager_id">
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.dept_name" text="Dept_Name"/></label>
+                            <input type="text" class="member-form-input" name="dept_name">
+                        </div>
                     </div>
                     <div class="member-form-divider"></div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.userpw" text="Password"/></label>
-                        <input type="password" class="member-form-input" name="userpw" placeholder="Leave blank to keep current">
-                        <small class="member-form-hint"><spring:message code="etc.pwdmustbe" text="Must be composed of letters, numbers, and special symbols with 8 or more characters."/></small>
-                    </div>
-                    <div class="member-form-group">
-                        <label class="member-form-label"><spring:message code="col.userpw2" text="Confirm Password"/></label>
-                        <input type="password" class="member-form-input" name="userpw2" placeholder="Confirm password">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 20px;">
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.userpw" text="Password"/></label>
+                            <input type="password" class="member-form-input" name="userpw" placeholder="Leave blank to keep current">
+                            <small class="member-form-hint"><spring:message code="etc.pwdmustbe" text="Must be composed of letters, numbers, and special symbols with 8 or more characters."/></small>
+                        </div>
+                        <div class="member-form-group">
+                            <label class="member-form-label"><spring:message code="col.userpw2" text="Confirm Password"/></label>
+                            <input type="password" class="member-form-input" name="userpw2" placeholder="Confirm password">
+                        </div>
                     </div>
                     <input type="hidden" name="enabled" value="">
                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
@@ -236,6 +272,9 @@
             var username = td.eq(1).text().trim();
             var dept_cd = td.eq(2).text().trim();
             var dept_name = td.eq(3).text().trim();
+            var email = td.eq(4).text().trim();
+            var position = td.eq(5).text().trim();
+            var manager_id = td.eq(6).text().trim();
 
             if (userid) {
                 var form = $('#modifyForm');
@@ -244,6 +283,9 @@
                 form.find('[name="username"]').val(username);
                 form.find('[name="dept_cd"]').val(dept_cd);
                 form.find('[name="dept_name"]').val(dept_name);
+                form.find('[name="email"]').val(email);
+                form.find('[name="position"]').val(position);
+                form.find('[name="manager_id"]').val(manager_id);
                 form.find('[name="enabled"]').val('1');
                 $('#modifyModal').modal('show');
             }
@@ -271,11 +313,11 @@
             var username = form.find('[name="username"]').val().trim();
 
             if (!userid) {
-                alert('<spring:message code="msg.enteruserid" text="Please enter user ID"/>');
+                dlmAlert('<spring:message code="msg.enteruserid" text="Please enter user ID"/>');
                 return;
             }
             if (!username) {
-                alert('<spring:message code="msg.enterusername" text="Please enter username"/>');
+                dlmAlert('<spring:message code="msg.enterusername" text="Please enter username"/>');
                 return;
             }
 
@@ -301,7 +343,7 @@
                     // Remove backdrop and body class before refresh
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() {
                         searchAction(1);
                     }, 500);
@@ -341,7 +383,7 @@
                     $('#modifyModal').modal('hide');
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
+                    showToast("처리가 완료되었습니다.", false);
                     setTimeout(function() {
                         searchAction(1);
                     }, 500);
@@ -359,43 +401,39 @@
             var userid = $('#modifyForm [name="userid"]').val();
             var newPwd = '#' + userid;
 
-            if (!confirm('<spring:message code="msg.initpwdconfirm" text="Reset password to"/> ' + newPwd + '?')) {
-                return;
-            }
-
-            $('#modifyForm [name="userpw"]').val(newPwd);
-            $('#modifyForm [name="userpw2"]').val(newPwd);
-            $('#btnModifySave').click();
+            showConfirm('<spring:message code="msg.initpwdconfirm" text="Reset password to"/> ' + newPwd + '?', function() {
+                $('#modifyForm [name="userpw"]').val(newPwd);
+                $('#modifyForm [name="userpw2"]').val(newPwd);
+                $('#btnModifySave').click();
+            });
         });
 
         // Delete user
         $('#btnDelete').on('click', function () {
-            if (!confirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>')) {
-                return;
-            }
-
-            var form = $('#modifyForm');
-            ingShow();
-            $.ajax({
-                type: "POST",
-                url: "/piimember/remove",
-                data: form.serialize(),
-                dataType: "html",
-                success: function (data) {
-                    ingHide();
-                    $('#modifyModal').modal('hide');
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open').css('padding-right', '');
-                    $("#GlobalSuccessMsgModal").modal("show");
-                    setTimeout(function() {
-                        searchAction(1);
-                    }, 500);
-                },
-                error: function (request, error) {
-                    ingHide();
-                    $("#errormodalbody").html(request.responseText);
-                    $("#errormodal").modal("show");
-                }
+            showConfirm('<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>', function() {
+                var form = $('#modifyForm');
+                ingShow();
+                $.ajax({
+                    type: "POST",
+                    url: "/piimember/remove",
+                    data: form.serialize(),
+                    dataType: "html",
+                    success: function (data) {
+                        ingHide();
+                        $('#modifyModal').modal('hide');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open').css('padding-right', '');
+                        showToast("처리가 완료되었습니다.", false);
+                        setTimeout(function() {
+                            searchAction(1);
+                        }, 500);
+                    },
+                    error: function (request, error) {
+                        ingHide();
+                        $("#errormodalbody").html(request.responseText);
+                        $("#errormodal").modal("show");
+                    }
+                });
             });
         });
     });

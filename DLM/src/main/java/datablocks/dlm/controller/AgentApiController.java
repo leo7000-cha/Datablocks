@@ -1,5 +1,6 @@
 package datablocks.dlm.controller;
 
+import datablocks.dlm.domain.AccessLogSourceVO;
 import datablocks.dlm.domain.AccessLogVO;
 import datablocks.dlm.domain.MetaTableVO;
 import datablocks.dlm.mapper.AccessLogMapper;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.*;
 
 /**
  * Agent API Controller
@@ -50,9 +52,17 @@ public class AgentApiController {
     @PostMapping("/logs")
     public ResponseEntity<Map<String, Object>> receiveAgentLogs(
             @RequestHeader(value = "X-Agent-Id", required = false) String agentId,
+            @RequestHeader(value = "X-Agent-Secret", required = false) String agentSecret,
             @RequestBody List<AgentLogEntry> entries) {
 
         Map<String, Object> result = new HashMap<>();
+
+        // Agent Secret 검증 — AGENT_API_SECRET 설정이 있으면 반드시 일치해야 함
+        if (!verifyAgentSecret(agentSecret)) {
+            result.put("status", "UNAUTHORIZED");
+            result.put("message", "Invalid agent secret");
+            return ResponseEntity.status(401).body(result);
+        }
 
         if (entries == null || entries.isEmpty()) {
             result.put("status", "OK");
@@ -63,13 +73,23 @@ public class AgentApiController {
         LogUtil.log("INFO", "Agent logs received: agentId=" + agentId + ", count=" + entries.size());
 
         try {
+            // Agent 소스 정보 조회 (targetDb 매핑용)
+            AccessLogSourceVO agentSource = null;
+            if (agentId != null) {
+                try {
+                    agentSource = accessLogMapper.selectSourceByAgentId(agentId);
+                } catch (Exception e) {
+                    logger.warn("Agent source lookup failed for agentId={}: {}", agentId, e.getMessage());
+                }
+            }
+
             // AgentLogEntry → AccessLogVO 변환
             List<AccessLogVO> logs = new ArrayList<>(entries.size());
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             SimpleDateFormat partSdf = new SimpleDateFormat("yyyyMMdd");
 
             for (AgentLogEntry entry : entries) {
-                AccessLogVO log = convertToAccessLogVO(entry, agentId, sdf, partSdf);
+                AccessLogVO log = convertToAccessLogVO(entry, agentId, agentSource, sdf, partSdf);
                 if (log != null) {
                     logs.add(log);
                 }
@@ -95,32 +115,62 @@ public class AgentApiController {
     /**
      * PII 정책 배포.
      * GET /api/agent/policy?agentId={agentId}
-     * Agent가 SQL의 컬럼이 PII인지 판단하는 데 필요.
+     * BCI Target 테이블에 등록된 대상만 반환.
+     * BCI Target 미등록 시 빈 정책 반환 (Agent는 아무것도 캡처하지 않음).
      */
     @GetMapping("/policy")
-    public ResponseEntity<List<Map<String, String>>> getAgentPolicy(
+    public ResponseEntity<Map<String, Object>> getAgentPolicy(
             @RequestParam(value = "agentId", required = false) String agentId) {
 
         LogUtil.log("INFO", "Agent policy requested: agentId=" + agentId);
 
         try {
-            List<MetaTableVO> piiColumns = metaTableMapper.selectPiiColumnsForCache();
+            Map<String, Object> response = new HashMap<>();
             List<Map<String, String>> policy = new ArrayList<>();
 
-            for (MetaTableVO col : piiColumns) {
-                Map<String, String> entry = new HashMap<>();
-                entry.put("table", col.getTable_name());
-                entry.put("column", col.getColumn_name());
-                entry.put("piitype", col.getPiitype());
-                entry.put("piigrade", col.getPiigrade());
-                policy.add(entry);
+            // Agent의 소스에서 dbName 조회
+            String dbName = null;
+            if (agentId != null) {
+                var source = accessLogMapper.selectSourceByAgentId(agentId);
+                if (source != null) dbName = source.getDbName();
             }
 
-            return ResponseEntity.ok(policy);
+            // BCI Target이 등록되어 있으면 해당 테이블의 PII 컬럼만 반환
+            if (dbName != null) {
+                List<Map<String, Object>> bciColumns = accessLogMapper.selectBciPolicyColumns(dbName);
+                if (bciColumns != null && !bciColumns.isEmpty()) {
+                    Set<String> targetTables = new LinkedHashSet<>();
+                    for (Map<String, Object> col : bciColumns) {
+                        String table = (String) col.get("tableName");
+                        if (table != null) targetTables.add(table);
+                        if (col.get("columnName") != null) {
+                            Map<String, String> entry = new HashMap<>();
+                            entry.put("table", (String) col.get("tableName"));
+                            entry.put("column", (String) col.get("columnName"));
+                            entry.put("piitype", (String) col.get("piiType"));
+                            entry.put("piigrade", (String) col.get("piiGrade"));
+                            entry.put("targetType", (String) col.get("targetType"));
+                            policy.add(entry);
+                        }
+                    }
+                    response.put("targetTables", targetTables);
+                    response.put("columns", policy);
+                    response.put("mode", "BCI_TARGET");
+                    return ResponseEntity.ok(response);
+                }
+            }
+
+            // BCI Target 미등록 → 빈 정책 반환 (Agent는 캡처하지 않음)
+            response.put("targetTables", Collections.emptyList());
+            response.put("columns", Collections.emptyList());
+            response.put("mode", "NO_TARGET");
+            LogUtil.log("WARN", "No BCI targets registered for agentId=" + agentId
+                    + " — Agent will not capture any SQL");
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             logger.error("Agent policy export failed", e);
-            return ResponseEntity.internalServerError().body(Collections.emptyList());
+            return ResponseEntity.internalServerError().body(Collections.emptyMap());
         }
     }
 
@@ -131,7 +181,15 @@ public class AgentApiController {
     @PostMapping("/heartbeat")
     public ResponseEntity<Map<String, Object>> heartbeat(
             @RequestHeader(value = "X-Agent-Id", required = false) String headerAgentId,
+            @RequestHeader(value = "X-Agent-Secret", required = false) String agentSecret,
             @RequestBody Map<String, Object> payload) {
+
+        // Agent Secret 검증
+        if (!verifyAgentSecret(agentSecret)) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("status", "UNAUTHORIZED");
+            return ResponseEntity.status(401).body(err);
+        }
 
         String agentId = payload.containsKey("agentId")
                 ? payload.get("agentId").toString()
@@ -139,11 +197,18 @@ public class AgentApiController {
 
         if (agentId == null) agentId = "UNKNOWN";
 
-        // 상태 저장
+        // 메모리 상태 저장
         Map<String, Object> status = new HashMap<>(payload);
         status.put("lastHeartbeat", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         status.put("status", "ACTIVE");
         agentStatusMap.put(agentId, status);
+
+        // DB 영속화 (TBL_ACCESS_LOG_SOURCE.agent_last_heartbeat 업데이트)
+        try {
+            accessLogMapper.updateAgentHeartbeat(agentId, "ACTIVE");
+        } catch (Exception e) {
+            logger.warn("Agent heartbeat DB update failed for {}: {}", agentId, e.getMessage());
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("status", "OK");
@@ -169,6 +234,7 @@ public class AgentApiController {
     // ── 변환 로직 ──
 
     private AccessLogVO convertToAccessLogVO(AgentLogEntry entry, String agentId,
+                                              AccessLogSourceVO agentSource,
                                               SimpleDateFormat sdf, SimpleDateFormat partSdf) {
         if (entry.sql == null || entry.sql.isEmpty()) return null;
 
@@ -180,8 +246,15 @@ public class AgentApiController {
         log.setSessionId(entry.sessionId);
         log.setActionType(entry.actionType != null ? entry.actionType : "OTHER");
         log.setSqlText(entry.sql);
-        log.setAccessChannel("WAS_AGENT");
+        log.setCollectType("WAS_AGENT");
+        log.setAccessChannel("WAS");
         log.setResultCode(entry.success ? "SUCCESS" : "FAIL");
+
+        // Agent 소스에서 targetDb/targetSchema 보강
+        if (agentSource != null) {
+            log.setTargetDb(agentSource.getDbName());
+            log.setTargetSchema(agentSource.getSchemaName());
+        }
 
         // 타임스탬프 → 문자열
         Date accessDate = new Date(entry.timestamp);
@@ -196,6 +269,26 @@ public class AgentApiController {
         log.setPiiGrade(entry.piiGrade);
 
         return log;
+    }
+
+    /**
+     * Agent Secret 검증.
+     * TBL_ACCESS_LOG_CONFIG에 AGENT_API_SECRET이 설정되어 있으면 일치 여부 확인.
+     * 미설정 시 검증 건너뜀 (하위 호환).
+     */
+    private boolean verifyAgentSecret(String clientSecret) {
+        try {
+            var config = accessLogMapper.selectConfigByKey("AGENT_API_SECRET");
+            if (config == null || config.getConfigValue() == null
+                    || config.getConfigValue().trim().isEmpty()) {
+                return true; // 미설정 — 검증 스킵
+            }
+            String serverSecret = config.getConfigValue().trim();
+            return serverSecret.equals(clientSecret);
+        } catch (Exception e) {
+            logger.warn("Agent secret verification failed, allowing request: {}", e.getMessage());
+            return true; // 설정 테이블 미존재 등 예외 시 허용 (안전)
+        }
     }
 
     // ── Agent 로그 엔트리 DTO ──

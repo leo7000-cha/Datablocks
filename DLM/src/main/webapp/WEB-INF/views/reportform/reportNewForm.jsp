@@ -18,11 +18,11 @@
                     return response.text();
                 })
                 .then(message => {
-                    alert(message); // 성공 알림
+                    dlmAlert(message); // 성공 알림
                     //document.getElementById("reportForm").reset(); // 폼 초기화 (선택사항)
                 })
                 .catch(error => {
-                    alert("저장 실패: " + error.message);
+                    dlmAlert("저장 실패: " + error.message);
                 });
             return false; // 폼 기본 제출 방지
         }
@@ -30,7 +30,7 @@
         function loadForm() {
             const name = document.getElementById("formName").value;
             if (!name) {
-                alert("양식 이름을 입력하세요.");
+                dlmAlert("양식 이름을 입력하세요.");
                 return false;
             }
             // location.href로 이동
@@ -41,7 +41,7 @@
         function previewForm() {
             const name = document.querySelector("#reportForm input[name='formName']").value;
             if (!name) {
-                alert("양식 이름을 입력하세요.");
+                dlmAlert("양식 이름을 입력하세요.");
                 return;
             }
             fetch("${pageContext.request.contextPath}/reportform/view?name=" + encodeURIComponent(name), {
@@ -59,7 +59,7 @@
                     document.getElementById("previewModal").style.display = "flex"; // 모달 열기
                 })
                 .catch(e => {
-                    alert("미리보기 오류: " + e.message);
+                    dlmAlert("미리보기 오류: " + e.message);
                 });
         }
 

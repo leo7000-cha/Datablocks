@@ -443,7 +443,7 @@
                 xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
             },
             success: function (data, textStatus, jqXHR) {ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 searchAction(1);
             },
             error: function (request, error) { ingHide();
@@ -528,7 +528,7 @@
                 xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
             },
             success: function (data, textStatus, jqXHR) {ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
+                showToast("처리가 완료되었습니다.", false);
                 searchAction(1);
             },
             error: function (request, error) { ingHide();
@@ -567,60 +567,57 @@
             return;
         }
 
-        var confirmflag = confirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>");
-        if (confirmflag == false) {
-            return;
-        }
+        showConfirm("<spring:message code="msg.removeconfirm" text="Are you sure to remove?"/>", function() {
+            checkbox.each(function (i) {
+                tr = checkbox.parent().parent().eq(i);
+                td = tr.children();
+                var realstarttime = td.eq(16).text();
+                var status = td.eq(20).text();
+                var data = {
+                    orderid: td.eq(1).text(),
+                    basedate: null,
+                    runcnt: null,
+                    jobid: td.eq(7).text(),
+                    version: td.eq(8).text(),
+                    jobname: null,
+                    system: null,
+                    jobtype: null,
+                    runtype: null,
+                    calendar: null,
+                    time: null,
+                    status: status,
+                    confirmflag: null,
+                    holdflag: null,
+                    forceokflag: null,
+                    killflag: null,
+                    eststarttime: null,
+                    runningtime: null,
+                    realstarttime: realstarttime,
+                    realendtime: null,
+                    orderdate: null,
+                    orderuserid: td.eq(19).text()
+                };
+                param.push(data);
+            });
 
-        checkbox.each(function (i) {
-            tr = checkbox.parent().parent().eq(i);
-            td = tr.children();
-            var realstarttime = td.eq(16).text();
-            var status = td.eq(20).text();
-            var data = {
-                orderid: td.eq(1).text(),
-                basedate: null,
-                runcnt: null,
-                jobid: td.eq(7).text(),
-                version: td.eq(8).text(),
-                jobname: null,
-                system: null,
-                jobtype: null,
-                runtype: null,
-                calendar: null,
-                time: null,
-                status: status,
-                confirmflag: null,
-                holdflag: null,
-                forceokflag: null,
-                killflag: null,
-                eststarttime: null,
-                runningtime: null,
-                realstarttime: realstarttime,
-                realendtime: null,
-                orderdate: null,
-                orderuserid: td.eq(19).text()
-            };
-            param.push(data);
-        });
-
-        $.ajax({
-            url: "/piiorder/removeOrder",
-            dataType: "html",
-            contentType: "application/json; charset=UTF-8",
-            type: "post",
-            data: JSON.stringify(param),
-            beforeSend: function (xhr) {
-                xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-            },
-            error: function (request, error) { ingHide();
-                $("#errormodalbody").html(request.responseText);
-                $("#errormodal").modal("show");
-            },
-            success: function (data) { ingHide();
-                $("#GlobalSuccessMsgModal").modal("show");
-                searchAction(1);
-            }
+            $.ajax({
+                url: "/piiorder/removeOrder",
+                dataType: "html",
+                contentType: "application/json; charset=UTF-8",
+                type: "post",
+                data: JSON.stringify(param),
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+                },
+                error: function (request, error) { ingHide();
+                    $("#errormodalbody").html(request.responseText);
+                    $("#errormodal").modal("show");
+                },
+                success: function (data) { ingHide();
+                    showToast("처리가 완료되었습니다.", false);
+                    searchAction(1);
+                }
+            });
         });
     });
 
@@ -650,7 +647,7 @@
         const regex = /^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
         const match = value.match(regex);
         if (!match) {
-            alert("올바른 형식이 아닙니다. yyyy/mm/dd HH:mm:ss 형식으로 입력해주세요.");
+            dlmAlert("올바른 형식이 아닙니다. yyyy/mm/dd HH:mm:ss 형식으로 입력해주세요.");
             return false;
         }
         const year = parseInt(match[1], 10);
@@ -668,7 +665,7 @@
             date.getMinutes() !== minute ||
             date.getSeconds() !== second
         ) {
-            alert("유효하지 않은 날짜 또는 시간입니다.");
+            dlmAlert("유효하지 않은 날짜 또는 시간입니다.");
             return false;
         }
         return true;

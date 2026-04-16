@@ -3,7 +3,8 @@
 # DLM 배포 스크립트 — 한국손사
 # 사전 조건: Docker 설치 완료, MariaDB 컨테이너 이미 운영 중
 # ==============================================================================
-set -euo pipefail
+set -uo pipefail
+# ★ set -e 제거: docker/mysql 명령 실패 시 스크립트 중단 방지
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -105,7 +106,7 @@ log "=== STEP 3/5: Docker 이미지 로드 ==="
 
 if [ -f "$DEPLOY_ROOT/images/dlm-app.tar.gz" ]; then
     log "DLM 이미지 로드 중... (1~2분)"
-    docker load < <(gunzip -c "$DEPLOY_ROOT/images/dlm-app.tar.gz")
+    gunzip -c "$DEPLOY_ROOT/images/dlm-app.tar.gz" | docker load
     log "DLM 이미지 로드 완료"
 else
     err "이미지 파일 없음: images/dlm-app.tar.gz"
@@ -114,7 +115,7 @@ fi
 
 if [ -f "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz" ]; then
     log "Privacy-AI 이미지 로드 중..."
-    docker load < <(gunzip -c "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz")
+    gunzip -c "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz" | docker load
     log "Privacy-AI 이미지 로드 완료"
 else
     err "이미지 파일 없음: images/dlm-privacy-ai.tar.gz"

@@ -3,7 +3,8 @@
 # DLM 배포 스크립트 — JB우리캐피탈
 # 환경: Rocky 9, MariaDB 호스트 OS 직접 설치
 # ==============================================================================
-set -euo pipefail
+set -uo pipefail
+# ★ set -e 제거: docker/mysql 명령 실패 시 스크립트 중단 방지
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -43,7 +44,9 @@ if systemctl is-active --quiet mariadb 2>/dev/null; then
 elif systemctl is-active --quiet mysql 2>/dev/null; then
     log "MariaDB: 실행 중 (mysql 서비스명)"
 elif ss -tlnp 2>/dev/null | grep -q ':3306'; then
-    log "MariaDB: 포트 3306 리스닝 확인"
+    log "MariaDB: 포트 3306 리스닝 확인 (ss)"
+elif netstat -tlnp 2>/dev/null | grep -q ':3306'; then
+    log "MariaDB: 포트 3306 리스닝 확인 (netstat)"
 else
     warn "MariaDB가 실행 중이지 않은 것 같습니다."
     warn "  확인: sudo systemctl status mariadb"
@@ -52,7 +55,10 @@ else
 fi
 
 # --- MariaDB bind-address 확인 ---
-BIND_CHECK=$(mysql -u root -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null | grep -i bind || true)
+BIND_CHECK=$(mysql -u root -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null \
+    || mysql -u root -p'!Dlm1234' -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null \
+    || echo "")
+BIND_CHECK=$(echo "$BIND_CHECK" | grep -i bind || true)
 if echo "$BIND_CHECK" | grep -q "127.0.0.1"; then
     warn "MariaDB bind-address가 127.0.0.1입니다."
     warn "  Docker 컨테이너에서 접속하려면 0.0.0.0 으로 변경 필요:"
@@ -71,7 +77,7 @@ log "=== STEP 1/3: Docker 이미지 로드 ==="
 
 if [ -f "$DEPLOY_ROOT/images/dlm-app.tar.gz" ]; then
     log "DLM 이미지 로드 중... (1~2분)"
-    docker load < <(gunzip -c "$DEPLOY_ROOT/images/dlm-app.tar.gz")
+    gunzip -c "$DEPLOY_ROOT/images/dlm-app.tar.gz" | docker load
     log "DLM 이미지 로드 완료"
 else
     err "이미지 파일 없음: images/dlm-app.tar.gz"
@@ -80,7 +86,7 @@ fi
 
 if [ -f "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz" ]; then
     log "Privacy-AI 이미지 로드 중..."
-    docker load < <(gunzip -c "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz")
+    gunzip -c "$DEPLOY_ROOT/images/dlm-privacy-ai.tar.gz" | docker load
     log "Privacy-AI 이미지 로드 완료"
 else
     err "이미지 파일 없음: images/dlm-privacy-ai.tar.gz"

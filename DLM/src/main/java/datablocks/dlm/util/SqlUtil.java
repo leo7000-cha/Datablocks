@@ -784,6 +784,145 @@ public class SqlUtil {
     }
 
     /**
+     * MariaDB/MySQL "Row size too large" 에러 판별.
+     * MySQL error 1118 (ER_TOO_BIG_ROWSIZE) 또는 에러 메시지에 "Row size too large" 포함 시 true.
+     */
+    public static boolean isRowSizeTooLargeError(SQLException e) {
+        if (e == null) return false;
+        if (e.getErrorCode() == 1118) return true;
+        String msg = e.getMessage();
+        return msg != null && msg.toLowerCase().contains("row size too large");
+    }
+
+    /**
+     * ALTER TABLE ADD COLUMN DDL 내 VARCHAR(n) → TEXT 변환.
+     * MariaDB InnoDB row size 초과 시, 추가되는 컬럼만 off-page 저장되는 TEXT로 변환한다.
+     * (TEXT는 in-row ~20 bytes 포인터만 차지하므로 row size 제한을 회피할 수 있다)
+     *
+     * @param alterDdl ALTER TABLE ADD COLUMN DDL (단일 컬럼)
+     * @return VARCHAR(n) → TEXT 치환된 DDL
+     */
+    public static String convertVarcharToTextForRowSize(String alterDdl) {
+        if (alterDdl == null || alterDdl.isEmpty()) return alterDdl;
+        Pattern p = Pattern.compile("(?i)\\bVARCHAR\\(\\d+\\)");
+        Matcher m = p.matcher(alterDdl);
+        StringBuffer sb = new StringBuffer();
+        String original = null;
+        while (m.find()) {
+            original = m.group();
+            m.appendReplacement(sb, "TEXT");
+        }
+        m.appendTail(sb);
+        if (original != null) {
+            logger.warn("[ROW_SIZE_FIX] Converted {} → TEXT for row size limit", original);
+        }
+        return sb.toString();
+    }
+
+    // ── Row Size 추정 및 CREATE TABLE DDL 자동 최적화 ──────────────────────
+
+    private static final int MAX_ROW_SIZE = 65000; // 65,535에서 여유분 확보
+    private static final int TEXT_POINTER_SIZE = 20; // TEXT off-page 포인터 크기
+
+    /**
+     * CREATE TABLE DDL의 row size를 추정한다.
+     * MariaDB/MySQL InnoDB 기준 UTF8MB4 worst-case 계산.
+     *
+     * VARCHAR(n): n × 4 + 2 bytes (UTF8MB4 최대 + length prefix)
+     * CHAR(n):    n × 4 bytes
+     * DECIMAL(p): p/2 + 1 bytes
+     * DATETIME:   8 bytes
+     * TIMESTAMP:  4 bytes
+     * FLOAT:      8 bytes
+     * TEXT/LONGTEXT/LONGBLOB: ~20 bytes (off-page pointer)
+     */
+    public static int estimateRowSize(String ddl) {
+        if (ddl == null || ddl.isEmpty()) return 0;
+        int size = 0;
+
+        // VARCHAR(n) → n * 4 + 2
+        Matcher m = Pattern.compile("(?i)\\bVARCHAR\\((\\d+)\\)").matcher(ddl);
+        while (m.find()) size += Integer.parseInt(m.group(1)) * 4 + 2;
+
+        // CHAR(n) → n * 4 (VARCHAR 내부의 CHAR는 \b로 구분)
+        m = Pattern.compile("(?i)(?<!VAR)\\bCHAR\\((\\d+)\\)").matcher(ddl);
+        while (m.find()) size += Integer.parseInt(m.group(1)) * 4;
+
+        // DECIMAL(p,...) → p/2 + 1
+        m = Pattern.compile("(?i)\\bDECIMAL\\((\\d+)").matcher(ddl);
+        while (m.find()) size += Integer.parseInt(m.group(1)) / 2 + 1;
+
+        // DATETIME → 8
+        m = Pattern.compile("(?i)\\bDATETIME\\b").matcher(ddl);
+        while (m.find()) size += 8;
+
+        // TIMESTAMP → 4
+        m = Pattern.compile("(?i)\\bTIMESTAMP(\\(\\d+\\))?\\b").matcher(ddl);
+        while (m.find()) size += 4;
+
+        // FLOAT → 8
+        m = Pattern.compile("(?i)\\bFLOAT(\\(\\d+\\))?\\b").matcher(ddl);
+        while (m.find()) size += 8;
+
+        // TEXT, LONGTEXT → 20 (off-page pointer)
+        m = Pattern.compile("(?i)\\b(LONG)?TEXT\\b").matcher(ddl);
+        while (m.find()) size += TEXT_POINTER_SIZE;
+
+        // LONGBLOB → 20
+        m = Pattern.compile("(?i)\\bLONGBLOB\\b").matcher(ddl);
+        while (m.find()) size += TEXT_POINTER_SIZE;
+
+        return size;
+    }
+
+    /**
+     * CREATE TABLE DDL의 row size가 MariaDB 제한(65,535 bytes)을 초과하면,
+     * 가장 큰 VARCHAR 컬럼부터 TEXT로 반복 변환하여 row size를 맞춘다.
+     * MariaDB/MySQL 아카이브 DB일 때만 적용되며, Oracle/PostgreSQL 등은 row size 제한이 다르므로 원본 DDL을 그대로 반환한다.
+     *
+     * @param arcDbtype 아카이브 DB 타입 (MARIADB, MYSQL, ORACLE, POSTGRESQL 등)
+     * @param createDdl CREATE TABLE DDL 전체
+     * @return row size가 제한 이내로 최적화된 DDL (MariaDB/MySQL 아닌 경우 또는 변환 불필요 시 원본 반환)
+     */
+    public static String optimizeDdlForRowSize(String arcDbtype, String createDdl) {
+        // MariaDB/MySQL만 65,535 bytes row size 제한 적용
+        if (arcDbtype == null || (!arcDbtype.equalsIgnoreCase("MARIADB") && !arcDbtype.equalsIgnoreCase("MYSQL"))) {
+            return createDdl;
+        }
+        if (createDdl == null || createDdl.isEmpty()) return createDdl;
+
+        String result = createDdl;
+        int estimated = estimateRowSize(result);
+        if (estimated <= MAX_ROW_SIZE) return result;
+
+        logger.warn("[ROW_SIZE_FIX] Estimated row size {} bytes exceeds limit {} bytes. Optimizing...", estimated, MAX_ROW_SIZE);
+
+        while (estimated > MAX_ROW_SIZE) {
+            // 가장 큰 VARCHAR(n) 찾기
+            Matcher m = Pattern.compile("(?i)\\bVARCHAR\\((\\d+)\\)").matcher(result);
+            int maxLen = 0;
+            int matchStart = -1;
+            int matchEnd = -1;
+            while (m.find()) {
+                int len = Integer.parseInt(m.group(1));
+                if (len > maxLen) {
+                    maxLen = len;
+                    matchStart = m.start();
+                    matchEnd = m.end();
+                }
+            }
+            if (matchStart == -1) break; // VARCHAR 없음 → 더 이상 변환 불가
+
+            // VARCHAR(n) → TEXT 치환
+            result = result.substring(0, matchStart) + "TEXT" + result.substring(matchEnd);
+            estimated = estimateRowSize(result);
+            logger.warn("[ROW_SIZE_FIX] VARCHAR({}) → TEXT (estimated row size: {} bytes)", maxLen, estimated);
+        }
+
+        return result;
+    }
+
+    /**
      * ResultSet를 Map으로 변환하는 함수
      */
     public static Map<Integer, Object> resultSetToMap(ResultSet resultSet) throws SQLException {

@@ -32,6 +32,8 @@ DLM/.gradle/
 *.war
 *.zip
 *.tar.gz
+*.rpm
+DLM/dlm-agent/bin/
 
 # --- Python ---
 DLM-Privacy-AI/__pycache__/

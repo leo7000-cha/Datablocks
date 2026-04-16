@@ -3,7 +3,8 @@
 # Docker 오프라인 설치 스크립트 — iM캐피탈 (CentOS 7.9)
 # 필요 권한: root 또는 sudo
 # ==============================================================================
-set -euo pipefail
+set -uo pipefail
+# ★ set -e 제거: rpm 명령이 이미 설치된 패키지에서 비정상 코드 반환 → 스크립트 중단 방지
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -46,20 +47,50 @@ echo "  RPM 패키지:"
 ls -1 "$RPM_DIR"/*.rpm | while read f; do echo "    - $(basename "$f")"; done
 echo ""
 
-# --- 기존 Docker/Podman 제거 ---
-log "기존 Docker/Podman 제거 (있는 경우)..."
-yum remove -y docker docker-client docker-common docker-engine docker-latest \
-    docker-latest-logrotate docker-logrotate podman buildah 2>/dev/null || true
+# --- 기존 Docker/Podman 완전 제거 (이전 설치 실패 흔적 포함) ---
+log "기존 Docker/Podman 완전 제거 (있는 경우)..."
+systemctl stop docker 2>/dev/null || true
+systemctl stop containerd 2>/dev/null || true
+yum --disablerepo="*" remove -y docker docker-client docker-common docker-engine docker-latest \
+    docker-latest-logrotate docker-logrotate podman buildah \
+    docker-ce docker-ce-cli containerd.io docker-compose-plugin \
+    container-selinux 2>/dev/null || true
+# 반쯤 설치된 RPM 강제 제거
+for pkg in docker-ce docker-ce-cli containerd.io docker-compose-plugin container-selinux; do
+    rpm -e --noscripts "$pkg" 2>/dev/null || true
+done
+log "기존 패키지 제거 완료"
 
-# --- 설치 ---
-log "Docker RPM 설치 중..."
-yum install -y "$RPM_DIR"/*.rpm 2>/dev/null || {
-    warn "yum install 실패, rpm으로 직접 설치 시도..."
-    rpm -Uvh --force "$RPM_DIR"/containerd.io-*.rpm 2>/dev/null || true
-    rpm -Uvh --force "$RPM_DIR"/docker-ce-cli-*.rpm 2>/dev/null || true
-    rpm -Uvh --force "$RPM_DIR"/docker-ce-2*.rpm 2>/dev/null || true
-    rpm -Uvh --force "$RPM_DIR"/docker-compose-plugin-*.rpm 2>/dev/null || true
-}
+# --- 의존성 + Docker 설치 (CentOS 7 minimal 대응) ---
+# 설치 순서: 의존성 → container-selinux → containerd → cli → ce → compose
+log "RPM 설치 중 (의존성 포함 14개)..."
+
+# STEP 1: 기본 의존성 (CentOS 7 minimal에 없을 수 있는 패키지 전부)
+for pkg in gzip tar xz which iproute net-tools iptables \
+           libseccomp libcgroup libtool-ltdl audit-libs-python checkpolicy \
+           python-IPy setools-libs libsemanage-python policycoreutils-python; do
+    if ls "$RPM_DIR"/${pkg}-*.rpm &>/dev/null; then
+        rpm -q "$pkg" &>/dev/null || {
+            rpm -Uvh --force --nodeps "$RPM_DIR"/${pkg}-*.rpm 2>/dev/null && \
+                log "  $pkg 설치 완료" || warn "  $pkg 설치 실패 (무시)"
+        }
+    fi
+done
+
+# STEP 2: container-selinux (★ 핵심 — 이게 없으면 Docker 설치 실패)
+if ls "$RPM_DIR"/container-selinux-*.rpm &>/dev/null; then
+    rpm -Uvh --force --nodeps "$RPM_DIR"/container-selinux-*.rpm 2>/dev/null && \
+        log "  container-selinux 설치 완료" || warn "  container-selinux 설치 실패"
+else
+    err "container-selinux RPM이 없습니다. docker-rpms/ 에 넣어주세요."
+fi
+
+# STEP 3: Docker (순서 중요: containerd → cli → ce → compose)
+log "Docker 엔진 설치..."
+rpm -Uvh --force --nodeps "$RPM_DIR"/containerd.io-*.rpm          2>/dev/null && log "  containerd 설치 완료"     || err "containerd 설치 실패"
+rpm -Uvh --force --nodeps "$RPM_DIR"/docker-ce-cli-*.rpm          2>/dev/null && log "  docker-ce-cli 설치 완료"  || err "docker-ce-cli 설치 실패"
+rpm -Uvh --force --nodeps "$RPM_DIR"/docker-ce-2*.rpm             2>/dev/null && log "  docker-ce 설치 완료"      || err "docker-ce 설치 실패"
+rpm -Uvh --force --nodeps "$RPM_DIR"/docker-compose-plugin-*.rpm  2>/dev/null && log "  docker-compose 설치 완료" || warn "docker-compose 설치 실패"
 
 # --- Docker 서비스 시작 ---
 log "Docker 서비스 시작..."

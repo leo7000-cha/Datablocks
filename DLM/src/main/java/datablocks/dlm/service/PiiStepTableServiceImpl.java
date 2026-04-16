@@ -1282,10 +1282,11 @@ public class PiiStepTableServiceImpl implements PiiStepTableService {
 				// 3) 닫기 절 (아카이브 DB에 맞게 변환)
 				sqlInsert.append(SqlUtil.getArcTabCreateSql(dbArcVO.getDbtype(),") ENGINE=INNODB DEFAULT CHARACTER SET = UTF8MB4"));
 
-				// 4) CREATE TABLE 실행
+				// 4) Row Size 초과 시 큰 VARCHAR부터 TEXT로 자동 변환 후 CREATE TABLE 실행 (MariaDB/MySQL만 적용)
+				String finalDdl = SqlUtil.optimizeDdlForRowSize(dbArcVO.getDbtype(), sqlInsert.toString());
 				stmtArc = connArc.createStatement();
-				LogUtil.log("INFO", "info$ registerArcTab CREATE TABLE DDL: " + sqlInsert.toString());
-				resultcnt = stmtArc.executeUpdate(sqlInsert.toString());
+				LogUtil.log("INFO", "info$ registerArcTab CREATE TABLE DDL: " + finalDdl);
+				resultcnt = stmtArc.executeUpdate(finalDdl);
 				conn.commit();
 				connArc.commit();
 
@@ -1426,7 +1427,21 @@ public class PiiStepTableServiceImpl implements PiiStepTableService {
 						// ★ 핵심 수정: ALTER TABLE DDL도 아카이브 DB 타입으로 변환
 						String alterDdl = SqlUtil.getArcTabCreateSql(dbArcVO2.getDbtype(), rs.getString(1));
 						LogUtil.log("INFO", "info$ registerArcTabCols ALTER DDL: " + alterDdl);
-						resultcnt += stmtArc.executeUpdate(alterDdl);
+						try {
+							resultcnt += stmtArc.executeUpdate(alterDdl);
+						} catch (SQLException rowSizeEx) {
+							if (SqlUtil.isRowSizeTooLargeError(rowSizeEx)) {
+								// Row size 초과 → 추가되는 컬럼만 VARCHAR(n) → TEXT 변환 후 재시도
+								String fixedDdl = SqlUtil.convertVarcharToTextForRowSize(alterDdl);
+								LogUtil.log("WARN", "[ROW_SIZE_FIX] registerArcTabCols: ALTER TABLE retry with TEXT: " + newArcTabVO.getColumn_name());
+								LogUtil.log("INFO", "info$ registerArcTabCols RETRY DDL: " + fixedDdl);
+								JdbcUtil.close(stmtArc);
+								stmtArc = connArc.createStatement();
+								resultcnt += stmtArc.executeUpdate(fixedDdl);
+							} else {
+								throw rowSizeEx;
+							}
+						}
 					}
 				}
 				conn.commit();

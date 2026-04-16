@@ -145,9 +145,11 @@ public class PiiTableServiceImpl implements PiiTableService {
 				}
 
 				sqlInsert.append(SqlUtil.getArcTabCreateSql(dbArcVO.getDbtype(),") ENGINE=INNODB DEFAULT CHARACTER SET = UTF8MB4"));
-				LogUtil.log("INFO", "PiiTableServiceImpl registerArcTab DDL: " + sqlInsert.toString());
+				// Row Size 초과 시 큰 VARCHAR부터 TEXT로 자동 변환 후 CREATE TABLE 실행 (MariaDB/MySQL만 적용)
+				String finalDdl = SqlUtil.optimizeDdlForRowSize(dbArcVO.getDbtype(), sqlInsert.toString());
+				LogUtil.log("INFO", "PiiTableServiceImpl registerArcTab DDL: " + finalDdl);
 				stmtArc = connArc.createStatement();
-				resultcnt = stmtArc.executeUpdate(sqlInsert.toString());
+				resultcnt = stmtArc.executeUpdate(finalDdl);
 				conn.commit();
 				connArc.commit();
 
@@ -280,7 +282,21 @@ public class PiiTableServiceImpl implements PiiTableService {
 						// ★ ALTER TABLE DDL도 아카이브 DB 타입으로 변환
 						String alterDdl = SqlUtil.getArcTabCreateSql(dbArcVO2.getDbtype(), rs.getString(1));
 						LogUtil.log("INFO", "PiiTableServiceImpl registerArcTabCols ALTER DDL: " + alterDdl);
-						resultcnt += stmtArc.executeUpdate(alterDdl);
+						try {
+							resultcnt += stmtArc.executeUpdate(alterDdl);
+						} catch (SQLException rowSizeEx) {
+							if (SqlUtil.isRowSizeTooLargeError(rowSizeEx)) {
+								// Row size 초과 → 추가되는 컬럼만 VARCHAR(n) → TEXT 변환 후 재시도
+								String fixedDdl = SqlUtil.convertVarcharToTextForRowSize(alterDdl);
+								LogUtil.log("WARN", "[ROW_SIZE_FIX] registerArcTabCols: ALTER TABLE retry with TEXT: " + newArcTabVO.getColumn_name());
+								LogUtil.log("INFO", "PiiTableServiceImpl registerArcTabCols RETRY DDL: " + fixedDdl);
+								JdbcUtil.close(stmtArc);
+								stmtArc = connArc.createStatement();
+								resultcnt += stmtArc.executeUpdate(fixedDdl);
+							} else {
+								throw rowSizeEx;
+							}
+						}
 					}
 				}
 				conn.commit();

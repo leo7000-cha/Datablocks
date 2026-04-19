@@ -1,6 +1,7 @@
 package datablocks.dlm.mapper;
 
 import java.util.List;
+import java.util.Map;
 
 import datablocks.dlm.domain.*;
 import org.apache.ibatis.annotations.Param;
@@ -21,7 +22,10 @@ public interface PiiTableMapper {
 	public List<PiiTableWithMetaVO> getListWithMetaWithPaging(Criteria cri);
 	public List<PiiTablePkVO> getTablePkListWithPaging(Criteria cri);
 
-	public List<PiiLayoutGapVO> getLayoutGapListWithPaging(Criteria cri);
+	public List<Map<String, String>> getArchiveTargetOwners();
+	public List<PiiLayoutGapVO> getLayoutGapForOwner(@Param("db") String db
+			, @Param("srcOwner") String srcOwner
+			, @Param("archiveOwner") String archiveOwner);
 	public void insert(PiiTableVO piiTable);
 
 	//public PiiTableVO read(PiiTableVO piiTable);
@@ -51,6 +55,5 @@ public interface PiiTableMapper {
 	public int getTotalCountNewArcTab(Criteria cri);
 	public int getTotalCountNewArcTabCols(Criteria cri);
 	public int getTableTotalCount(Criteria cri);
-	public int getLayoutGapTotalCount(Criteria cri);
 
 }

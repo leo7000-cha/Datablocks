@@ -16,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -27,17 +26,18 @@ public class PiiStepController {
     private static final Logger logger = LoggerFactory.getLogger(PiiStepController.class);
     private PiiStepService service;
     private PiiDatabaseService databaseservice;
-    //private String jobid;
 
     @GetMapping("/register")
     @PreAuthorize("isAuthenticated()")
-    public void register(@RequestParam("jobid") String jobid, @RequestParam("version") String version, Model model) {
+    public String register(@RequestParam("jobid") String jobid, @RequestParam("version") String version, Model model) {
         LogUtil.log("INFO", "@GetMapping register: " + jobid);
         model.addAttribute("jobid", jobid);
         model.addAttribute("version", version);
         model.addAttribute("phase", "CHECKIN");
         model.addAttribute("piidatabaselist", databaseservice.getList());
-        //logger.info(model.toString());
+        model.addAttribute("mode", "new");
+        model.addAttribute("piistep", new PiiStepVO());
+        return "piistep/detailform";
     }
 
     @GetMapping("/list")
@@ -59,28 +59,26 @@ public class PiiStepController {
             PiiStepVO existStep = service.get(piistep.getJobid(), piistep.getVersion(), piistep.getStepid());
 
             if (existStep != null) {
-                // 이미 존재하는 경우, 에러 메시지와 함께 BAD_REQUEST 상태 반환
                 return new ResponseEntity<>("The STEPID is already registered.", HttpStatus.BAD_REQUEST);
             }
 
             service.register(piistep);
-            // 성공 시, 성공 메시지와 함께 OK 상태 반환
             return new ResponseEntity<>("Successfully registered", HttpStatus.OK);
 
         } catch (Exception e) {
-            // 기타 에러 처리
             return new ResponseEntity<>("An error occurred during registration.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @GetMapping({"/get", "/modify"})
     @PreAuthorize("isAuthenticated()")
-    public void get(@RequestParam("jobid") String jobid, @RequestParam("version") String version, @RequestParam("stepid") String stepid, Criteria cri, Model model) {
+    public String get(@RequestParam("jobid") String jobid, @RequestParam("version") String version, @RequestParam("stepid") String stepid, Criteria cri, Model model) {
         LogUtil.log("INFO", "@GetMapping  /get or modify = " + stepid + "  " + version);
         model.addAttribute("piistep", service.get(jobid, version, stepid));
         model.addAttribute("piidatabaselist", databaseservice.getList());
         model.addAttribute("cri", cri);
-        //logger.info(cri.toString());
+        model.addAttribute("mode", "edit");
+        return "piistep/detailform";
     }
 
     @GetMapping({"/modifydialog"})
@@ -91,30 +89,22 @@ public class PiiStepController {
         model.addAttribute("jobid", jobid);
         model.addAttribute("version", version);
         model.addAttribute("stepid", stepid);
-
         model.addAttribute("cri", cri);
-        //logger.info(cri.toString());
     }
 
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
-    public String modify(PiiStepVO piistep, Criteria cri, RedirectAttributes rttr) {
+    @ResponseBody
+    public ResponseEntity<String> modify(PiiStepVO piistep) {
         LogUtil.log("INFO", "@PostMapping modify:" + piistep);
-        //model.addAttribute("list", service.getJobList(piistep.getJobid()));
-        if (service.modify(piistep)) {
-            rttr.addFlashAttribute("result1", "success");
+        try {
+            if (service.modify(piistep)) {
+                return new ResponseEntity<>("Successfully saved", HttpStatus.OK);
+            }
+            return new ResponseEntity<>("Failed to save step.", HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            return new ResponseEntity<>("An error occurred while saving.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        rttr.addAttribute("jobid", piistep.getJobid());
-        rttr.addAttribute("version", piistep.getVersion());
-        rttr.addAttribute("stepid", piistep.getStepid());
-
-        rttr.addAttribute("pagenum", cri.getPagenum());
-        rttr.addAttribute("amount", cri.getAmount());
-        rttr.addAttribute("search1", cri.getSearch1());
-        rttr.addAttribute("search2", cri.getSearch2());
-
-        return "redirect:/piistep/modifydialog";
     }
 
     @ResponseBody
@@ -140,20 +130,17 @@ public class PiiStepController {
 
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
-    public String remove(PiiStepVO piistep, Criteria cri, RedirectAttributes rttr) {
+    @ResponseBody
+    public ResponseEntity<String> remove(PiiStepVO piistep) {
         LogUtil.log("INFO", "@PostMapping remove..." + piistep.getStepid());
-        if (service.remove(piistep)) {
-            rttr.addFlashAttribute("step_modifydiolog_result", "Successfully removed");
+        try {
+            if (service.remove(piistep)) {
+                return new ResponseEntity<>("Successfully removed", HttpStatus.OK);
+            }
+            return new ResponseEntity<>("Failed to remove step.", HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            return new ResponseEntity<>("An error occurred while removing.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        rttr.addAttribute("jobid", piistep.getJobid());
-        rttr.addAttribute("version", piistep.getVersion());
-        rttr.addAttribute("stepid", piistep.getStepid());
-        rttr.addAttribute("pagenum", cri.getPagenum());
-        rttr.addAttribute("amount", cri.getAmount());
-        rttr.addAttribute("search1", cri.getSearch1());
-        rttr.addAttribute("search2", cri.getSearch2());
-        return "redirect:/piistep/modifydialog";
     }
 
 }

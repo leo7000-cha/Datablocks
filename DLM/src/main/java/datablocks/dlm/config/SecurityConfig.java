@@ -14,14 +14,22 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.session.InvalidSessionStrategy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
+import java.util.LinkedHashMap;
 
 @Configuration
 @EnableWebSecurity
@@ -31,6 +39,48 @@ public class SecurityConfig {
 
     private static AntPathRequestMatcher ant(String pattern) {
         return new AntPathRequestMatcher(pattern);
+    }
+
+    private static RequestMatcher ajaxRequestMatcher() {
+        RequestMatcher xhr = req -> "XMLHttpRequest".equalsIgnoreCase(req.getHeader("X-Requested-With"));
+        RequestMatcher customHdr = req -> req.getHeader("X-Ajax-Request") != null;
+        RequestMatcher acceptsJson = req -> {
+            String accept = req.getHeader("Accept");
+            return accept != null && (accept.contains("application/json") || accept.contains("text/json"));
+        };
+        return new OrRequestMatcher(xhr, customHdr, acceptsJson);
+    }
+
+    private static AuthenticationEntryPoint buildAuthenticationEntryPoint() {
+        AuthenticationEntryPoint ajaxEp = (req, res, ex) -> {
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            res.setHeader("X-Session-Expired", "true");
+            res.setContentType("application/json;charset=UTF-8");
+            res.getWriter().write("{\"error\":\"UNAUTHENTICATED\"}");
+        };
+        LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> map = new LinkedHashMap<>();
+        map.put(ajaxRequestMatcher(), ajaxEp);
+        DelegatingAuthenticationEntryPoint aep = new DelegatingAuthenticationEntryPoint(map);
+        aep.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/customLogin"));
+        return aep;
+    }
+
+    private static InvalidSessionStrategy buildInvalidSessionStrategy() {
+        RequestMatcher ajax = ajaxRequestMatcher();
+        return (req, res) -> {
+            // 만료 쿠키를 대체할 새 세션을 발급 (응답에 Set-Cookie: DLMSESSIONID=NEW)
+            // 이렇게 하지 않으면 브라우저가 계속 expired 쿠키를 들고 다녀 /login POST도 인터셉트됨
+            req.getSession();
+
+            if (ajax.matches(req)) {
+                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                res.setHeader("X-Session-Expired", "true");
+                res.setContentType("application/json;charset=UTF-8");
+                res.getWriter().write("{\"error\":\"SESSION_EXPIRED\"}");
+            } else {
+                res.sendRedirect("/customLogin?expired=1");
+            }
+        };
     }
 
     @Bean
@@ -203,6 +253,14 @@ public class SecurityConfig {
                 .requestMatchers(ant("/piidiscovery/**")).hasAnyRole("IT","SEC","ADMIN")
                 .requestMatchers(ant("/accesslog/**")).hasAnyRole("IT","SEC","ADMIN")
                 .anyRequest().authenticated()
+        );
+
+        http.exceptionHandling(eh -> eh
+                .authenticationEntryPoint(buildAuthenticationEntryPoint())
+        );
+
+        http.sessionManagement(sm -> sm
+                .invalidSessionStrategy(buildInvalidSessionStrategy())
         );
 
         http.formLogin(form -> form

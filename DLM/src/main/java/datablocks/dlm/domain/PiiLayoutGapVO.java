@@ -16,6 +16,7 @@ public class PiiLayoutGapVO {
 	private String column_name_arc;
 	private String data_length_arc;
 	private String gapdate;
+	private String error_reason;
 }
 
 

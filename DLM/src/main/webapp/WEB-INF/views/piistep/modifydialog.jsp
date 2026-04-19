@@ -1,351 +1,459 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-         pageEncoding="UTF-8" %>
-
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
+
 <link rel="stylesheet" href="/resources/css/piijob-refactor.css">
-<!-- Begin Page Content -->
-<div class="card shadow m-1" style="height: 670px;width: 1100px; border-radius: 8px; overflow: hidden;">
 
-    <div class="m-1 p-0" style="height:310px;width: 1090px;">
-        <div class="tableWrapper" style="height:300px; border-radius: 6px; overflow-y: auto; border: 1px solid #e2e8f0;">
-            <table id="listTable" class="table table-sm table-hover policy-table">
-                <thead>
-                <tr>
-                    <th class="th-get">&nbsp;&nbsp;&nbsp;</th>
-                    <th class="th-get">SEQ</th>
-                    <th class="th-get">JOBID</th>
-                    <th class="th-get">STEPID</th>
-                    <th class="th-get">STEPNAME</th>
-                    <th class="th-get">STATUS</th>
-                </tr>
-                </thead>
-                <tbody id=modifydial-step>
-                <c:forEach items="${list}" var="piistep">
-                    <tr>
-                        <td class="td-get"><input type="radio" class="chkRadio" name="chkRadio"
-                                                  onClick="checkeRowColorChange(this);"
-                                                  style="vertical-align:middle;width:15px;height:15px;"></td>
-                        <td class="td-get-r"><c:out value="${piistep.stepseq}"/></td>
-                        <td class="td-get"><c:out value="${piistep.jobid}"/></td>
-                        <td class="td-get-l"><c:out value="${piistep.stepid}"/></td>
-                        <td class="td-get-l"><c:out value="${piistep.stepname}"/></td>
-                        <td class="td-get"><c:out value="${piistep.status}"/></td>
+<div class="step-modal-layout" id="stepModalLayout">
 
-                    </tr>
+    <!-- ===== LEFT: Step List Pane ===== -->
+    <div class="step-list-pane">
+        <div class="step-context-bar">
+            <span class="context-pill"><i class="fas fa-briefcase"></i> <c:out value="${jobid}"/></span>
+            <span class="context-sep"><i class="fas fa-chevron-right"></i></span>
+            <span class="context-pill">v<c:out value="${version}"/></span>
+        </div>
+
+        <div class="step-filter-bar">
+            <input type="text" id="stepFilterText"
+                   placeholder="<spring:message code='step.filter_placeholder' text='Filter by name / STEPID'/>">
+            <select id="stepFilterType">
+                <option value=""><spring:message code="step.filter_all_types" text="All types"/></option>
+                <c:forEach var="t" items="${['EXE_EXTRACT','GEN_KEYMAP','EXE_ARCHIVE','EXE_DELETE','EXE_UPDATE','EXE_BROADCAST','EXE_HOMECAST','EXE_FINISH','EXE_MIGRATE','EXE_SCRAMBLE','EXE_ILM','EXE_SYNC','ETC','EXE_TD_UPDATE']}">
+                    <option value="${t}">${t}</option>
                 </c:forEach>
-                </tbody>
-            </table>
-
-        </div>
-        <!-- <div class="table-responsive"> -->
-    </div> <!-- <div class="card-body"> -->
-    <div class="card-header m-0 p-0 " style="width:100%;">
-        <div class="search-container-get-1row">
-            <div class="step-item">
-                <div class="d-flex align-items-center ml-1" style="gap: 4px;">
-                    <input type="button" class="btn-action-up" onClick="rowMoveEvent('up');" value="▲"/>
-                    <input type="button" class="btn-action-down" onClick="rowMoveEvent('down');" value="▼"/>
-                    <input type="button" class="btn-action-save-seq" onClick="updateStepSeq();" value="Save"/>
-                </div>
-            </div>
-            <div class="step-item"></div>
-            <div class="step-item"><span id=modify_step_dlg_result style="color: #059669; font-weight: 500; font-size: 0.72rem;"><c:out value="${step_modifydiolog_result}"/></span>
-            </div>
-            <div class="step-item"></div>
-            <div class="mr-1" style="text-align: right;">
-                <sec:authorize access="isAuthenticated()">
-                    <input type="button" class="btn-action-new" id="step_md_register" onClick="register();" value="+ New Step"/>
-                </sec:authorize>
-
-            </div>
+            </select>
+            <select id="stepFilterStatus">
+                <option value=""><spring:message code="step.filter_all_status" text="All status"/></option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+                <option value="HOLD">HOLD</option>
+            </select>
         </div>
 
+        <div class="step-list-wrapper">
+            <c:choose>
+                <c:when test="${empty list}">
+                    <div class="step-list-empty">
+                        <i class="fas fa-inbox"></i>
+                        <div><spring:message code="step.empty_state" text="No steps yet. Click + New Step to add one."/></div>
+                    </div>
+                </c:when>
+                <c:otherwise>
+                    <table class="step-list-table" id="stepListTable">
+                        <colgroup>
+                            <col class="col-w-seq">
+                            <col class="col-w-stepid">
+                            <col class="col-w-stepname">
+                            <col class="col-w-steptype">
+                            <col class="col-w-status">
+                        </colgroup>
+                        <thead>
+                        <tr>
+                            <th class="col-seq" data-sort="stepseq">#<span class="sort-indicator">▼</span></th>
+                            <th data-sort="stepid">STEPID<span class="sort-indicator">↕</span></th>
+                            <th data-sort="stepname"><spring:message code="col.stepname" text="Name"/><span class="sort-indicator">↕</span></th>
+                            <th data-sort="steptype"><spring:message code="col.steptype" text="Type"/><span class="sort-indicator">↕</span></th>
+                            <th class="col-status" data-sort="status"><spring:message code="col.status" text="Status"/><span class="sort-indicator">↕</span></th>
+                        </tr>
+                        </thead>
+                        <tbody id="stepListBody">
+                        <c:forEach items="${list}" var="piistep" varStatus="st">
+                            <tr data-stepid="<c:out value='${piistep.stepid}'/>"
+                                data-jobid="<c:out value='${piistep.jobid}'/>"
+                                data-steptype="<c:out value='${piistep.steptype}'/>"
+                                data-status="<c:out value='${piistep.status}'/>">
+                                <td class="col-seq"><c:out value="${piistep.stepseq}"/></td>
+                                <td class="col-stepid"><c:out value="${piistep.stepid}"/></td>
+                                <td class="col-stepname"><c:out value="${piistep.stepname}"/></td>
+                                <td class="col-steptype"><c:out value="${piistep.steptype}"/></td>
+                                <td class="col-status">
+                                    <c:set var="statusCls" value="status-inactive"/>
+                                    <c:if test="${piistep.status eq 'ACTIVE'}"><c:set var="statusCls" value="status-active"/></c:if>
+                                    <c:if test="${piistep.status eq 'HOLD'}"><c:set var="statusCls" value="status-hold"/></c:if>
+                                    <span class="step-badge ${statusCls}"><c:out value="${piistep.status}"/></span>
+                                </td>
+                            </tr>
+                        </c:forEach>
+                        </tbody>
+                    </table>
+                </c:otherwise>
+            </c:choose>
+        </div>
+
+        <div class="step-list-footer">
+            <div class="reorder-group">
+                <button type="button" class="btn-step-reorder" id="btnReorderUp" title="Move up" disabled>▲</button>
+                <button type="button" class="btn-step-reorder" id="btnReorderDown" title="Move down" disabled>▼</button>
+            </div>
+            <button type="button" class="btn-step-save-order" id="btnSaveOrder">
+                <spring:message code="step.save_order" text="Save Order"/>
+            </button>
+            <span class="status-msg" id="stepListStatusMsg"></span>
+        </div>
     </div>
-    <!-- <div class="card-header  m-1 p-0 width:100%;height:75px;"> -->
 
+    <!-- ===== RIGHT: Detail Pane ===== -->
+    <div class="step-detail-pane">
+        <div class="step-detail-topbar" style="display:flex;align-items:center;justify-content:flex-end;padding:10px 20px 0 20px;">
+            <sec:authorize access="hasAnyRole('ROLE_IT','ROLE_ADMIN')">
+                <button type="button" class="step-detail-new-btn" id="btnNewStep">
+                    <i class="fas fa-plus"></i> New Step
+                </button>
+            </sec:authorize>
+        </div>
 
-    <div class="card-body m-1 p-0">
-        <div id="stepdetaildilaog">
+        <div id="stepDetailSlot" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div class="step-detail-placeholder" id="stepDetailPlaceholder">
+                <i class="fas fa-layer-group"></i>
+                <p><spring:message code="step.placeholder" text="Select a step or click + New Step to add one."/></p>
+            </div>
         </div>
     </div>
-
-
 </div>
-<!-- <div class="card shadow mb-1"> -->
+
 <input type='hidden' id='step_md_global_jobid' value='<c:out value="${jobid}"/>'>
 <input type='hidden' id='step_md_global_version' value='<c:out value="${version}"/>'>
 <input type='hidden' id='step_md_global_stepid' value='<c:out value="${stepid}"/>'>
 
-<!-- Bootstrap core JavaScript-->
-<script src="/resources/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script>
+(function(){
+    var jobid = $('#step_md_global_jobid').val();
+    var version = $('#step_md_global_version').val();
+    var initialStepid = $('#step_md_global_stepid').val();
 
-<!-- Core plugin JavaScript-->
-<script src="/resources/vendor/jquery-easing/jquery.easing.min.js"></script>
+    var $listPane = $('.step-list-pane');
+    var $tbody = $('#stepListBody');
+    var $msg = $('#stepListStatusMsg');
+    var $btnUp = $('#btnReorderUp');
+    var $btnDown = $('#btnReorderDown');
+    var $btnSaveOrder = $('#btnSaveOrder');
+    var orderDirty = false;
 
-<!-- Custom scripts for all pages-->
-<script src="/resources/js/sb-admin-2.min.js"></script>
+    // Enable Bootstrap tooltips
+    if (typeof $().tooltip === 'function') {
+        $('[data-toggle="tooltip"]').tooltip({container: '#stepmodal'});
+    }
 
-<script type="text/javascript">
+    // ---------- filter ----------
+    function applyFilter() {
+        var txt = ($('#stepFilterText').val() || '').trim().toUpperCase();
+        var fType = $('#stepFilterType').val() || '';
+        var fStatus = $('#stepFilterStatus').val() || '';
+        $tbody.find('tr').each(function(){
+            var $r = $(this);
+            var sid = ($r.data('stepid') || '').toString().toUpperCase();
+            var sname = ($r.find('.col-stepname').text() || '').toUpperCase();
+            var stype = ($r.data('steptype') || '').toString();
+            var sst = ($r.data('status') || '').toString();
+            var match = true;
+            if (txt && sid.indexOf(txt) === -1 && sname.indexOf(txt) === -1) match = false;
+            if (fType && stype !== fType) match = false;
+            if (fStatus && sst !== fStatus) match = false;
+            $r.toggle(match);
+        });
+    }
+    $('#stepFilterText').on('input', applyFilter);
+    $('#stepFilterType, #stepFilterStatus').on('change', applyFilter);
 
-    $("body").on('hidden.bs.modal', '.modal', function (e) {
-        e.preventDefault();e.stopPropagation();
-
-        // Ignore system modals (GlobalConfirmModal, errormodal, etc.)
-        var modalId = $(this).attr('id');
-        if (modalId === 'GlobalConfirmModal' || modalId === 'errormodal' || modalId === 'stepmodal') {
-            return;
+    // ---------- sorting ----------
+    var sortState = { key: 'stepseq', dir: 'asc' };
+    function compareRows(a, b, key, dir) {
+        function keyVal($r) {
+            if (key === 'stepseq') return parseInt($r.find('.col-seq').text(), 10) || 0;
+            if (key === 'stepid') return $r.data('stepid') || '';
+            if (key === 'stepname') return $r.find('.col-stepname').text() || '';
+            if (key === 'steptype') return $r.data('steptype') || '';
+            if (key === 'status') return $r.data('status') || '';
+            return '';
         }
+        var av = keyVal($(a)), bv = keyVal($(b));
+        if (av < bv) return dir === 'asc' ? -1 : 1;
+        if (av > bv) return dir === 'asc' ? 1 : -1;
+        return 0;
+    }
+    $listPane.on('click', '#stepListTable thead th', function(){
+        var key = $(this).data('sort');
+        if (!key) return;
+        if (sortState.key === key) sortState.dir = (sortState.dir === 'asc' ? 'desc' : 'asc');
+        else { sortState.key = key; sortState.dir = 'asc'; }
 
-        var global_jobid = $('#step_md_global_jobid').val();
-        var global_version = $('#step_md_global_version').val();
-        var global_stepid = $('#step_md_global_stepid').val();//alert(global_stepid);
-        if (!isEmpty_dialog(global_stepid)) {
-            var url_view = "/piijob/modifyjoballinfo?jobid=" + global_jobid + "&version=" + global_version + "&";//alert(url_view);
-            searchAction_stepdialog(null, url_view, "#content_home");
-        }
+        $('#stepListTable thead th').removeClass('sorted-asc sorted-desc');
+        $(this).addClass(sortState.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        $(this).find('.sort-indicator').text(sortState.dir === 'asc' ? '▲' : '▼');
 
+        var rows = $tbody.find('tr').toArray();
+        rows.sort(function(a,b){ return compareRows(a,b,sortState.key,sortState.dir); });
+        $tbody.append(rows);
+        if (sortState.key !== 'stepseq') markOrderDirty(false);
+        updateReorderButtons();
     });
 
-
-    /* $("body").on('show.bs.modal', '.modal', function(e) {
-        //e.preventDefault();e.stopPropagation();
-        //alert('show');
-
-    });
-     */
-
-    /* $("body").on('hide.bs.modal', '.modal', function(e) {
-        //e.preventDefault();e.stopPropagation();
-        //alert('hide');
-
-    }); */
-</script>
-
-<script type="text/javascript">
-    function checkeRowColorChange(obj) {
-        jQuery("#modifydial-step > tr").css("background-color", "#FFFFFF");
-        var row = jQuery(".chkRadio").index(obj);
-        jQuery("#modifydial-step > tr").eq(row).css("background-color", "#F4F9FB");
-
-        $('#modify_step_dlg_result').text("");
+    // ---------- selection / load detail ----------
+    function clearSelection() {
+        $tbody.find('tr').removeClass('is-selected');
     }
-
-    function rowMoveEvent(direction) {
-        if (jQuery(".chkRadio:checked").val()) {
-            var row = jQuery(".chkRadio:checked").parent().parent();
-
-            var td = row.children();
-            $('#step_md_global_stepid').val(td.eq(3).text());
-
-            var num = row.index();
-            var max = (jQuery(".chkRadio").length - 1);	   // index는 0부터 시작하기에 -1을 해준다.
-            if (direction == "up") {
-                if (num == 0) {
-                    //alert("첫번째로 지정되어 있습니다.\n더이상 순서를 변경할 수 없습니다.");
-                    return false;
-                } else {
-                    // 체크된 행(row)을 한칸 위로 올린다.
-                    row.prev().before(row);
-                }
-            } else if (direction == "down") {
-                if (num >= max) {
-                    //alert("마지막으로 지정되어 있습니다.\n더이상 순서를 변경할 수 없습니다.");
-                    return false;
-                } else {
-                    // 체크된 행(row)을 한칸 아래로 내린다.
-                    row.next().after(row);
-                }
-            }
-        } else {
-            dlmAlert("Select a step to move.");
-        }
-
-        $('#modifydial-step > tr').each(function (index, tr) {
-            //console.log(index);
-            //console.log(tr);
-            var tr = $(this);
-            var td = tr.children();
-            td.eq(1).html(index + 1);
-        });
-        $('#modify_step_dlg_result').text("");
-
+    function selectRow(stepid) {
+        clearSelection();
+        var $r = $tbody.find('tr[data-stepid="' + cssEscape(stepid) + '"]');
+        if ($r.length) $r.addClass('is-selected');
+        updateReorderButtons();
     }
+    function cssEscape(v) { return (v || '').replace(/(["\\])/g, '\\$1'); }
 
-    function getStep(jobid, version, stepid) {
-        $('#modify_step_dlg_result').text("");
-        jQuery(".chkRadio:checked").removeAttr('checked');
-        jQuery("#modifydial-step > tr").css("background-color", "#FFFFFF");
-
-        var url_view = "/piistep/modify?jobid=" + jobid + "&" + "version=" + version + "&" + "stepid=" + stepid + "&";
-        searchAction_stepdialog(null, url_view, "#stepdetaildilaog");
-    }
-
-    function updateStepSeq() {//alert(11);
-        var global_version = $('#step_md_global_version').val();
-        var param = [];
-        var tr;
-        var td;
-        $('#modifydial-step > tr').each(function (index, tr) {
-            //console.log(index);console.log(tr);
-            tr = $(this);
-            td = tr.children();
-
-            var data = {
-                stepseq: td.eq(1).text(),
-                jobid: td.eq(2).text(),
-                version: global_version,
-                stepid: td.eq(3).text()
-            };
-
-            param.push(data);
-        });
-
-        //console.log("param "+param.length);
-        ingShow(); $.ajax({
-            url: "/piistep/modify_seq",
-            dataType: "text",
-            contentType: "application/json; charset=UTF-8",
-            type: "post",
-            data: JSON.stringify(param),//{"str" : JSON.stringify(param)},
-            beforeSend: function (xhr) {   /*데이터를 전송하기 전에 헤더에 csrf값을 설정한다*/
-                xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
-            },
-            success: function (data, textStatus, jqXHR) {ingHide();
-                $('#modify_step_dlg_result').html(data);
-                //alert("success");//alert("success");//data - response from server
-                //alert(td.eq(4).text());
-                //$('#step_md_global_stepid').val(td.eq(4).text());
-
-            },
-            error: function (request, error) { ingHide();
-                $("#errormodalbody").html(request.responseText);
-                $("#errormodal").modal("show");
-            }
-
-        });
-
-    }
-
-</script>
-<script type="text/javascript">
-
-    $(document).ready(function () {
-
-        var result = '<c:out value="${result}"/>';
-        checkResultModal(result);
-        history.replaceState({}, null, null);
-
-    });
-    register = function () {
-        $('#modify_step_dlg_result').text("");
-        jQuery(".chkRadio:checked").removeAttr('checked');
-        jQuery("#modifydial-step > tr").css("background-color", "#FFFFFF");
-        $('#stepdetaildilaog').load("/piistep/register?jobid=" + $('#step_md_global_jobid').val() + "&version=" + $('#step_md_global_version').val());
-    }
-
-    searchAction_stepdialog = function (pageNo, url_view, div_success) {
-        var global_stepid = $('#step_md_global_stepid').val();
-        var pagenum = $('#searchForm [name="pagenum"]').val();
-        var amount = $('#searchForm [name="amount"]').val();
-        var search1 = $('#searchForm [name="search1"]').val();
-        var search2 = $('#searchForm [name="search2"]').val();
-        var url_search = "";
-        if (isEmpty_dialog(url_view)) url_view = "/piistep/list?";
-        if (isEmpty_dialog(pagenum)) pagenum = 1;
-        if (!isEmpty_dialog(pageNo)) pagenum = pageNo;
-        if (isEmpty_dialog(amount)) amount = 100;
-        if (!isEmpty_dialog(search1)) {
-            url_search += "&search1=" + search1;
-        }
-        if (!isEmpty_dialog(search2)) {
-            url_search += "&search2=" + search2;
-        }
-        //alert(url_view+"pagenum="+pagenum+"&amount="+amount+url_search);
-        ingShow(); $.ajax({
-            type: "GET",
-            url: url_view + "pagenum=" + pagenum + "&amount=" + amount + url_search,
-            dataType: "html",
-            error: function (request, error) { ingHide();
-                $("#errormodalbody").html(request.responseText);
-                $("#errormodal").modal("show");
-            },
-            success: function (data) { ingHide();
-                $(div_success).html(data);
-                if (div_success == "#content_home") {
-                    $("#" + global_stepid).trigger("click");
-                }
-
-            }
-        });
-    }
-
-    isEmpty_dialog = function (value) {
-        if (value == "" || value == null || value == undefined || (value != null && typeof value == "object" && !Object.keys(value).length)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    $('#listTable tbody').on('dblclick', 'tr', function (e) {
-        e.preventDefault();e.stopPropagation();
-        var str = ""
-        var tdArr = new Array();	// 배열 선언
-
-        // 현재 클릭된 Row(<tr>)
-        var tr = $(this);
-        var td = tr.children();
-
-        td.each(function (i) {
-            tdArr.push(td.eq(i).text());
-        });
-
-        var jobid = td.eq(2).text().trim();
-        var global_version = $('#step_md_global_version').val();
-        var stepid = td.eq(3).text().trim();
-
-        getStep(jobid, global_version, stepid);
-    })
-
-    // Function to refresh the step list after registration
-    // callback: optional function to call after refresh completes
-    refreshStepList = function (newStepid, callback) {
-        var global_jobid = $('#step_md_global_jobid').val();
-        var global_version = $('#step_md_global_version').val();
-        var global_stepid = newStepid || $('#step_md_global_stepid').val() || '';
-
+    function loadStepDetail(stepid) {
+        $('#step_md_global_stepid').val(stepid);
+        $('#stepDetailPlaceholder').hide();
         ingShow();
         $.ajax({
-            type: "GET",
-            url: "/piistep/modifydialog?jobid=" + global_jobid + "&version=" + global_version + "&stepid=" + global_stepid,
-            dataType: "html",
-            error: function (request, error) {
+            type: 'GET',
+            url: '/piistep/modify?jobid=' + encodeURIComponent(jobid)
+               + '&version=' + encodeURIComponent(version)
+               + '&stepid=' + encodeURIComponent(stepid),
+            dataType: 'html',
+            error: function(req){
                 ingHide();
-                $("#errormodalbody").html(request.responseText);
-                $("#errormodal").modal("show");
+                $('#errormodalbody').html(req.responseText);
+                $('#errormodal').modal('show');
             },
-            success: function (data) {
+            success: function(data){
                 ingHide();
-                // Find and update only the step list table body
-                var newContent = $(data);
-                var newTableBody = newContent.find('#modifydial-step').html();
-                $('#modifydial-step').html(newTableBody);
-
-                // Set the new stepid for subsequent operations
-                if (newStepid) {
-                    $('#step_md_global_stepid').val(newStepid);
-                }
-
-                // Execute callback after refresh completes
-                if (typeof callback === 'function') {
-                    callback();
-                }
+                $('#stepDetailSlot').html(data);
+                selectRow(stepid);
+                wireDetailCallbacks();
             }
         });
     }
+
+    function loadNewForm() {
+        $('#stepDetailPlaceholder').hide();
+        ingShow();
+        $.ajax({
+            type: 'GET',
+            url: '/piistep/register?jobid=' + encodeURIComponent(jobid)
+               + '&version=' + encodeURIComponent(version),
+            dataType: 'html',
+            error: function(req){
+                ingHide();
+                $('#errormodalbody').html(req.responseText);
+                $('#errormodal').modal('show');
+            },
+            success: function(data){
+                ingHide();
+                clearSelection();
+                $('#stepDetailSlot').html(data);
+                wireDetailCallbacks();
+            }
+        });
+    }
+
+    // Callbacks from detailform.jsp
+    function wireDetailCallbacks() {
+        window.onStepSaved = function(savedStepid, wasNew, message) {
+            flashMsg(message || 'Saved', false);
+            refreshList(savedStepid, function(){
+                loadStepDetail(savedStepid);
+            });
+        };
+        window.onStepRemoved = function(message) {
+            flashMsg(message || 'Removed', false);
+            $('#step_md_global_stepid').val('');
+            refreshList(null, function(){
+                $('#stepDetailSlot').html(
+                    '<div class="step-detail-placeholder" id="stepDetailPlaceholder">' +
+                    '<i class="fas fa-layer-group"></i><p>' +
+                    '<spring:message code="step.placeholder" text="Select a step or click + New Step to add one."/>' +
+                    '</p></div>'
+                );
+            });
+        };
+        window.onStepCancel = function() {
+            var sid = $('#step_md_global_stepid').val();
+            if (sid) loadStepDetail(sid);
+            else {
+                $('#stepDetailSlot').html(
+                    '<div class="step-detail-placeholder" id="stepDetailPlaceholder">' +
+                    '<i class="fas fa-layer-group"></i><p>' +
+                    '<spring:message code="step.placeholder" text="Select a step or click + New Step to add one."/>' +
+                    '</p></div>'
+                );
+            }
+        };
+    }
+
+    // Row click (delegated on stable parent so new rows after refresh still work)
+    $listPane.on('click', '#stepListBody tr', function(){
+        var sid = $(this).attr('data-stepid') || $(this).data('stepid');
+        if (!sid) return;
+        if (window.stepDetailState && window.stepDetailState.dirty) {
+            showConfirm('<spring:message code="step.discard_confirm" text="Discard changes?"/>', function(){
+                loadStepDetail(sid);
+            });
+        } else {
+            loadStepDetail(sid);
+        }
+    });
+
+    // New Step button
+    $('#btnNewStep').on('click', function(){
+        if (window.stepDetailState && window.stepDetailState.dirty) {
+            showConfirm('<spring:message code="step.discard_confirm" text="Discard changes?"/>', function(){
+                loadNewForm();
+            });
+        } else {
+            loadNewForm();
+        }
+    });
+
+    // ---------- reorder ----------
+    function updateReorderButtons() {
+        var $sel = $tbody.find('tr.is-selected:visible');
+        if (!$sel.length) {
+            $btnUp.prop('disabled', true);
+            $btnDown.prop('disabled', true);
+            return;
+        }
+        var $visible = $tbody.find('tr:visible');
+        var idx = $visible.index($sel);
+        $btnUp.prop('disabled', idx <= 0);
+        $btnDown.prop('disabled', idx >= $visible.length - 1);
+    }
+
+    function markOrderDirty(v) {
+        orderDirty = !!v;
+        $btnSaveOrder.toggleClass('is-dirty', orderDirty);
+        if (orderDirty) {
+            $btnSaveOrder.html('<spring:message code="step.save_order_dirty" text="Save Order"/>');
+        } else {
+            $btnSaveOrder.html('<spring:message code="step.save_order" text="Save Order"/>');
+        }
+    }
+
+    function renumberSeq() {
+        $tbody.find('tr').each(function(i){
+            $(this).find('.col-seq').text(i + 1);
+        });
+    }
+
+    $btnUp.on('click', function(){
+        if ($(this).prop('disabled')) return;
+        var $sel = $tbody.find('tr.is-selected');
+        if (!$sel.length) return;
+        var $prev = $sel.prevAll('tr:visible').first();
+        if ($prev.length) {
+            $sel.insertBefore($prev);
+            renumberSeq();
+            markOrderDirty(true);
+            updateReorderButtons();
+        }
+    });
+
+    $btnDown.on('click', function(){
+        if ($(this).prop('disabled')) return;
+        var $sel = $tbody.find('tr.is-selected');
+        if (!$sel.length) return;
+        var $next = $sel.nextAll('tr:visible').first();
+        if ($next.length) {
+            $sel.insertAfter($next);
+            renumberSeq();
+            markOrderDirty(true);
+            updateReorderButtons();
+        }
+    });
+
+    $btnSaveOrder.on('click', function(){
+        if (!orderDirty) return;
+        var payload = [];
+        $tbody.find('tr').each(function(i){
+            var sid = $(this).attr('data-stepid') || $(this).data('stepid');
+            if (!sid) return;
+            payload.push({
+                stepseq: String(i + 1),
+                jobid: jobid,
+                version: version,
+                stepid: sid
+            });
+        });
+        if (!payload.length) { flashMsg('No steps to save', true); return; }
+        ingShow();
+        $.ajax({
+            url: '/piistep/modify_seq',
+            type: 'POST',
+            contentType: 'application/json; charset=UTF-8',
+            dataType: 'text',
+            data: JSON.stringify(payload),
+            beforeSend: function(xhr){
+                xhr.setRequestHeader("${_csrf.headerName}", "${_csrf.token}");
+            },
+            success: function(data){
+                ingHide();
+                markOrderDirty(false);
+                flashMsg('<spring:message code="msg.order_saved" text="Order saved"/>', false);
+            },
+            error: function(req){
+                ingHide();
+                flashMsg(req.responseText || 'Failed', true);
+            }
+        });
+    });
+
+    // ---------- status message flash ----------
+    function flashMsg(text, isError) {
+        $msg.text(text).toggleClass('error', !!isError).addClass('visible');
+        clearTimeout($msg.data('t'));
+        $msg.data('t', setTimeout(function(){ $msg.removeClass('visible'); }, 2500));
+    }
+
+    // ---------- list refresh (re-fetch modifydialog HTML, swap list wrapper) ----------
+    function refreshList(focusStepid, cb) {
+        ingShow();
+        $.ajax({
+            type: 'GET',
+            url: '/piistep/modifydialog?jobid=' + encodeURIComponent(jobid)
+               + '&version=' + encodeURIComponent(version)
+               + '&stepid=' + encodeURIComponent(focusStepid || ''),
+            dataType: 'html',
+            success: function(data){
+                ingHide();
+                var $wrap = $('<div>').append(data);
+                var $newWrapper = $wrap.find('.step-list-wrapper').first();
+                if ($newWrapper.length) {
+                    $('.step-list-wrapper').html($newWrapper.html());
+                }
+                // Re-query tbody after swap (may have just been added for first time)
+                $tbody = $('#stepListBody');
+                markOrderDirty(false);
+                applyFilter();
+                if (focusStepid) selectRow(focusStepid);
+                updateReorderButtons();
+                if (typeof cb === 'function') cb();
+            },
+            error: function(req){
+                ingHide();
+                $('#errormodalbody').html(req.responseText);
+                $('#errormodal').modal('show');
+            }
+        });
+    }
+
+    // ---------- close modal cleanup + refresh job view ----------
+    $('body').off('hidden.bs.modal.stepmgmt').on('hidden.bs.modal.stepmgmt', '#stepmodal', function(){
+        var gStepid = $('#step_md_global_stepid').val();
+        if (typeof searchAction_stepdialog === 'function' && gStepid) {
+            var url_view = "/piijob/modifyjoballinfo?jobid=" + encodeURIComponent(jobid) + "&version=" + encodeURIComponent(version) + "&";
+            searchAction_stepdialog(null, url_view, "#content_home");
+        }
+    });
+
+    // ---------- initial state ----------
+    if (initialStepid) {
+        selectRow(initialStepid);
+        loadStepDetail(initialStepid);
+    }
+    updateReorderButtons();
+
+    // ---------- global helper (kept for detailform callbacks that need legacy refresh) ----------
+    window.refreshStepList = function(sid, cb){ refreshList(sid || null, cb); };
+})();
 </script>
-
-

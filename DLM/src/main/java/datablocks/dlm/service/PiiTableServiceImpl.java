@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -71,8 +73,26 @@ public class PiiTableServiceImpl implements PiiTableService {
 	@Override
 	public List<PiiLayoutGapVO> getLayoutGapList(Criteria cri) {
 
-		LogUtil.log("INFO", "get List with criteria: " + cri);
-		return mapper.getLayoutGapListWithPaging(cri);
+		LogUtil.log("INFO", "getLayoutGapList with criteria: " + cri);
+		List<PiiLayoutGapVO> all = loadAllLayoutGaps();
+		int total = all.size();
+		int from = Math.min(cri.getOffset(), total);
+		int to = Math.min(cri.getOffset() + cri.getAmount(), total);
+		return new ArrayList<>(all.subList(from, to));
+	}
+
+	private List<PiiLayoutGapVO> loadAllLayoutGaps() {
+		List<Map<String, String>> targets = mapper.getArchiveTargetOwners();
+		List<PiiLayoutGapVO> result = new ArrayList<>();
+		for (Map<String, String> row : targets) {
+			String db = row.get("db");
+			String srcOwner = row.get("owner");
+			if (db == null || srcOwner == null) continue;
+			String archiveOwner = archiveNamingService.getArchiveSchemaName(
+					ArchiveNamingService.CONFIG_TYPE_PII, db, srcOwner);
+			result.addAll(mapper.getLayoutGapForOwner(db, srcOwner, archiveOwner));
+		}
+		return result;
 	}
 		
 	@Override
@@ -460,7 +480,7 @@ public class PiiTableServiceImpl implements PiiTableService {
 	public int getLayoutGapTotal(Criteria cri) {
 
 		LogUtil.log("INFO", "getLayoutGapTotal count");
-		return mapper.getLayoutGapTotalCount(cri);
+		return loadAllLayoutGaps().size();
 	}
 
 	@Override

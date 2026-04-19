@@ -49,6 +49,14 @@
 			</div>
 		</c:if>
 
+		<!-- Session expired banner -->
+		<c:if test="${not empty expired}">
+			<div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+				<i class="fa-solid fa-clock mr-2"></i>
+				<span><c:out value="${expired}"/></span>
+			</div>
+		</c:if>
+
 		<form id="loginForm" role="form" method="post" action="/login" novalidate>
 			<div class="form-group">
 				<label for="usernameLogin" class="sr-only">User ID</label>

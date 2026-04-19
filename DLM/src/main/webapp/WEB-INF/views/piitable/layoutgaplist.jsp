@@ -53,6 +53,7 @@
                     <th class="th-get"><spring:message code="etc.column_id_arc" text="Column_Id_Arc"/></th>
                     <th class="th-get"><spring:message code="etc.column_name_arc" text="Column_Name_Arc"/></th>
                     <th class="th-get"><spring:message code="etc.gapdate" text="Gapdate"/></th>
+                    <th class="th-get"><spring:message code="etc.error_reason" text="동기화 실패 사유"/></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -69,7 +70,12 @@
                         <td class="td-get"><c:out value="${piitable.column_id_arc}"/></td>
                         <td class="td-get"><c:out value="${piitable.column_name_arc}"/></td>
                         <td class="td-get"><c:out value="${piitable.gapdate}"/></td>
-
+                        <td class="td-get" style="color:#c0392b; max-width:400px; word-break:break-all;">
+                            <c:if test="${not empty piitable.error_reason}">
+                                <i class="fas fa-exclamation-triangle" title="ARC_DDL_ERROR"></i>
+                                <c:out value="${piitable.error_reason}"/>
+                            </c:if>
+                        </td>
                     </tr>
                 </c:forEach>
                 </tbody>

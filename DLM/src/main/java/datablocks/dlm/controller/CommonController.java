@@ -59,6 +59,11 @@ public class CommonController {
         if (logout != null) {
             model.addAttribute("logout", "로그아웃 되었습니다.");
         }
+
+        String expired = request.getParameter("expired");
+        if (expired != null) {
+            model.addAttribute("expired", "세션이 만료되었습니다. 다시 로그인해주세요.");
+        }
     }
 
     private String getLoginErrorMessage(HttpSession session) {

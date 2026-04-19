@@ -1020,24 +1020,48 @@
 
 <script type="text/javascript">
 
-    // 세션 만료 시 AJAX 응답에서 로그인 페이지 감지 후 리다이렉트
-    $(document).ajaxComplete(function(event, xhr, settings) {
-        var response = xhr.responseText || '';
-        // 로그인 페이지 감지 (login-bg, customLogin 등 여러 패턴 체크)
-        if (response.indexOf('login-bg') !== -1 ||
-            response.indexOf('customLogin') !== -1 ||
-            response.indexOf('form-login') !== -1) {
-            window.location.href = '/customLogin';
-            return;
+    // 세션 만료 처리 — 서버가 AJAX에 대해 401 + X-Session-Expired 헤더를 반환
+    (function() {
+        var _redirecting = false;
+        function gotoLogin() {
+            if (_redirecting) return;
+            _redirecting = true;
+            try { showToast('세션이 만료되었습니다. 로그인 페이지로 이동합니다.', true); } catch(e){}
+            setTimeout(function(){
+                window.location.href = '/customLogin?expired=1';
+            }, 500);
         }
-    });
 
-    // AJAX 에러 발생시에도 체크 (401, 403 등)
-    $(document).ajaxError(function(event, xhr, settings, error) {
-        if (xhr.status === 401 || xhr.status === 403) {
-            window.location.href = '/customLogin';
+        // 모든 jQuery AJAX 요청에 AJAX 식별 헤더 부착 (하위 beforeSend에 덮이지 않도록 ajaxSend 사용)
+        $(document).ajaxSend(function(evt, xhr) {
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-Ajax-Request', '1');
+        });
+
+        $(document).ajaxError(function(event, xhr) {
+            if (xhr.status === 401 || xhr.getResponseHeader('X-Session-Expired') === 'true') {
+                gotoLogin();
+            }
+        });
+
+        // fetch() 포괄 래퍼 — SPA 스타일 호출까지 커버
+        if (window.fetch) {
+            var _origFetch = window.fetch;
+            window.fetch = function(input, init) {
+                init = init || {};
+                var headers = new Headers(init.headers || {});
+                if (!headers.has('X-Ajax-Request')) headers.set('X-Ajax-Request', '1');
+                if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
+                init.headers = headers;
+                return _origFetch.call(this, input, init).then(function(res) {
+                    if (res.status === 401 || res.headers.get('X-Session-Expired') === 'true') {
+                        gotoLogin();
+                    }
+                    return res;
+                });
+            };
         }
-    });
+    })();
 
     $(document).ready(function() {
         $('#GlobalSuccessMsgModal').on('shown.bs.modal', function () {

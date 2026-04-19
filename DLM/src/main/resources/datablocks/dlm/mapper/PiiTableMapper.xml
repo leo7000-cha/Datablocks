@@ -269,67 +269,54 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		]]>
 	</select>
 	
-	<select id="getLayoutGapListWithPaging" resultType="datablocks.dlm.domain.PiiLayoutGapVO">
+	<select id="getArchiveTargetOwners" resultType="java.util.HashMap">
+		<![CDATA[
+		select distinct db, owner
+		  from cotdl.tbl_piisteptable
+		 where exetype = 'ARCHIVE'
+		]]>
+	</select>
+
+	<select id="getLayoutGapForOwner" resultType="datablocks.dlm.domain.PiiLayoutGapVO">
 		<![CDATA[
 		select
-			 owner_src, table_name_src, column_id_src, column_name_src, data_length_src, owner_arc, table_name_arc, column_id_arc, column_name_arc, data_length_arc, gapdate
-		from (
-			select
-					a.original_owner as owner_src,
-					a.table_name as table_name_src, a.column_id as column_id_src, a.column_name as column_name_src, a.data_length as data_length_src,
-					b.owner as owner_arc, b.table_name as table_name_arc, b.column_id - 5 as column_id_arc, b.column_name as column_name_arc, b.data_length as data_length_arc,
-					NOW() as gapdate
-			  from (
-						select distinct b.owner as original_owner, b.table_name, b.column_id, b.column_name, b.data_length
-						  from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
-						 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name
-						   and NOT EXISTS (
-											select 1
-											  from cotdl.tbl_piisteptable a2, cotdl.tbl_piitable b2
-											 where a2.exetype='ARCHIVE'
-											   and (b2.owner LIKE concat('PII%', a2.owner) OR b2.owner LIKE concat('%', a2.owner, '%PII'))
-											   and a2.table_name = b2.table_name
-											   and b2.column_name not in ('PII_ORDER_ID','PII_BASE_DATE','PII_CUST_ID','PII_JOB_ID','PII_DESTRUCT_DATE')
-											   and (b2.owner LIKE concat('PII%', b.owner) OR b2.owner LIKE concat('%', b.owner, '%PII'))
-											   and b2.table_name = b.table_name
-											   and b2.column_id - 5 = b.column_id
-											   and b2.column_name = b.column_name
-											   and b2.data_length = b.data_length
-								)
-				   ) as a LEFT OUTER JOIN cotdl.tbl_piitable b
-					ON( (b.owner LIKE concat('PII%', a.original_owner) OR b.owner LIKE concat('%', a.original_owner, '%PII'))
-					    and a.table_name = b.table_name and a.column_name = b.column_name)
-					where a.table_name is null
-			) as c
-		order by owner_src, table_name_src, column_id_src
-		limit #{offset}, #{amount}
-		]]>
-	</select>	
-
-	<select id="getLayoutGapTotalCount" resultType="int">
-		<![CDATA[
-		select count(1)
-		from (
-				 select distinct b.owner as original_owner, b.table_name, b.column_id, b.column_name, b.data_length
-				 from cotdl.tbl_piisteptable a, cotdl.tbl_piitable b
-				 where a.exetype='ARCHIVE' and a.owner = b.owner and a.table_name = b.table_name
-				   and NOT EXISTS (
-					 select 1
-					 from cotdl.tbl_piisteptable a2, cotdl.tbl_piitable b2
-					 where a2.exetype='ARCHIVE'
-					   and (b2.owner LIKE concat('PII%', a2.owner) OR b2.owner LIKE concat('%', a2.owner, '%PII'))
-					   and a2.table_name = b2.table_name
-					   and b2.column_name not in ('PII_ORDER_ID','PII_BASE_DATE','PII_CUST_ID','PII_JOB_ID','PII_DESTRUCT_DATE')
-					   and (b2.owner LIKE concat('PII%', b.owner) OR b2.owner LIKE concat('%', b.owner, '%PII'))
-					   and b2.table_name = b.table_name
-					   and b2.column_id - 5 = b.column_id
-					   and b2.column_name = b.column_name
-					   and b2.data_length = b.data_length
-				 )
-			 ) as a LEFT OUTER JOIN cotdl.tbl_piitable b
-								 ON( (b.owner LIKE concat('PII%', a.original_owner) OR b.owner LIKE concat('%', a.original_owner, '%PII'))
-								     and a.table_name = b.table_name and a.column_name = b.column_name)
-		where a.table_name is null
+		    a.owner       as owner_src,
+		    a.table_name  as table_name_src,
+		    a.column_id   as column_id_src,
+		    a.column_name as column_name_src,
+		    a.data_length as data_length_src,
+		    #{archiveOwner} as owner_arc,
+		    a.table_name  as table_name_arc,
+		    NOW()         as gapdate,
+		    case
+		        when err.parallelcnt like 'ARC_DDL_ERROR:%'
+		            then substring_index(substring(err.parallelcnt, length('ARC_DDL_ERROR:') + 1), '|DDL:', 1)
+		        else null
+		    end           as error_reason
+		  from cotdl.tbl_piitable a
+		  join cotdl.tbl_piisteptable s
+		    on s.db = a.db
+		   and s.owner = a.owner
+		   and s.table_name = a.table_name
+		   and s.exetype = 'ARCHIVE'
+		  left join cotdl.tbl_piitable b
+		    on b.owner = #{archiveOwner}
+		   and b.table_name = a.table_name
+		   and b.column_name = a.column_name
+		  left join (
+		      select db, owner, table_name, max(parallelcnt) as parallelcnt
+		        from cotdl.tbl_piisteptable
+		       where exetype = 'ARCHIVE' and parallelcnt like 'ARC_DDL_ERROR:%'
+		       group by db, owner, table_name
+		  ) err
+		    on err.db = a.db
+		   and err.owner = a.owner
+		   and err.table_name = a.table_name
+		 where a.db = #{db}
+		   and a.owner = #{srcOwner}
+		   and b.column_name is null
+		   and a.column_name not in ('PII_ORDER_ID','PII_BASE_DATE','PII_CUST_ID','PII_JOB_ID','PII_DESTRUCT_DATE')
+		 order by a.table_name, a.column_id
 		]]>
 	</select>
 

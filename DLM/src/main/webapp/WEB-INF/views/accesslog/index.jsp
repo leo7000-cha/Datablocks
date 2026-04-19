@@ -41,7 +41,8 @@
         .sidebar-brand-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--monitor-primary), var(--monitor-secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
         .sidebar-brand-icon i { color: #fff; font-size: 1.2rem; }
         .sidebar-brand-text { color: #fff; font-size: 1rem; font-weight: 600; line-height: 1.3; }
-        .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+        .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .sidebar-nav::-webkit-scrollbar { display: none; }
         .nav-section { padding: 0 16px; margin-bottom: 8px; }
         .nav-section-title { color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 12px; }
         .nav-item { margin: 2px 0; }
@@ -192,6 +193,14 @@
                     </div>
                 </div>
                 <div class="nav-section">
+                    <div class="nav-section-title">보고서</div>
+                    <div class="nav-item">
+                        <a href="javascript:void(0)" class="nav-link" data-page="reports">
+                            <i class="fas fa-file-lines"></i> 보고서 관리
+                        </a>
+                    </div>
+                </div>
+                <div class="nav-section">
                     <div class="nav-section-title">검증</div>
                     <div class="nav-item">
                         <a href="javascript:void(0)" class="nav-link" data-page="hash-verify">
@@ -228,7 +237,6 @@
                     <div class="user-avatar"><i class="fas fa-user"></i></div>
                     <div class="user-details">
                         <div class="user-name"><sec:authentication property="principal.username"/></div>
-                        <div class="user-role"><sec:authentication property="principal.authorities"/></div>
                     </div>
                 </div>
                 <a href="/hub" class="btn-back-main"><i class="fas fa-arrow-left"></i> 메인으로 돌아가기</a>
@@ -263,6 +271,7 @@
             'dashboard': '대시보드',
             'logs': '접속기록 조회',
             'alerts': '이상행위 알림',
+            'reports': '보고서 관리',
             'hash-verify': '저장기록 위·변조 검증',
             'alert-rules': '이상행위 탐지 규칙',
             'suppressions': '알림 예외 관리',

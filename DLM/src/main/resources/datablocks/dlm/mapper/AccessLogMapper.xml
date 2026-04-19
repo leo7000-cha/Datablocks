@@ -219,7 +219,7 @@
             table_filter = #{tableFilter},
             exclude_accounts = #{excludeAccounts},
             dac_select_sql = #{dacSelectSql},
-            is_active = #{isActive},
+            is_active = COALESCE(#{isActive}, is_active, 'Y'),
             upd_user_id = #{updUserId}
         WHERE source_id = #{sourceId}
     </update>
@@ -592,6 +592,52 @@
         LIMIT #{offset}, #{amount}
     </select>
 
+    <!-- 월별 요약: 각 월의 검증일수, 정상/위반 일수, 최종 판정 -->
+    <select id="selectHashVerifyMonthlySummary" resultType="java.util.HashMap">
+        SELECT t.ym                                             AS yearMonth,
+               COUNT(*)                                         AS verifiedDays,
+               SUM(CASE WHEN t.status = 'VALID'   THEN 1 ELSE 0 END) AS validDays,
+               SUM(CASE WHEN t.status = 'INVALID' THEN 1 ELSE 0 END) AS invalidDays,
+               SUM(CASE WHEN t.status = 'NO_DATA' THEN 1 ELSE 0 END) AS noDataDays,
+               SUM(t.totalRecords)                              AS totalRecords,
+               SUM(t.invalidRecords)                            AS totalInvalidRecords,
+               DATE_FORMAT(MAX(t.completedAt), '%Y-%m-%d %H:%i') AS lastVerifiedAt
+        FROM (
+            SELECT DATE_FORMAT(verify_date, '%Y-%m')            AS ym,
+                   verify_date,
+                   total_records                                AS totalRecords,
+                   invalid_records                              AS invalidRecords,
+                   status,
+                   completed_at                                 AS completedAt,
+                   ROW_NUMBER() OVER (PARTITION BY verify_date ORDER BY completed_at DESC) AS rn
+            FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
+        ) t
+        WHERE t.rn = 1
+        GROUP BY t.ym
+        ORDER BY t.ym DESC
+    </select>
+
+    <!-- 특정 월의 일별 최신 검증결과 -->
+    <select id="selectHashVerifyByMonth" resultType="java.util.HashMap">
+        SELECT t.verifyDate, t.totalRecords, t.validRecords, t.invalidRecords,
+               t.firstInvalidId, t.status, t.completedAt, t.runCount
+        FROM (
+            SELECT verify_date                                   AS verifyDate,
+                   total_records                                 AS totalRecords,
+                   valid_records                                 AS validRecords,
+                   invalid_records                               AS invalidRecords,
+                   first_invalid_id                              AS firstInvalidId,
+                   status,
+                   completed_at                                  AS completedAt,
+                   COUNT(*) OVER (PARTITION BY verify_date)      AS runCount,
+                   ROW_NUMBER() OVER (PARTITION BY verify_date ORDER BY completed_at DESC) AS rn
+            FROM COTDL.TBL_ACCESS_LOG_HASH_VERIFY
+            WHERE DATE_FORMAT(verify_date, '%Y-%m') = #{yearMonth}
+        ) t
+        WHERE t.rn = 1
+        ORDER BY t.verifyDate DESC
+    </select>
+
     <!-- ========== Download Log ========== -->
     <insert id="insertDownloadLog">
         INSERT INTO COTDL.TBL_ACCESS_LOG_DOWNLOAD (
@@ -711,6 +757,24 @@
             ON t.db_name = m.db AND t.owner = m.owner AND t.table_name = m.table_name
         WHERE t.db_name = #{dbName} AND t.is_active = 'Y'
         ORDER BY t.owner, t.table_name, m.column_name
+    </select>
+
+    <!-- DB 접근 감사 대상 테이블 목록 (audit_yn='Y') — Collector 자동 필터용 -->
+    <select id="selectAuditTargetTableNames" resultType="String">
+        SELECT DISTINCT table_name
+        FROM COTDL.TBL_METATABLE
+        WHERE db = #{dbName}
+          AND audit_yn = 'Y'
+          AND piitype IS NOT NULL AND piitype != '' AND piitype != 'notpii'
+        ORDER BY table_name
+    </select>
+
+    <!-- WAS 접근 감사 대상 테이블 목록 (BCI Target) — Collector 자동 필터용 -->
+    <select id="selectBciTargetTableNames" resultType="String">
+        SELECT DISTINCT table_name
+        FROM COTDL.TBL_ACCESS_LOG_BCI_TARGET
+        WHERE db_name = #{dbName} AND is_active = 'Y'
+        ORDER BY table_name
     </select>
 
     <!-- MetaTable 전체 테이블 목록 (BCI 대상 선택용, PII + 비PII 포함) -->
@@ -1094,6 +1158,232 @@
         FROM COTDL.TBL_ACCESS_LOG_ALERT_SUPPRESSION_AUDIT
         WHERE suppression_id = #{suppressionId}
         ORDER BY action_at DESC
+    </select>
+
+    <!-- ========== Report (보고서) ========== -->
+
+    <insert id="insertReport" parameterType="datablocks.dlm.domain.AccessLogReportVO" useGeneratedKeys="true" keyProperty="reportId">
+        INSERT INTO COTDL.TBL_ACCESS_LOG_REPORT (
+            report_type, report_name, report_status, date_from, date_to,
+            report_format, generated_by
+        ) VALUES (
+            #{reportType}, #{reportName}, 'GENERATING', #{dateFrom}, #{dateTo},
+            #{reportFormat}, #{generatedBy}
+        )
+    </insert>
+
+    <select id="selectReport" resultType="datablocks.dlm.domain.AccessLogReportVO">
+        SELECT report_id AS reportId, report_type AS reportType, report_name AS reportName,
+               report_status AS reportStatus, date_from AS dateFrom, date_to AS dateTo,
+               report_format AS reportFormat, generated_by AS generatedBy,
+               DATE_FORMAT(generated_at, '%Y-%m-%d %H:%i:%s') AS generatedAt,
+               DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completedAt,
+               file_size AS fileSize, summary_json AS summaryJson, error_msg AS errorMsg
+        FROM COTDL.TBL_ACCESS_LOG_REPORT
+        WHERE report_id = #{reportId}
+    </select>
+
+    <select id="selectReportList" resultType="datablocks.dlm.domain.AccessLogReportVO">
+        SELECT report_id AS reportId, report_type AS reportType, report_name AS reportName,
+               report_status AS reportStatus, date_from AS dateFrom, date_to AS dateTo,
+               report_format AS reportFormat, generated_by AS generatedBy,
+               DATE_FORMAT(generated_at, '%Y-%m-%d %H:%i:%s') AS generatedAt,
+               DATE_FORMAT(completed_at, '%Y-%m-%d %H:%i:%s') AS completedAt,
+               file_size AS fileSize, error_msg AS errorMsg
+        FROM COTDL.TBL_ACCESS_LOG_REPORT
+        <where>
+            <if test="search1 != null and search1 != ''">
+                AND report_type = #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND report_status = #{search2}
+            </if>
+            <if test="search7 != null and search7 != ''">
+                AND generated_at &gt;= #{search7}
+            </if>
+            <if test="search8 != null and search8 != ''">
+                AND generated_at &lt;= CONCAT(#{search8}, ' 23:59:59')
+            </if>
+        </where>
+        ORDER BY generated_at DESC
+        LIMIT #{offset}, #{amount}
+    </select>
+
+    <select id="selectReportTotal" resultType="int">
+        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG_REPORT
+        <where>
+            <if test="search1 != null and search1 != ''">
+                AND report_type = #{search1}
+            </if>
+            <if test="search2 != null and search2 != ''">
+                AND report_status = #{search2}
+            </if>
+            <if test="search7 != null and search7 != ''">
+                AND generated_at &gt;= #{search7}
+            </if>
+            <if test="search8 != null and search8 != ''">
+                AND generated_at &lt;= CONCAT(#{search8}, ' 23:59:59')
+            </if>
+        </where>
+    </select>
+
+    <update id="updateReportCompleted">
+        UPDATE COTDL.TBL_ACCESS_LOG_REPORT
+        SET report_status = 'COMPLETED',
+            completed_at = NOW(),
+            file_size = #{fileSize},
+            summary_json = #{summaryJson}
+        WHERE report_id = #{reportId}
+    </update>
+
+    <update id="updateReportFailed">
+        UPDATE COTDL.TBL_ACCESS_LOG_REPORT
+        SET report_status = 'FAILED',
+            completed_at = NOW(),
+            error_msg = #{errorMsg}
+        WHERE report_id = #{reportId}
+    </update>
+
+    <delete id="deleteReport">
+        DELETE FROM COTDL.TBL_ACCESS_LOG_REPORT WHERE report_id = #{reportId}
+    </delete>
+
+    <!-- 사용자별 접속 통계 -->
+    <select id="selectUserAccessStats" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               COALESCE(MAX(user_name), user_account) AS userName,
+               COALESCE(MAX(department), '-') AS department,
+               COUNT(*) AS totalCount,
+               SUM(CASE WHEN action_type = 'SELECT' THEN 1 ELSE 0 END) AS selectCount,
+               SUM(CASE WHEN action_type IN ('UPDATE','DELETE','INSERT') THEN 1 ELSE 0 END) AS dmlCount,
+               SUM(CASE WHEN action_type = 'DOWNLOAD' THEN 1 ELSE 0 END) AS downloadCount,
+               SUM(CASE WHEN pii_grade IS NOT NULL THEN 1 ELSE 0 END) AS piiAccessCount,
+               COUNT(DISTINCT client_ip) AS distinctIpCount,
+               COUNT(DISTINCT target_table) AS distinctTableCount
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+        GROUP BY user_account
+        ORDER BY totalCount DESC
+    </select>
+
+    <!-- 업무시간 외 접속 (18:00~09:00 또는 주말) -->
+    <select id="selectAfterHoursAccess" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               COALESCE(user_name, user_account) AS userName,
+               DATE_FORMAT(access_time, '%Y-%m-%d %H:%i:%s') AS accessTime,
+               client_ip AS clientIp,
+               action_type AS actionType,
+               target_db AS targetDb,
+               target_table AS targetTable,
+               pii_grade AS piiGrade,
+               CASE
+                   WHEN DAYOFWEEK(access_time) IN (1,7) THEN '주말'
+                   WHEN HOUR(access_time) &lt; 9 OR HOUR(access_time) >= 18 THEN '야간'
+               END AS reason
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+          AND (DAYOFWEEK(access_time) IN (1,7) OR HOUR(access_time) &lt; 9 OR HOUR(access_time) >= 18)
+        ORDER BY access_time DESC
+        LIMIT 500
+    </select>
+
+    <!-- 동일 테이블 대량 반복 조회 -->
+    <select id="selectHeavyRepeatAccess" resultType="java.util.HashMap">
+        SELECT user_account AS userAccount,
+               COALESCE(MAX(user_name), user_account) AS userName,
+               target_table AS targetTable,
+               COUNT(*) AS accessCount,
+               DATE_FORMAT(MIN(access_time), '%Y-%m-%d %H:%i') AS firstAccess,
+               DATE_FORMAT(MAX(access_time), '%Y-%m-%d %H:%i') AS lastAccess
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+          AND action_type = 'SELECT'
+        GROUP BY user_account, target_table
+        HAVING COUNT(*) >= #{threshold}
+        ORDER BY accessCount DESC
+        LIMIT 200
+    </select>
+
+    <!-- 비인가(NEW_IP 탐지된) IP 접속 -->
+    <select id="selectUnauthorizedIpAccess" resultType="java.util.HashMap">
+        SELECT a.user_account AS userAccount,
+               COALESCE(MAX(a.user_name), a.user_account) AS userName,
+               a.client_ip AS clientIp,
+               COUNT(*) AS accessCount,
+               DATE_FORMAT(MIN(a.access_time), '%Y-%m-%d %H:%i') AS firstAccess,
+               DATE_FORMAT(MAX(a.access_time), '%Y-%m-%d %H:%i') AS lastAccess
+        FROM COTDL.TBL_ACCESS_LOG a
+        INNER JOIN COTDL.TBL_ACCESS_LOG_ALERT al
+            ON al.target_user_id = a.user_account
+            AND al.rule_id IN (SELECT rule_id FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE WHERE condition_type = 'NEW_IP')
+            AND DATE(al.detected_time) BETWEEN #{dateFrom} AND #{dateTo}
+        WHERE DATE(a.access_time) BETWEEN #{dateFrom} AND #{dateTo}
+        GROUP BY a.user_account, a.client_ip
+        ORDER BY accessCount DESC
+        LIMIT 200
+    </select>
+
+    <!-- 일별 접속 추이 -->
+    <select id="selectDailyAccessTrend" resultType="java.util.HashMap">
+        SELECT DATE_FORMAT(access_time, '%Y-%m-%d') AS accessDate,
+               COUNT(*) AS totalCount,
+               SUM(CASE WHEN pii_grade IS NOT NULL THEN 1 ELSE 0 END) AS piiCount,
+               COUNT(DISTINCT user_account) AS userCount
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+        GROUP BY DATE_FORMAT(access_time, '%Y-%m-%d')
+        ORDER BY accessDate
+    </select>
+
+    <!-- 이상행위 유형별 통계 -->
+    <select id="selectAlertStatsByRule" resultType="java.util.HashMap">
+        SELECT r.condition_type AS conditionType,
+               r.rule_name AS ruleName,
+               COUNT(a.alert_id) AS alertCount,
+               SUM(CASE WHEN a.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolvedCount,
+               SUM(CASE WHEN a.status = 'DISMISSED' THEN 1 ELSE 0 END) AS dismissedCount,
+               SUM(CASE WHEN a.status IN ('NEW','NOTIFIED','OVERDUE','ESCALATED') THEN 1 ELSE 0 END) AS pendingCount,
+               SUM(CASE WHEN a.severity = 'HIGH' THEN 1 ELSE 0 END) AS highCount,
+               SUM(CASE WHEN a.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS mediumCount,
+               SUM(CASE WHEN a.severity = 'LOW' THEN 1 ELSE 0 END) AS lowCount
+        FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE r
+        LEFT JOIN COTDL.TBL_ACCESS_LOG_ALERT a
+            ON a.rule_id = r.rule_id
+            AND DATE(a.detected_time) BETWEEN #{dateFrom} AND #{dateTo}
+        WHERE r.is_active = 'Y'
+        GROUP BY r.condition_type, r.rule_name
+        ORDER BY alertCount DESC
+    </select>
+
+    <!-- PII 등급별 접근 통계 -->
+    <select id="selectPiiAccessStats" resultType="java.util.HashMap">
+        SELECT COALESCE(pii_grade, 'NONE') AS piiGrade,
+               COUNT(*) AS accessCount,
+               COUNT(DISTINCT user_account) AS userCount,
+               COUNT(DISTINCT target_table) AS tableCount
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+        GROUP BY pii_grade
+        ORDER BY FIELD(pii_grade, '1', '2', '3', NULL)
+    </select>
+
+    <!-- 부서별 접속 통계 -->
+    <select id="selectDeptAccessStats" resultType="java.util.HashMap">
+        SELECT COALESCE(department, '(미지정)') AS department,
+               COUNT(*) AS totalCount,
+               COUNT(DISTINCT user_account) AS userCount,
+               SUM(CASE WHEN pii_grade IS NOT NULL THEN 1 ELSE 0 END) AS piiAccessCount,
+               SUM(CASE WHEN DAYOFWEEK(access_time) IN (1,7) OR HOUR(access_time) &lt; 9 OR HOUR(access_time) >= 18 THEN 1 ELSE 0 END) AS afterHoursCount
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
+        GROUP BY department
+        ORDER BY totalCount DESC
+    </select>
+
+    <!-- 기간 내 접속 건수 -->
+    <select id="selectAccessCountByPeriod" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) BETWEEN #{dateFrom} AND #{dateTo}
     </select>
 
 </mapper>

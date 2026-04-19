@@ -97,8 +97,13 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                 }
                 collectedCount = logs.size();
 
-                // 4. 배치 INSERT
+                // 4. SQL 전문 저장 설정 확인 → N이면 sql_text 제거
                 if (!logs.isEmpty()) {
+                    if (!isSqlTextLoggingEnabled()) {
+                        for (AccessLogVO log : logs) {
+                            log.setSqlText(null);
+                        }
+                    }
                     accessLogService.registerAccessLogBatch(logs);
                 }
 
@@ -151,9 +156,28 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
     /**
      * DB별 Audit Log 조회 (DB 유형에 따른 분기)
+     * tableFilter가 비어있으면 감사 대상 테이블(TBL_METATABLE.audit_yn='Y')을 자동 적용
      */
     private List<AccessLogVO> queryAuditLog(Connection conn, String dbType, AccessLogSourceVO source, String lastOffset) {
         List<AccessLogVO> logs = new ArrayList<>();
+
+        // tableFilter 미설정 시 DB 접근 감사 대상 테이블 자동 적용
+        if (source.getTableFilter() == null || source.getTableFilter().trim().isEmpty()) {
+            try {
+                List<String> auditTargets = accessLogMapper.selectAuditTargetTableNames(source.getDbName());
+                if (auditTargets != null && !auditTargets.isEmpty()) {
+                    source.setTableFilter(String.join(",", auditTargets));
+                    LogUtil.log("INFO", "Auto-applied DB audit target tables for " + source.getDbName()
+                            + ": " + source.getTableFilter());
+                } else {
+                    LogUtil.log("WARN", "No DB audit target tables registered for " + source.getDbName()
+                            + " — skipping collection (set audit targets in Policy page)");
+                    return logs; // 감사 대상 미설정 시 수집하지 않음
+                }
+            } catch (Exception e) {
+                LogUtil.log("WARN", "Failed to load audit targets: " + e.getMessage());
+            }
+        }
 
         try {
             String sql;
@@ -178,6 +202,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                 log.setClientIp(rs.getString("client_ip"));
                 log.setActionType(rs.getString("action_type"));
                 log.setTargetDb(source.getDbName());
+                log.setTargetSchema(rs.getString("target_schema"));
                 log.setTargetTable(rs.getString("target_table"));
                 log.setSqlText(rs.getString("sql_text"));
                 log.setCollectType("DB_AUDIT");
@@ -213,7 +238,10 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
             // 2. PII 메타데이터 매칭
             String dbName = source.getDbName();
-            String schema = source.getSchemaName() != null ? source.getSchemaName() : "";
+            // Oracle Audit의 OBJECT_SCHEMA → targetSchema 우선, 없으면 source schemaName
+            String schema = log.getTargetSchema() != null && !log.getTargetSchema().isEmpty()
+                    ? log.getTargetSchema()
+                    : (source.getSchemaName() != null ? source.getSchemaName() : "");
             List<String> piiColumns = new ArrayList<>();
             List<String> piiTypes = new ArrayList<>();
             String highestGrade = null;
@@ -275,6 +303,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
         sql.append("TO_CHAR(EVENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS.FF3') AS access_time, ");
         sql.append("USERHOST AS client_ip, ");
         sql.append("ACTION_NAME AS action_type, ");
+        sql.append("OBJECT_SCHEMA AS target_schema, ");
         sql.append("OBJECT_NAME AS target_table, ");
         sql.append("SQL_TEXT AS sql_text ");
         sql.append("FROM UNIFIED_AUDIT_TRAIL ");
@@ -513,6 +542,18 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
         if (upper.contains("FAIL") || upper.equals("1") || upper.equals("N") || upper.equals("ERROR")) return "FAIL";
         if (upper.contains("DENY") || upper.contains("DENIED") || upper.contains("BLOCK") || upper.contains("REJECT")) return "DENIED";
         return upper;
+    }
+
+    /**
+     * SQL_TEXT_LOGGING 설정 확인
+     */
+    private boolean isSqlTextLoggingEnabled() {
+        try {
+            var config = accessLogMapper.selectConfigByKey("SQL_TEXT_LOGGING");
+            return config != null && "Y".equals(config.getConfigValue());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**

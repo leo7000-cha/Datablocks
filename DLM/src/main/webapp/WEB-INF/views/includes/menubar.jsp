@@ -939,10 +939,6 @@
                         <span class="menu-icon"><i class="fas fa-terminal"></i></span>
                         콘솔
                     </a>
-                    <a class="dropdown-item" href='javascript:void(0)' id='11004'>
-                        <span class="menu-icon"><i class="fas fa-rectangle-terminal"></i></span>
-                        터미널
-                    </a>
                 </div>
             </li>
         </sec:authorize>

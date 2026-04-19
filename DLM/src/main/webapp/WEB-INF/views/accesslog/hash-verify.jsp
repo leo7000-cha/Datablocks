@@ -29,7 +29,8 @@
         <div class="panel-header">
             <h3 class="panel-title">저장기록 위·변조 검증</h3>
             <div style="display:flex; align-items:center; gap:10px;">
-                <input type="text" id="hashVerifyDate" class="fp-date" style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.85rem; height:40px; box-sizing:border-box;" placeholder="검증 대상일" autocomplete="off">
+                <label for="hashVerifyDate" style="font-size:0.82rem; color:#475569; font-weight:600; white-space:nowrap;">검증 대상일</label>
+                <input type="text" id="hashVerifyDate" class="fp-date" style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.85rem; height:40px; box-sizing:border-box;" placeholder="날짜 선택" autocomplete="off">
                 <button class="btn-monitor" style="height:40px; box-sizing:border-box; white-space:nowrap;" onclick="runHashVerify()"><i class="fas fa-shield-check"></i> 검증 즉시 실행</button>
             </div>
         </div>
@@ -80,23 +81,11 @@
                 </div>
             </div>
 
-            <!-- 검증 이력 테이블 -->
+            <!-- 검증 이력: 월별 요약 -->
             <h4 style="font-size:0.9rem; color:#334155; margin-bottom:12px;">검증 이력</h4>
-            <table class="monitor-table" id="hashVerifyHistoryTable">
-                <thead>
-                    <tr>
-                        <th>검증일시</th>
-                        <th>검증 대상일</th>
-                        <th>전체 기록 수</th>
-                        <th>정상</th>
-                        <th>위반 의심</th>
-                        <th>판정</th>
-                    </tr>
-                </thead>
-                <tbody id="hashVerifyHistoryBody">
-                    <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">로딩 중...</td></tr>
-                </tbody>
-            </table>
+            <div id="hashVerifyMonthlyContainer">
+                <div style="text-align:center; color:#94a3b8; padding:20px;">로딩 중...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -106,7 +95,7 @@ $(function() {
     var yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     flatpickr('#hashVerifyDate', { locale: 'ko', dateFormat: 'Y-m-d', allowInput: true, defaultDate: yesterday });
-    loadHashVerifyHistory();
+    loadMonthlySummary();
 });
 
 function runHashVerify() {
@@ -122,50 +111,152 @@ function runHashVerify() {
         type: 'POST', contentType: 'application/json',
         data: JSON.stringify({ date: date }),
         success: function(res) {
-            var isValid = res.status === 'VALID';
-            var statusColor = isValid ? '#10b981' : '#ef4444';
-            var icon = isValid ? 'fa-check-circle' : 'fa-times-circle';
-            var statusText = isValid ? '정상 — 모든 기록이 원본 그대로 보존되어 있습니다.' : '위반 감지 — 일부 기록이 변경된 것으로 의심됩니다.';
-            var invalidInfo = '';
-            if (res.invalidRecords > 0 && res.firstInvalidId) {
-                invalidInfo = '<div style="margin-top:8px; color:#ef4444; font-size:0.85rem;">최초 위반 의심 기록 ID: ' + res.firstInvalidId + '</div>';
+            if (res.status === 'NO_DATA') {
+                $('#hashVerifyResult').html(
+                    '<div style="font-size:1.1rem; color:#f59e0b; margin-bottom:8px; font-weight:600;"><i class="fas fa-circle-exclamation"></i> 해당 날짜에 접속기록이 없습니다.</div>' +
+                    '<div style="color:#475569;">검증 대상: <strong>' + date + '</strong> | 저장된 접속기록이 0건이므로 검증을 수행할 수 없습니다. 다른 날짜를 선택해 주세요.</div>'
+                );
+            } else {
+                var isValid = res.status === 'VALID';
+                var statusColor = isValid ? '#10b981' : '#ef4444';
+                var icon = isValid ? 'fa-check-circle' : 'fa-times-circle';
+                var statusText = isValid ? '정상 — 모든 기록이 원본 그대로 보존되어 있습니다.' : '위반 감지 — 일부 기록이 변경된 것으로 의심됩니다.';
+                var invalidInfo = '';
+                if (res.invalidRecords > 0 && res.firstInvalidId) {
+                    invalidInfo = '<div style="margin-top:8px; color:#ef4444; font-size:0.85rem;">최초 위반 의심 기록 ID: ' + res.firstInvalidId + '</div>';
+                }
+                $('#hashVerifyResult').html(
+                    '<div style="font-size:1.1rem; color:' + statusColor + '; margin-bottom:8px; font-weight:600;"><i class="fas ' + icon + '"></i> ' + statusText + '</div>' +
+                    '<div style="color:#475569;">검증 대상: <strong>' + date + '</strong> | 전체 ' + res.totalRecords + '건 | 정상 ' + res.validRecords + '건 | 위반 의심 <span style="color:' + (res.invalidRecords > 0 ? '#ef4444' : '#10b981') + '; font-weight:600;">' + res.invalidRecords + '건</span></div>' +
+                    invalidInfo
+                );
             }
-            $('#hashVerifyResult').html(
-                '<div style="font-size:1.1rem; color:' + statusColor + '; margin-bottom:8px; font-weight:600;"><i class="fas ' + icon + '"></i> ' + statusText + '</div>' +
-                '<div style="color:#475569;">검증 대상: <strong>' + date + '</strong> | 전체 ' + res.totalRecords + '건 | 정상 ' + res.validRecords + '건 | 위반 의심 <span style="color:' + (res.invalidRecords > 0 ? '#ef4444' : '#10b981') + '; font-weight:600;">' + res.invalidRecords + '건</span></div>' +
-                invalidInfo
-            );
-            loadHashVerifyHistory();
+            loadMonthlySummary();
         },
         error: function() { $('#hashVerifyResult').html('<span style="color:#ef4444;">검증에 실패했습니다. 잠시 후 다시 시도해주세요.</span>'); }
     });
 }
 
-function loadHashVerifyHistory() {
-    $.get('/accesslog/api/hash-verify', function(data) {
-        var tbody = $('#hashVerifyHistoryBody');
-        tbody.empty();
+/* ========== 월별 요약 → 일별 상세 ========== */
+function loadMonthlySummary() {
+    $.get('/accesslog/api/hash-verify/monthly', function(data) {
+        var container = $('#hashVerifyMonthlyContainer');
+        container.empty();
         if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">아직 검증 이력이 없습니다.</td></tr>');
+            container.html('<div style="text-align:center; color:#94a3b8; padding:20px;">아직 검증 이력이 없습니다.</div>');
             return;
         }
-        data.forEach(function(row) {
-            var isValid = row.status === 'VALID';
-            var statusBadge = isValid
-                ? '<span class="status-badge completed">정상</span>'
-                : '<span class="status-badge error">위반 감지</span>';
-            var invalidStyle = row.invalidRecords > 0 ? 'color:#ef4444; font-weight:600;' : '';
-            tbody.append(
-                '<tr>' +
-                '<td>' + (row.completedAt || row.regDate || '-') + '</td>' +
-                '<td>' + (row.verifyDate || '-') + '</td>' +
-                '<td>' + (row.totalRecords || 0) + '</td>' +
-                '<td>' + (row.validRecords || 0) + '</td>' +
-                '<td style="' + invalidStyle + '">' + (row.invalidRecords || 0) + '</td>' +
-                '<td>' + statusBadge + '</td>' +
-                '</tr>'
-            );
+        data.forEach(function(m) {
+            var ym = m.yearMonth;
+            var label = ym.replace('-', '년 ') + '월';
+            var hasInvalid = (m.invalidDays || 0) > 0;
+            var allValid = !hasInvalid && (m.validDays || 0) > 0;
+
+            // 판정 배지
+            var badge;
+            if (hasInvalid) {
+                badge = '<span class="status-badge error">위반 감지</span>';
+            } else if (allValid) {
+                badge = '<span class="status-badge completed">정상</span>';
+            } else {
+                badge = '<span class="status-badge" style="background:#fef3c7; color:#92400e;">기록 없음</span>';
+            }
+
+            // 요약 수치 — 라벨:값 칩 형태
+            var verifiedDays = m.verifiedDays || 0;
+            var validDays = m.validDays || 0;
+            var invDays = m.invalidDays || 0;
+            var noData = m.noDataDays || 0;
+            // 위반의심 = INVALID + NO_DATA(기록자체 없는 날)를 제외한 순수 위반
+            var chipStyle = 'display:inline-block; padding:3px 10px; border-radius:6px; font-size:0.78rem; font-weight:600; margin-right:6px;';
+            var stats = ''
+                + '<span style="' + chipStyle + 'background:#f1f5f9; color:#475569;">검증 일수 <strong style="margin-left:4px;">' + verifiedDays + '</strong></span>'
+                + '<span style="' + chipStyle + 'background:#ecfdf5; color:#059669;">정상 <strong style="margin-left:4px;">' + validDays + '</strong></span>'
+                + '<span style="' + chipStyle + (invDays > 0 ? 'background:#fef2f2; color:#dc2626;' : 'background:#f1f5f9; color:#94a3b8;') + '">위반 의심 <strong style="margin-left:4px;">' + invDays + '</strong></span>'
+                + '<span style="' + chipStyle + 'background:#f1f5f9; color:#64748b; font-weight:500;">접속기록 <strong style="margin-left:4px;">' + (m.totalRecords || 0).toLocaleString() + '건</strong></span>';
+
+            var monthId = 'hv-month-' + ym;
+            var html =
+                '<div style="border:1px solid #e2e8f0; border-radius:10px; margin-bottom:10px; overflow:hidden;">' +
+                    '<div class="hv-month-row" onclick="toggleMonthDetail(\'' + ym + '\')" ' +
+                         'style="display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background 0.15s; background:' + (hasInvalid ? '#fef2f2' : '#f8fafc') + ';">' +
+                        '<i class="fas fa-chevron-right hv-chevron" id="hv-chevron-' + ym + '" style="color:#94a3b8; font-size:0.75rem; transition:transform 0.2s;"></i>' +
+                        '<div style="font-weight:700; font-size:0.92rem; color:#1e293b; min-width:100px;">' + label + '</div>' +
+                        '<div style="flex:1;">' + stats + '</div>' +
+                        badge +
+                    '</div>' +
+                    '<div id="' + monthId + '" style="display:none; border-top:1px solid #e2e8f0;"></div>' +
+                '</div>';
+            container.append(html);
         });
+    });
+}
+
+function toggleMonthDetail(ym) {
+    var detailDiv = $('#hv-month-' + ym);
+    var chevron = $('#hv-chevron-' + ym);
+
+    if (detailDiv.is(':visible')) {
+        detailDiv.slideUp(200);
+        chevron.css('transform', 'rotate(0deg)');
+        return;
+    }
+
+    chevron.css('transform', 'rotate(90deg)');
+
+    // 이미 로드된 경우 그냥 열기
+    if (detailDiv.data('loaded')) {
+        detailDiv.slideDown(200);
+        return;
+    }
+
+    detailDiv.html('<div style="text-align:center; padding:16px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 일별 상세 조회 중...</div>');
+    detailDiv.slideDown(200);
+
+    $.get('/accesslog/api/hash-verify/month/' + ym, function(days) {
+        if (!days || days.length === 0) {
+            detailDiv.html('<div style="text-align:center; padding:16px; color:#94a3b8;">해당 월에 검증 이력이 없습니다.</div>');
+            return;
+        }
+        var table =
+            '<table class="monitor-table" style="margin:0; border-radius:0;">' +
+            '<thead><tr>' +
+                '<th style="width:120px;">검증 대상일</th>' +
+                '<th>전체 기록 수</th>' +
+                '<th>정상</th>' +
+                '<th>위반 의심</th>' +
+                '<th style="width:90px;">판정</th>' +
+                '<th style="width:130px;">최종 검증일시</th>' +
+                '<th style="width:70px;">검증횟수</th>' +
+            '</tr></thead><tbody>';
+        days.forEach(function(d) {
+            var isValid = d.status === 'VALID';
+            var isNoData = d.status === 'NO_DATA';
+            var badge = isNoData
+                ? '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-size:0.75rem;">기록 없음</span>'
+                : (isValid
+                    ? '<span class="status-badge completed" style="font-size:0.75rem;">정상</span>'
+                    : '<span class="status-badge error" style="font-size:0.75rem;">위반</span>');
+            var invalidStyle = (d.invalidRecords || 0) > 0 ? 'color:#ef4444; font-weight:600;' : '';
+            var runInfo = (d.runCount || 1) > 1
+                ? '<span style="color:#6366f1; font-weight:600;">' + d.runCount + '회</span>'
+                : '<span style="color:#94a3b8;">1회</span>';
+            var completedAt = d.completedAt || '-';
+            if (completedAt.length > 16) completedAt = completedAt.substring(0, 16);
+            table +=
+                '<tr>' +
+                '<td style="font-weight:600;">' + (d.verifyDate || '-') + '</td>' +
+                '<td>' + (d.totalRecords || 0) + '</td>' +
+                '<td>' + (d.validRecords || 0) + '</td>' +
+                '<td style="' + invalidStyle + '">' + (d.invalidRecords || 0) + '</td>' +
+                '<td>' + badge + '</td>' +
+                '<td style="font-size:0.78rem; color:#64748b;">' + completedAt + '</td>' +
+                '<td style="text-align:center;">' + runInfo + '</td>' +
+                '</tr>';
+        });
+        table += '</tbody></table>';
+        detailDiv.html(table);
+        detailDiv.data('loaded', true);
     });
 }
 </script>

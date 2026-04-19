@@ -152,6 +152,10 @@ public interface AccessLogMapper {
 
     List<Map<String, Object>> selectHashVerifyList(Criteria cri);
 
+    List<Map<String, Object>> selectHashVerifyMonthlySummary();
+
+    List<Map<String, Object>> selectHashVerifyByMonth(@Param("yearMonth") String yearMonth);
+
     // ========== Download (다운로드 감사) ==========
     void insertDownloadLog(@Param("userId") String userId,
                            @Param("userName") String userName,
@@ -199,6 +203,12 @@ public interface AccessLogMapper {
     int clearBciTargets(@Param("dbName") String dbName);
     List<java.util.Map<String, Object>> selectBciPolicyColumns(@Param("dbName") String dbName);
     List<java.util.Map<String, Object>> selectAllTablesForBci(@Param("dbName") String dbName);
+
+    /** DB 접근 감사 대상 테이블명 목록 (audit_yn='Y') */
+    List<String> selectAuditTargetTableNames(@Param("dbName") String dbName);
+
+    /** WAS 접근 감사 대상 테이블명 목록 (BCI Target) */
+    List<String> selectBciTargetTableNames(@Param("dbName") String dbName);
 
     // ========== Exclude SQL Patterns ==========
     List<java.util.Map<String, Object>> selectExcludeSqlPatterns(@Param("sourceType") String sourceType);
@@ -292,4 +302,60 @@ public interface AccessLogMapper {
                                 @Param("actionBy") String actionBy);
 
     List<Map<String, Object>> selectSuppressionAuditList(@Param("suppressionId") Long suppressionId);
+
+    // ========== Report (보고서) ==========
+    void insertReport(AccessLogReportVO report);
+
+    AccessLogReportVO selectReport(@Param("reportId") Long reportId);
+
+    List<AccessLogReportVO> selectReportList(Criteria cri);
+
+    int selectReportTotal(Criteria cri);
+
+    int updateReportCompleted(@Param("reportId") Long reportId,
+                              @Param("fileSize") Long fileSize,
+                              @Param("summaryJson") String summaryJson);
+
+    int updateReportFailed(@Param("reportId") Long reportId,
+                           @Param("errorMsg") String errorMsg);
+
+    int deleteReport(@Param("reportId") Long reportId);
+
+    // -- 정기점검 보고서 통계 쿼리 --
+    /** 기간 내 사용자별 접속 통계 */
+    List<Map<String, Object>> selectUserAccessStats(@Param("dateFrom") String dateFrom,
+                                                     @Param("dateTo") String dateTo);
+
+    /** 업무시간 외 접속 현황 */
+    List<Map<String, Object>> selectAfterHoursAccess(@Param("dateFrom") String dateFrom,
+                                                      @Param("dateTo") String dateTo);
+
+    /** 동일 정보주체 대량 조회 현황 (10회 이상) */
+    List<Map<String, Object>> selectHeavyRepeatAccess(@Param("dateFrom") String dateFrom,
+                                                       @Param("dateTo") String dateTo,
+                                                       @Param("threshold") int threshold);
+
+    /** 비인가 IP 접속 현황 */
+    List<Map<String, Object>> selectUnauthorizedIpAccess(@Param("dateFrom") String dateFrom,
+                                                          @Param("dateTo") String dateTo);
+
+    /** 일별 접속 추이 */
+    List<Map<String, Object>> selectDailyAccessTrend(@Param("dateFrom") String dateFrom,
+                                                      @Param("dateTo") String dateTo);
+
+    /** 이상행위 유형별 통계 */
+    List<Map<String, Object>> selectAlertStatsByRule(@Param("dateFrom") String dateFrom,
+                                                      @Param("dateTo") String dateTo);
+
+    /** PII 등급별 접근 통계 */
+    List<Map<String, Object>> selectPiiAccessStats(@Param("dateFrom") String dateFrom,
+                                                    @Param("dateTo") String dateTo);
+
+    /** 부서별 접속 통계 */
+    List<Map<String, Object>> selectDeptAccessStats(@Param("dateFrom") String dateFrom,
+                                                     @Param("dateTo") String dateTo);
+
+    /** 접속기록 전체 건수 (기간) */
+    Long selectAccessCountByPeriod(@Param("dateFrom") String dateFrom,
+                                   @Param("dateTo") String dateTo);
 }

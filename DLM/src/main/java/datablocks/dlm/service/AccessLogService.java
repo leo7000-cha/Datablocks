@@ -68,6 +68,10 @@ public interface AccessLogService {
     Map<String, Object> verifyHashChain(String date);
     List<Map<String, Object>> getHashVerifyList(Criteria cri);
 
+    List<Map<String, Object>> getHashVerifyMonthlySummary();
+
+    List<Map<String, Object>> getHashVerifyByMonth(String yearMonth);
+
     /** 규칙+사용자별 미처리 알림 일괄 무시 처리 (DB 전체 대상) */
     int dismissByRuleAndUser(String ruleId, String targetUserId, String userId, String comment);
 

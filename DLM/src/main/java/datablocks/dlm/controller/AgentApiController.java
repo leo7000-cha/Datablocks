@@ -96,6 +96,12 @@ public class AgentApiController {
             }
 
             if (!logs.isEmpty()) {
+                // SQL 전문 저장 설정 확인
+                if (!isSqlTextLoggingEnabled()) {
+                    for (AccessLogVO log : logs) {
+                        log.setSqlText(null);
+                    }
+                }
                 // 기존 registerAccessLogBatch() 활용 → 해시 체인 자동 생성
                 accessLogService.registerAccessLogBatch(logs);
             }
@@ -288,6 +294,15 @@ public class AgentApiController {
         } catch (Exception e) {
             logger.warn("Agent secret verification failed, allowing request: {}", e.getMessage());
             return true; // 설정 테이블 미존재 등 예외 시 허용 (안전)
+        }
+    }
+
+    private boolean isSqlTextLoggingEnabled() {
+        try {
+            var config = accessLogMapper.selectConfigByKey("SQL_TEXT_LOGGING");
+            return config != null && "Y".equals(config.getConfigValue());
+        } catch (Exception e) {
+            return false;
         }
     }
 

@@ -28,6 +28,7 @@ import datablocks.dlm.engine.AccessLogCollector;
 import datablocks.dlm.mapper.AccessLogMapper;
 import datablocks.dlm.mapper.DiscoveryMapper;
 import datablocks.dlm.schedule.AccessLogHashVerifyScheduler;
+import datablocks.dlm.service.AccessLogReportService;
 import datablocks.dlm.service.AccessLogService;
 import datablocks.dlm.service.PiiDatabaseService;
 import datablocks.dlm.util.LogUtil;
@@ -59,6 +60,9 @@ public class AccessLogController {
 
     @Autowired
     private AccessLogMapper accessLogMapper;
+
+    @Autowired
+    private AccessLogReportService reportService;
 
     // ========== Page Controllers ==========
 
@@ -260,9 +264,20 @@ public class AccessLogController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getLogList(@ModelAttribute Criteria cri) {
         Map<String, Object> result = new HashMap<>();
+
+        // 날짜 범위 필수 검증 (search7=FROM, search8=TO)
+        if (cri.getSearch7() == null || cri.getSearch7().isEmpty()
+                || cri.getSearch8() == null || cri.getSearch8().isEmpty()) {
+            result.put("list", java.util.Collections.emptyList());
+            result.put("total", 0);
+            result.put("pageMaker", new PageDTO(cri, 0));
+            return ResponseEntity.ok(result);
+        }
+
+        int total = accessLogService.getAccessLogTotal(cri);
         result.put("list", accessLogService.getAccessLogList(cri));
-        result.put("total", accessLogService.getAccessLogTotal(cri));
-        result.put("pageMaker", new PageDTO(cri, accessLogService.getAccessLogTotal(cri)));
+        result.put("total", total);
+        result.put("pageMaker", new PageDTO(cri, total));
         return ResponseEntity.ok(result);
     }
 
@@ -784,6 +799,18 @@ public class AccessLogController {
         return ResponseEntity.ok(accessLogService.getHashVerifyList(cri));
     }
 
+    @GetMapping("/api/hash-verify/monthly")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getHashVerifyMonthlySummary() {
+        return ResponseEntity.ok(accessLogService.getHashVerifyMonthlySummary());
+    }
+
+    @GetMapping("/api/hash-verify/month/{yearMonth}")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getHashVerifyByMonth(@PathVariable String yearMonth) {
+        return ResponseEntity.ok(accessLogService.getHashVerifyByMonth(yearMonth));
+    }
+
     // --- Alert Suppression (알림 예외 규칙) ---
     @GetMapping("/suppressions")
     public String suppressions(@ModelAttribute Criteria cri, Model model) {
@@ -1182,6 +1209,121 @@ public class AccessLogController {
 
             result.put("success", true);
             result.put("count", tables.size());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // ========== Report (보고서) ==========
+
+    @GetMapping("/reports")
+    public String reportsPage(Model model) {
+        Criteria cri = new Criteria();
+        cri.setAmount(20);
+        List<AccessLogReportVO> list = reportService.getReportList(cri);
+        int total = reportService.getReportTotal(cri);
+        model.addAttribute("list", list);
+        model.addAttribute("total", total);
+        return "accesslog/reports";
+    }
+
+    @GetMapping("/api/report/list")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getReportList(@ModelAttribute Criteria cri) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            List<AccessLogReportVO> list = reportService.getReportList(cri);
+            int total = reportService.getReportTotal(cri);
+            result.put("list", list);
+            result.put("total", total);
+            result.put("success", true);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/report/generate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> generateReport(@RequestBody Map<String, String> params,
+                                                               Principal principal) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String reportType = params.get("reportType");
+            String dateFrom = params.get("dateFrom");
+            String dateTo = params.get("dateTo");
+            String format = params.getOrDefault("reportFormat", "XLSX");
+            String userId = principal != null ? principal.getName() : "system";
+
+            Long reportId = reportService.generateReport(reportType, dateFrom, dateTo, format, userId);
+            AccessLogReportVO report = reportService.getReport(reportId);
+
+            result.put("success", true);
+            result.put("reportId", reportId);
+            result.put("report", report);
+        } catch (Exception e) {
+            logger.error("Report generation failed", e);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/report/{reportId}/download")
+    public void downloadReport(@PathVariable Long reportId,
+                               Principal principal,
+                               HttpServletRequest request,
+                               HttpServletResponse response) throws IOException {
+        AccessLogReportVO report = reportService.getReport(reportId);
+        if (report == null || !"COMPLETED".equals(report.getReportStatus())) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "보고서를 찾을 수 없습니다.");
+            return;
+        }
+
+        String userId = principal != null ? principal.getName() : "system";
+        LogUtil.log("INFO", "Report download: id=" + reportId + ", user=" + userId);
+
+        byte[] fileBytes = reportService.renderToExcel(reportId);
+
+        String fileName = report.getReportName().replaceAll("[^가-힣a-zA-Z0-9()_ -]", "") + ".xlsx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + new String(fileName.getBytes("UTF-8"), "ISO-8859-1") + "\"");
+        response.setContentLength(fileBytes.length);
+        response.getOutputStream().write(fileBytes);
+        response.getOutputStream().flush();
+    }
+
+    @GetMapping("/api/report/{reportId}/detail")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getReportDetail(@PathVariable Long reportId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            AccessLogReportVO report = reportService.getReport(reportId);
+            if (report == null) {
+                result.put("success", false);
+                result.put("message", "보고서를 찾을 수 없습니다.");
+            } else {
+                result.put("success", true);
+                result.put("report", report);
+            }
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/api/report/{reportId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteReport(@PathVariable Long reportId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            boolean deleted = reportService.deleteReport(reportId);
+            result.put("success", deleted);
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", e.getMessage());

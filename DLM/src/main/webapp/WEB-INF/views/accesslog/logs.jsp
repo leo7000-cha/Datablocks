@@ -29,11 +29,7 @@
             <option value="DB_DAC">접근제어</option>
             <option value="WAS_AGENT">WAS Agent</option>
         </select>
-        <select id="filterAmount" style="width:100px;">
-            <option value="20">20건</option>
-            <option value="50" selected>50건</option>
-            <option value="100">100건</option>
-        </select>
+        <input type="hidden" id="filterAmount" value="100">
         <button class="btn-monitor" onclick="searchLogs(1)"><i class="fas fa-search"></i> 조회</button>
         <button class="btn-outline" onclick="exportLogs()" id="btnExport" style="display:none;"><i class="fas fa-download"></i> Excel</button>
     </div>
@@ -45,8 +41,8 @@
         </div>
         <h3 style="font-size:1.1rem; font-weight:600; color:#475569; margin-bottom:8px;">조회 조건을 입력해 주세요</h3>
         <p style="color:#94a3b8; font-size:0.88rem; line-height:1.6; margin-bottom:0;">
-            기간, 사용자, 작업유형, 테이블명, 수집 방식 중 <strong style="color:#0d9488;">1개 이상</strong>의 조건을 입력 후 조회 버튼을 눌러 주세요.<br>
-            대량 데이터 보호를 위해 조건 없이 전체 조회는 지원하지 않습니다.
+            조회 기간(FROM ~ TO)은 필수이며, 최대 <strong style="color:#0d9488;">1개월</strong>까지 조회 가능합니다.<br>
+            사용자, 작업유형, 테이블명 등 추가 조건을 입력하면 더 빠르게 조회할 수 있습니다.
         </p>
     </div>
 
@@ -60,7 +56,7 @@
                 <thead>
                     <tr>
                         <th>No</th><th>접속일시</th><th>사용자</th><th>접속IP</th><th>작업유형</th>
-                        <th>대상DB</th><th>대상테이블</th><th>PII등급</th><th>결과</th><th>수집 방식</th>
+                        <th>대상DB</th><th>대상테이블</th><th>처리 컬럼</th><th>PII등급</th><th>결과</th><th>수집 방식</th>
                     </tr>
                 </thead>
                 <tbody id="logTableBody">
@@ -76,10 +72,14 @@
 var _logCurrentPage = 1;
 
 $(function() {
-    var today = new Date().toISOString().split('T')[0];
+    var today = new Date();
+    var weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    var todayStr = today.toISOString().split('T')[0];
+    var weekAgoStr = weekAgo.toISOString().split('T')[0];
     var fpOpts = { locale: 'ko', dateFormat: 'Y-m-d', allowInput: true, onChange: function(s,d,i){ i._input.blur(); } };
-    flatpickr('#filterStartDate', fpOpts);
-    flatpickr('#filterEndDate', Object.assign({}, fpOpts, { defaultDate: today }));
+    flatpickr('#filterStartDate', Object.assign({}, fpOpts, { defaultDate: weekAgoStr }));
+    flatpickr('#filterEndDate', Object.assign({}, fpOpts, { defaultDate: todayStr }));
 });
 
 function validateFilters() {
@@ -91,9 +91,25 @@ function validateFilters() {
     var table = $('#filterTable').val().trim();
     var sourceType = $('#filterSourceType').val();
 
-    if (!startDate && !endDate && !user && !action && !piiGrade && !table && !sourceType) {
+    // 기간은 필수
+    if (!startDate || !endDate) {
+        alert('조회 기간(FROM ~ TO)을 모두 입력해 주세요.');
         return false;
     }
+
+    // 날짜 유효성
+    var start = new Date(startDate);
+    var end = new Date(endDate);
+    var diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) {
+        alert('시작일이 종료일보다 이후입니다.');
+        return false;
+    }
+    if (diffDays > 31) {
+        alert('조회 기간은 최대 1개월(31일)까지 가능합니다.\n기간을 줄이거나 추가 조건을 입력해 주세요.');
+        return false;
+    }
+
     return true;
 }
 
@@ -119,7 +135,7 @@ function searchLogs(pageNum) {
     var amount = parseInt($('#filterAmount').val());
 
     var params = {
-        pageNum: _logCurrentPage,
+        pagenum: _logCurrentPage,
         amount: amount,
         search7: $('#filterStartDate').val() ? $('#filterStartDate').val() + ' 00:00:00' : '',
         search8: $('#filterEndDate').val() ? $('#filterEndDate').val() + ' 23:59:59' : '',
@@ -132,7 +148,7 @@ function searchLogs(pageNum) {
 
     $('#logFilterGuide').hide();
     $('#logResultPanel').show();
-    $('#logTableBody').html('<tr><td colspan="10" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 조회 중...</td></tr>');
+    $('#logTableBody').html('<tr><td colspan="11" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 조회 중...</td></tr>');
 
     $.get('/accesslog/api/logs', params, function(res) {
         var list = res.list || [];
@@ -146,20 +162,24 @@ function searchLogs(pageNum) {
         tbody.empty();
 
         if (list.length === 0) {
-            tbody.html('<tr><td colspan="10" style="text-align:center; padding:40px; color:#94a3b8;">조건에 맞는 접속기록이 없습니다.</td></tr>');
+            tbody.html('<tr><td colspan="11" style="text-align:center; padding:40px; color:#94a3b8;">조건에 맞는 접속기록이 없습니다.</td></tr>');
             $('#logPagination').empty();
             return;
         }
 
-        var startNo = total - ((pageMaker.cri.pageNum - 1) * amount);
+        var startNo = total - ((pageMaker.cri.pagenum - 1) * amount);
         list.forEach(function(log, i) {
             var actionBadge = log.actionType === 'DELETE' ? 'high' : log.actionType === 'DOWNLOAD' ? 'medium' : 'info';
-            var piiHtml = '';
+            var piiHtml = '-';
             if (log.piiGrade) {
                 var piiBadge = log.piiGrade === '1' ? 'high' : log.piiGrade === '2' ? 'medium' : 'low';
                 piiHtml = '<span class="status-badge ' + piiBadge + '">' + log.piiGrade + '급</span>';
             }
+            var collectHtml = log.collectType ? formatCollectType(log.collectType) : '<span style="color:#cbd5e1;">-</span>';
             var resultBadge = log.resultCode === 'SUCCESS' ? 'completed' : log.resultCode === 'DENIED' ? 'high' : 'stopped';
+            var cols = log.targetColumns || '';
+            var colsShort = cols.length > 40 ? cols.substring(0, 40) + '...' : cols;
+            var colsEscaped = cols.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
             tbody.append(
                 '<tr onclick="showLogDetail(' + log.logId + ')" style="cursor:pointer;">' +
                 '<td>' + (startNo - i) + '</td>' +
@@ -169,9 +189,10 @@ function searchLogs(pageNum) {
                 '<td><span class="status-badge ' + actionBadge + '">' + (log.actionType || '') + '</span></td>' +
                 '<td>' + (log.targetDb || '') + '</td>' +
                 '<td>' + (log.targetTable || '') + '</td>' +
+                '<td class="sql-cell" title="' + colsEscaped + '">' + (colsShort || '<span style="color:#cbd5e1;">-</span>') + '</td>' +
                 '<td>' + piiHtml + '</td>' +
                 '<td><span class="status-badge ' + resultBadge + '">' + (log.resultCode || '') + '</span></td>' +
-                '<td>' + formatCollectType(log.collectType) + '</td>' +
+                '<td>' + collectHtml + '</td>' +
                 '</tr>'
             );
         });
@@ -187,7 +208,7 @@ function renderLogPagination(pm) {
         html += '<a href="javascript:void(0)" onclick="searchLogs(' + (pm.startPage - 1) + ')"><i class="fas fa-chevron-left"></i></a>';
     }
     for (var p = pm.startPage; p <= pm.endPage; p++) {
-        if (p === pm.cri.pageNum) {
+        if (p === pm.cri.pagenum) {
             html += '<span class="active-page">' + p + '</span>';
         } else {
             html += '<a href="javascript:void(0)" onclick="searchLogs(' + p + ')">' + p + '</a>';
@@ -245,6 +266,15 @@ function exportLogs() {
 </script>
 
 <style>
+.sql-cell {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: #64748b;
+    cursor: default;
+}
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-6px); }

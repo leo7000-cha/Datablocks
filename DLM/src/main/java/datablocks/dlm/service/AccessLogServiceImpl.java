@@ -407,7 +407,7 @@ public class AccessLogServiceImpl implements AccessLogService {
             }
         }
 
-        String status = invalid == 0 ? "VALID" : "INVALID";
+        String status = total == 0 ? "NO_DATA" : (invalid == 0 ? "VALID" : "INVALID");
         mapper.insertHashVerify(date, total, valid, invalid, firstInvalidId, status);
 
         result.put("date", date);
@@ -421,6 +421,16 @@ public class AccessLogServiceImpl implements AccessLogService {
     @Override
     public List<Map<String, Object>> getHashVerifyList(Criteria cri) {
         return mapper.selectHashVerifyList(cri);
+    }
+
+    @Override
+    public List<Map<String, Object>> getHashVerifyMonthlySummary() {
+        return mapper.selectHashVerifyMonthlySummary();
+    }
+
+    @Override
+    public List<Map<String, Object>> getHashVerifyByMonth(String yearMonth) {
+        return mapper.selectHashVerifyByMonth(yearMonth);
     }
 
     @Override

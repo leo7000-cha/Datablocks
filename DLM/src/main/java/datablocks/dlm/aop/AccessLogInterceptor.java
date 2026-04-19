@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * DLM 컨트롤러 메서드 실행 시 자동으로 접속기록을 생성
  */
 @Aspect
-@Component
+// @Component  -- 비활성화: DLM 웹 UI 조작을 접속기록에 기록하면 안됨. 접속기록은 Agent/Audit/DAC 수집 데이터만 적재.
 public class AccessLogInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AccessLogInterceptor.class);
@@ -88,6 +88,7 @@ public class AccessLogInterceptor {
         log.setActionType(actionType);
         log.setTargetDb("DLM");
         log.setTargetTable(uri);
+        log.setCollectType("WAS_AGENT");
         log.setAccessChannel("WEB");
         log.setSessionId(request.getSession(false) != null ? request.getSession(false).getId() : null);
         log.setResultCode(resultCode);

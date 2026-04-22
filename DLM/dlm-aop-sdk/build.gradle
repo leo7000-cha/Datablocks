@@ -1,0 +1,83 @@
+// ============================================================
+// X-Audit Application-Layer Audit SDK (dlm-aop-sdk)
+// 고객사 처리계 WAS 에 dependency 한 줄 추가로 접속기록/SQL 수집.
+//
+// 설계 결론: 청사진 Phase 1 (MyBatis Interceptor + Servlet Filter
+// + TransmittableThreadLocal + DataSource-Proxy) 를 Spring Boot
+// Auto-Configuration 으로 묶은 라이브러리.
+//
+// 기본값: javax.servlet + Spring Boot 2.x (Java 8+). Spring Boot 3.x
+// (jakarta) 는 리플렉션 기반으로 동시 지원.
+// ============================================================
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'datablocks'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // --- Runtime 필수 (SDK가 직접 필요) ---
+    api 'com.alibaba:transmittable-thread-local:2.14.5'
+
+    // --- 호스트 애플리케이션에 이미 있을 것 (provided/compileOnly) ---
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:2.7.18'
+    compileOnly 'org.springframework.boot:spring-boot:2.7.18'
+    compileOnly 'org.springframework:spring-context:5.3.39'
+    compileOnly 'org.springframework:spring-web:5.3.39'
+    compileOnly 'org.springframework:spring-jdbc:5.3.39'
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
+    compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    compileOnly 'org.mybatis:mybatis:3.5.16'
+    compileOnly 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.3.2'
+    compileOnly 'com.zaxxer:HikariCP:4.0.3'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.4'
+    compileOnly 'net.ttddyy:datasource-proxy:1.10'
+    compileOnly 'org.slf4j:slf4j-api:1.7.36'
+
+    // --- 테스트 ---
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.mybatis:mybatis:3.5.16'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.15.4'
+    testImplementation 'org.slf4j:slf4j-simple:1.7.36'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    archiveBaseName.set('dlm-aop-sdk')
+    manifest {
+        attributes(
+            'Implementation-Title': 'X-Audit Application Audit SDK',
+            'Implementation-Version': version,
+            'Implementation-Vendor': 'Datablocks'
+        )
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'dlm-aop-sdk'
+            pom {
+                name = 'X-Audit Application Audit SDK'
+                description = 'Zero-source-modification audit SDK for financial WAS.'
+            }
+        }
+    }
+}

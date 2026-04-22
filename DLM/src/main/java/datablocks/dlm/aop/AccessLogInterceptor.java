@@ -20,11 +20,15 @@ import datablocks.dlm.service.AccessLogService;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Access Log AOP Interceptor
- * DLM 컨트롤러 메서드 실행 시 자동으로 접속기록을 생성
+ * Access Log AOP Interceptor (Legacy 뼈대).
+ *
+ * @deprecated 2026-04-19부터 {@link datablocks.dlm.aop.AccessLogAspect} 가 AOP 수집을 담당합니다.
+ *             본 클래스는 역사적 참조용으로 남겨두며 빈 등록되지 않습니다 (@Component 주석처리).
+ *             새 코드/설정은 {@code AccessLogAspect} 와 DB 설정 키 {@code AOP_COLLECT_MODE} 를 사용하세요.
  */
 @Aspect
-// @Component  -- 비활성화: DLM 웹 UI 조작을 접속기록에 기록하면 안됨. 접속기록은 Agent/Audit/DAC 수집 데이터만 적재.
+@Deprecated
+// @Component  -- 비활성화: AccessLogAspect 로 대체됨
 public class AccessLogInterceptor {
 
     private static final Logger logger = LoggerFactory.getLogger(AccessLogInterceptor.class);

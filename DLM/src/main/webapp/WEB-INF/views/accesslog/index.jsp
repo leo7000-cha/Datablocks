@@ -201,6 +201,24 @@
                     </div>
                 </div>
                 <div class="nav-section">
+                    <div class="nav-section-title">X-Audit (처리계 수집)</div>
+                    <div class="nav-item">
+                        <a href="/xaudit/dashboard" class="nav-link">
+                            <i class="fas fa-network-wired"></i> X-Audit 대시보드
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/xaudit/access" class="nav-link">
+                            <i class="fas fa-door-open"></i> 처리계 접속기록
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/xaudit/sql" class="nav-link">
+                            <i class="fas fa-code"></i> 처리계 SQL 기록
+                        </a>
+                    </div>
+                </div>
+                <div class="nav-section">
                     <div class="nav-section-title">검증</div>
                     <div class="nav-item">
                         <a href="javascript:void(0)" class="nav-link" data-page="hash-verify">

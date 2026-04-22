@@ -424,6 +424,24 @@
         });
 
     });
+
+    // Step 관리 모달에서 순서 변경 / 저장 / 삭제가 발생했을 때 호출됨 → MOTHER의 STEP LIST 갱신
+    window.onStepMgmtClosed = function (jobid, version) {
+        ingShow();
+        $.ajax({
+            type: "GET",
+            url: "/piijob/modifyjoballinfo?jobid=" + encodeURIComponent(jobid) + "&version=" + encodeURIComponent(version),
+            dataType: "html",
+            error: function (request) { ingHide();
+                $("#errormodalbody").html(request.responseText);
+                $("#errormodal").modal("show");
+            },
+            success: function (data) { ingHide();
+                $('#content_home').html(data);
+            }
+        });
+    };
+
     $("button[data-oper='modify_job_dialog']").on("click", function (e) {
         e.preventDefault();e.stopPropagation();
 

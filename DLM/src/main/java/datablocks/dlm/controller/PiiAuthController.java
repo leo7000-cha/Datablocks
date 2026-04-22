@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.AuthToChangeVO;
 import datablocks.dlm.domain.AuthVO;
 import datablocks.dlm.domain.Criteria;
@@ -51,6 +52,7 @@ public class PiiAuthController {
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_AUTH", action = "INSERT", importance = "HIGH", business = "PII_AUTH")
     public String register(AuthVO piiauth, RedirectAttributes rttr) {
 
         service.register(piiauth);
@@ -77,6 +79,7 @@ public class PiiAuthController {
 
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_AUTH", action = "UPDATE", importance = "HIGH", business = "PII_AUTH")
     public String modify(AuthToChangeVO piiauthtochange, Criteria cri, RedirectAttributes rttr) {
         LogUtil.log("INFO", "@PostMapping modify:" + piiauthtochange);
         if (service.modify(piiauthtochange))
@@ -93,6 +96,7 @@ public class PiiAuthController {
 
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_AUTH", action = "DELETE", importance = "HIGH", business = "PII_AUTH")
     public String remove(AuthVO piiauth, Criteria cri, RedirectAttributes rttr) {
 
         LogUtil.log("INFO", "@PostMapping remove..." + piiauth.getUserid());

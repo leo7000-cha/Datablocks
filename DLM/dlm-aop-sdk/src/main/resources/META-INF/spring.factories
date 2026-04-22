@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+datablocks.dlm.xaudit.spring.XauditAutoConfiguration

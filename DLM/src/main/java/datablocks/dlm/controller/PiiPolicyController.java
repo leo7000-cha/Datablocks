@@ -1,5 +1,6 @@
 package datablocks.dlm.controller;
 
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.*;
 import datablocks.dlm.service.PiiApprovalReqService;
 import datablocks.dlm.service.PiiPolicyService;
@@ -50,6 +51,7 @@ public class PiiPolicyController {
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_POLICY", action = "INSERT", importance = "HIGH", business = "PII_POLICY")
     public String register(PiiPolicyVO piipolicy, RedirectAttributes rttr) {
         LogUtil.log("INFO", "register: " + piipolicy);
         service.register(piipolicy);
@@ -71,6 +73,7 @@ public class PiiPolicyController {
     @ResponseBody
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_POLICY", action = "UPDATE", importance = "HIGH", business = "PII_POLICY")
     public String modify(@RequestBody PiiPolicyVO piipolicy, Criteria cri, RedirectAttributes rttr) {
         LogUtil.log("INFO", "@PostMapping modify:" + piipolicy);
         rttr.addAttribute("pagenum", cri.getPagenum());
@@ -86,6 +89,7 @@ public class PiiPolicyController {
 
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_POLICY", action = "DELETE", importance = "HIGH", business = "PII_POLICY")
     public String remove(PiiPolicyVO piipolicy, Criteria cri, RedirectAttributes rttr) {
         LogUtil.log("INFO", "@PostMapping remove..." + piipolicy.getPolicy_id());
         if (service.remove(piipolicy.getPolicy_id(), piipolicy.getVersion())) {

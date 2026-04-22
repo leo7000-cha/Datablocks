@@ -130,6 +130,7 @@
     var $btnDown = $('#btnReorderDown');
     var $btnSaveOrder = $('#btnSaveOrder');
     var orderDirty = false;
+    var stepsChanged = false;  // 모달 내 변경 여부 (순서/저장/삭제) — 닫을 때 모달 호출측 뷰 갱신 판단
 
     // Enable Bootstrap tooltips
     if (typeof $().tooltip === 'function') {
@@ -252,12 +253,14 @@
     function wireDetailCallbacks() {
         window.onStepSaved = function(savedStepid, wasNew, message) {
             flashMsg(message || 'Saved', false);
+            stepsChanged = true;
             refreshList(savedStepid, function(){
                 loadStepDetail(savedStepid);
             });
         };
         window.onStepRemoved = function(message) {
             flashMsg(message || 'Removed', false);
+            stepsChanged = true;
             $('#step_md_global_stepid').val('');
             refreshList(null, function(){
                 $('#stepDetailSlot').html(
@@ -389,6 +392,7 @@
             success: function(data){
                 ingHide();
                 markOrderDirty(false);
+                stepsChanged = true;
                 flashMsg('<spring:message code="msg.order_saved" text="Order saved"/>', false);
             },
             error: function(req){
@@ -437,12 +441,14 @@
         });
     }
 
-    // ---------- close modal cleanup + refresh job view ----------
+    // ---------- close modal cleanup + refresh mother view ----------
+    // 모달 내에서 순서 변경, Step 저장/삭제가 발생했으면 MOTHER(get.jsp / modifyjoballinfo.jsp)가
+    // window.onStepMgmtClosed(jobid, version)를 정의해두고 STEP LIST를 다시 불러온다.
     $('body').off('hidden.bs.modal.stepmgmt').on('hidden.bs.modal.stepmgmt', '#stepmodal', function(){
-        var gStepid = $('#step_md_global_stepid').val();
-        if (typeof searchAction_stepdialog === 'function' && gStepid) {
-            var url_view = "/piijob/modifyjoballinfo?jobid=" + encodeURIComponent(jobid) + "&version=" + encodeURIComponent(version) + "&";
-            searchAction_stepdialog(null, url_view, "#content_home");
+        if (!stepsChanged) return;
+        stepsChanged = false;
+        if (typeof window.onStepMgmtClosed === 'function') {
+            window.onStepMgmtClosed(jobid, version);
         }
     });
 

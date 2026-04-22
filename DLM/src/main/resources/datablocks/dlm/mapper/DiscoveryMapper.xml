@@ -107,29 +107,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         - piiColumnsDetected: 유니크 PII 컬럼 수 (DB+Schema+Table+Column 기준)
         - pendingReview: Registry에 없는 PENDING 컬럼 (유니크)
     -->
+    <!--
+        성능 최적화: TBL_DISCOVERY_SCAN_RESULT 에 대한 full scan 을 4회→1회로 축소.
+        - COUNT(DISTINCT a, b, c) 는 MariaDB/MySQL 고유 문법 (CONCAT 없이 복합 DISTINCT).
+        - pendingReview 는 서브쿼리 대신 LEFT JOIN … IS NULL 로 평탄화.
+    -->
     <select id="getDashboardStats" resultType="datablocks.dlm.domain.DiscoveryStatVO">
         SELECT
             (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_JOB_V2 WHERE is_active = 'Y') AS totalScans,
-            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name))
-             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT) AS totalTablesScanned,
-            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name, '.', column_name))
-             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT) AS totalColumnsScanned,
-            (SELECT COUNT(DISTINCT CONCAT(COALESCE(db_name,''), '.', COALESCE(schema_name,''), '.', table_name, '.', column_name))
-             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT WHERE score > 0) AS piiColumnsDetected,
+            s.totalTablesScanned,
+            s.totalColumnsScanned,
+            s.piiColumnsDetected,
             (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_PII_REGISTRY WHERE status = 'CONFIRMED') AS confirmedPii,
-            (SELECT COUNT(DISTINCT CONCAT(COALESCE(r.db_name,''), '.', COALESCE(r.schema_name,''), '.', r.table_name, '.', r.column_name))
-             FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
-             WHERE r.score > 0
-               AND NOT EXISTS (
-                   SELECT 1 FROM COTDL.TBL_DISCOVERY_PII_REGISTRY p
-                   WHERE p.db_name = r.db_name
-                     AND COALESCE(p.schema_name,'') = COALESCE(r.schema_name,'')
-                     AND p.table_name = r.table_name
-                     AND p.column_name = r.column_name
-               )) AS pendingReview,
+            s.pendingReview,
             (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_PII_REGISTRY WHERE status = 'EXCLUDED') AS excludedCount,
             (SELECT COUNT(*) FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION WHERE status = 'RUNNING') AS runningJobs,
             (SELECT MAX(DATE_FORMAT(start_time, '%Y-%m-%d %H:%i:%s')) FROM COTDL.TBL_DISCOVERY_SCAN_EXECUTION) AS lastScanDate
+        FROM (
+            SELECT
+                COUNT(DISTINCT r.db_name, COALESCE(r.schema_name,''), r.table_name) AS totalTablesScanned,
+                COUNT(DISTINCT r.db_name, COALESCE(r.schema_name,''), r.table_name, r.column_name) AS totalColumnsScanned,
+                COUNT(DISTINCT CASE WHEN r.score <![CDATA[>]]> 0
+                                    THEN CONCAT(COALESCE(r.db_name,''), '.', COALESCE(r.schema_name,''), '.', r.table_name, '.', r.column_name) END) AS piiColumnsDetected,
+                COUNT(DISTINCT CASE WHEN r.score <![CDATA[>]]> 0 AND p.registry_id IS NULL
+                                    THEN CONCAT(COALESCE(r.db_name,''), '.', COALESCE(r.schema_name,''), '.', r.table_name, '.', r.column_name) END) AS pendingReview
+            FROM COTDL.TBL_DISCOVERY_SCAN_RESULT r
+            LEFT JOIN COTDL.TBL_DISCOVERY_PII_REGISTRY p
+                   ON p.db_name = r.db_name
+                  AND COALESCE(p.schema_name,'') = COALESCE(r.schema_name,'')
+                  AND p.table_name = r.table_name
+                  AND p.column_name = r.column_name
+        ) s
     </select>
 
     <!-- Dashboard chart: PII 유형별 분포 -->

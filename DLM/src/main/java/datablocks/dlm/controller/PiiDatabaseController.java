@@ -1,5 +1,6 @@
 package datablocks.dlm.controller;
 
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.*;
 import datablocks.dlm.exception.AES256Exception;
 import datablocks.dlm.jdbc.ConnectionProvider;
@@ -60,6 +61,8 @@ public class PiiDatabaseController {
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_DATABASE", action = "INSERT", importance = "HIGH", business = "PII_CONFIG",
+               maskParams = {"pwd", "password", "userpw"})
     public String register(PiiDatabaseVO piidatabase, RedirectAttributes rttr) throws Exception {
 
         LogUtil.log("INFO", "register: " + piidatabase);
@@ -91,6 +94,8 @@ public class PiiDatabaseController {
 
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_DATABASE", action = "UPDATE", importance = "HIGH", business = "PII_CONFIG",
+               maskParams = {"pwd", "password", "userpw"})
     public String modify(PiiDatabaseVO piidatabase, Criteria cri, RedirectAttributes rttr) throws Exception {
         LogUtil.log("INFO", "@PostMapping modify:" + piidatabase);
         if (piidatabase.getPwd() == "" || piidatabase.getPwd() == null) {
@@ -118,6 +123,7 @@ public class PiiDatabaseController {
 
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_DATABASE", action = "DELETE", importance = "HIGH", business = "PII_CONFIG")
     public String remove(PiiDatabaseVO piidatabase, Criteria cri, RedirectAttributes rttr) {
 
         LogUtil.log("INFO", "@PostMapping remove..." + piidatabase.getDb());

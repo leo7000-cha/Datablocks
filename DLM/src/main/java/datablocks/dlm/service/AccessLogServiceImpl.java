@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import datablocks.dlm.domain.*;
@@ -68,6 +69,13 @@ public class AccessLogServiceImpl implements AccessLogService {
         log.setPrevHash(prevHash != null ? prevHash : "GENESIS");
         log.setHashValue(computeHash(log));
         mapper.insertAccessLog(log);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registerAccessLogFromAop(AccessLogVO log) {
+        // 비즈니스 트랜잭션이 롤백되더라도 감사 로그는 보존 (REQUIRES_NEW)
+        registerAccessLog(log);
     }
 
     @Override

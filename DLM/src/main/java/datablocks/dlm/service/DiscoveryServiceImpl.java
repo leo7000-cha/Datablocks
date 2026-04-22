@@ -41,10 +41,30 @@ public class DiscoveryServiceImpl implements DiscoveryService {
     private org.springframework.context.ApplicationContext applicationContext;
 
     // ========== Dashboard ==========
+    // 대시보드 통계는 데이터 변경에 수 초 지연이 허용되고 호출 빈도가 높아 TTL 캐시 적용
+    // (허브 → Discovery index 진입 시, JSP ready → /api/stats 등 짧은 시간에 반복 호출됨)
+    private static final long DASHBOARD_STATS_TTL_MS = 15_000L;
+    private volatile DiscoveryStatVO dashboardStatsCache = null;
+    private volatile long dashboardStatsCacheAt = 0L;
+
     @Override
     public DiscoveryStatVO getDashboardStats() {
+        long now = System.currentTimeMillis();
+        DiscoveryStatVO cached = dashboardStatsCache;
+        if (cached != null && now - dashboardStatsCacheAt < DASHBOARD_STATS_TTL_MS) {
+            return cached;
+        }
         LogUtil.log("INFO", "Discovery getDashboardStats");
-        return mapper.getDashboardStats();
+        DiscoveryStatVO stats = mapper.getDashboardStats();
+        dashboardStatsCache = stats;
+        dashboardStatsCacheAt = now;
+        return stats;
+    }
+
+    /** 스캔 실행 후 대시보드 통계 캐시 무효화용 훅 (추후 확장용). */
+    public void invalidateDashboardStatsCache() {
+        dashboardStatsCache = null;
+        dashboardStatsCacheAt = 0L;
     }
 
     @Override

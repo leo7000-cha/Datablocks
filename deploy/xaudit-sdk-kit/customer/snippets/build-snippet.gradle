@@ -1,0 +1,64 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠ 중요: 이 파일은 완전한 build.gradle 이 아닙니다 ⚠
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 이 파일은 고객사 기존 build.gradle 의 dependencies { } 블록 안에 복사해
+// 넣는 **스니펫(snippet)** 입니다. 단독 빌드 불가능합니다.
+//
+// 사용법:
+//   1) 고객사 Spring Boot 프로젝트의 build.gradle 을 연다
+//   2) dependencies { ... } 안에 아래 implementation 라인을 붙여넣는다
+//   3) ./gradlew clean build 로 재빌드
+//   4) WAS 재기동
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+dependencies {
+    // ─────────────────────────────────────────────────────────────────────
+    // 방법 A: 사내 Nexus 에 dlm-aop-sdk 를 배포해둔 경우 (권장)
+    // ─────────────────────────────────────────────────────────────────────
+    // 금융권 고객사는 보통 사내 Nexus/Artifactory 를 사용하므로, 우리가
+    // 제공한 jar 를 고객사 Nexus 에 배포한 뒤 이 라인 사용.
+    implementation 'datablocks:dlm-aop-sdk:1.0.0'
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 방법 B: 로컬 JAR 직접 참조 (POC / 개발 초기)
+    // ─────────────────────────────────────────────────────────────────────
+    // Nexus 배포 전 개발 PC 에서 빠르게 테스트할 때 사용.
+    // 이 방식을 쓰면 transitive dependency 가 해결되지 않으므로
+    // TransmittableThreadLocal 도 명시적으로 추가해야 함.
+    //
+    // implementation files('libs/dlm-aop-sdk-1.0.0.jar')
+    // implementation 'com.alibaba:transmittable-thread-local:2.14.5'
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 선택: JdbcTemplate / Batch 경로도 덮으려면 DataSource-Proxy 추가
+    // ─────────────────────────────────────────────────────────────────────
+    // MyBatis 만 쓰는 환경에서는 불필요. 다음 경우에만 활성화:
+    //   - Spring JdbcTemplate 을 직접 쓰는 경우
+    //   - Spring Batch / JPA 네이티브 쿼리가 있는 경우
+    //   - 이 경로의 SQL 도 감사 대상에 포함해야 하는 경우
+    //
+    // implementation 'net.ttddyy:datasource-proxy:1.10'
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// [선택] DataSource-Proxy 활성화 시 추가 설정
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 위에서 datasource-proxy 를 추가한 경우, 고객사 Spring Bean 설정에서
+// 원본 DataSource 를 ProxyDataSource 로 래핑해야 합니다:
+//
+// @Bean
+// public DataSource dataSource(HikariConfig hikariConfig,
+//                              XauditJdbcQueryListener xauditListener) {
+//     HikariDataSource ds = new HikariDataSource(hikariConfig);   // 원본
+//     return ProxyDataSourceBuilder
+//         .create(ds)
+//         .name("xaudit")
+//         .listener(xauditListener)   // X-Audit SDK 가 빈으로 자동 제공
+//         .build();
+// }
+//
+// ═══════════════════════════════════════════════════════════════════════════

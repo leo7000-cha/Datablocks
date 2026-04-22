@@ -23,6 +23,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import datablocks.dlm.aop.AccessLogAopConfig;
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.*;
 import datablocks.dlm.engine.AccessLogCollector;
 import datablocks.dlm.mapper.AccessLogMapper;
@@ -63,6 +65,12 @@ public class AccessLogController {
 
     @Autowired
     private AccessLogReportService reportService;
+
+    @Autowired(required = false)
+    private AccessLogAopConfig aopConfig;
+
+    @Autowired
+    private org.springframework.context.ApplicationContext applicationContext;
 
     // ========== Page Controllers ==========
 
@@ -211,7 +219,7 @@ public class AccessLogController {
         // configType별 그룹핑
         Map<String, List<AccessLogConfigVO>> grouped = new java.util.LinkedHashMap<>();
         // 표시 순서 정의
-        String[] typeOrder = {"GENERAL", "COLLECT", "ALERT", "RETENTION", "ARCHIVE"};
+        String[] typeOrder = {"GENERAL", "COLLECT", "AOP", "ALERT", "RETENTION", "ARCHIVE"};
         for (String t : typeOrder) {
             grouped.put(t, new java.util.ArrayList<>());
         }
@@ -1329,5 +1337,60 @@ public class AccessLogController {
             result.put("message", e.getMessage());
         }
         return ResponseEntity.ok(result);
+    }
+
+    // ========== AOP 수집 상태/제어 ==========
+    @GetMapping("/api/aop-status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> aopStatus() {
+        Map<String, Object> result = new HashMap<>();
+        if (aopConfig == null) {
+            result.put("available", false);
+            return ResponseEntity.ok(result);
+        }
+        result.put("available", true);
+        result.put("mode", aopConfig.getMode().name());
+        result.put("minImportance", aopConfig.getMinImportance());
+        result.put("recordParams", aopConfig.isRecordParams());
+        result.put("recordReads", aopConfig.isRecordReads());
+        result.put("paramMaxLen", aopConfig.getParamMaxLen());
+        result.put("durationThresholdMs", aopConfig.getDurationThresholdMs());
+        result.put("maskFields", aopConfig.getMaskFields());
+        result.put("includePatterns", aopConfig.getIncludePatterns());
+        result.put("excludePatterns", aopConfig.getExcludePatterns());
+        result.put("droppedCount", aopConfig.getDroppedCount());
+        result.put("lastLoadedMs", aopConfig.getLastLoadedMs());
+        result.put("annotatedMethods", countAnnotatedMethods());
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/aop-reload")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> aopReload() {
+        Map<String, Object> result = new HashMap<>();
+        if (aopConfig == null) {
+            result.put("success", false);
+            result.put("message", "AOP config not available");
+            return ResponseEntity.ok(result);
+        }
+        aopConfig.reloadFromDb();
+        result.put("success", true);
+        result.put("mode", aopConfig.getMode().name());
+        result.put("lastLoadedMs", aopConfig.getLastLoadedMs());
+        return ResponseEntity.ok(result);
+    }
+
+    private int countAnnotatedMethods() {
+        int count = 0;
+        try {
+            Map<String, Object> controllers = applicationContext.getBeansWithAnnotation(Controller.class);
+            for (Object bean : controllers.values()) {
+                Class<?> cls = org.springframework.aop.support.AopUtils.getTargetClass(bean);
+                for (java.lang.reflect.Method m : cls.getDeclaredMethods()) {
+                    if (m.isAnnotationPresent(LogAccess.class)) count++;
+                }
+            }
+        } catch (Exception ignore) {}
+        return count;
     }
 }

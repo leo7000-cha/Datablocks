@@ -1,0 +1,79 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  ⚠ 중요: 이 파일은 완전한 pom.xml 이 아닙니다 ⚠
+  ═══════════════════════════════════════════════════════════════════════════
+
+  이 파일은 고객사 기존 pom.xml 의 <dependencies> 블록 안에 복사해 넣는
+  **스니펫(snippet)** 입니다. 단독 빌드 불가능합니다.
+
+  사용법:
+    1) 고객사 Spring Boot 프로젝트의 pom.xml 을 연다
+    2) <dependencies> ... </dependencies> 안에 아래 <dependency> 블록을 붙여넣는다
+    3) mvn clean package 로 재빌드
+    4) WAS 재기동
+
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+
+
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- 방법 A: 사내 Nexus 에 dlm-aop-sdk 를 배포해둔 경우 (권장)                  -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!--
+  금융권 고객사는 보통 사내 Nexus/Artifactory 를 사용하므로, 우리 팀이
+  제공한 dlm-aop-sdk-1.0.0.jar 를 고객사 Nexus 에 배포한 뒤 이 블록 사용.
+  jar 파일을 Maven 로컬 설치하지 않아도 되어 CI/CD 파이프라인에 유리.
+-->
+<dependency>
+    <groupId>datablocks</groupId>
+    <artifactId>dlm-aop-sdk</artifactId>
+    <version>1.0.0</version>
+</dependency>
+
+
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- 방법 B: 로컬 Maven repository (~/.m2) 에 수동 설치한 경우                   -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!--
+  Nexus 배포 전에 개발자 PC/POC 환경에서 빠르게 테스트할 때 사용.
+  아래 명령을 한 번 실행 후, 위 "방법 A" 와 동일한 <dependency> 블록 사용:
+
+    mvn install:install-file \
+      -Dfile=./lib/dlm-aop-sdk-1.0.0.jar \
+      -DgroupId=datablocks \
+      -DartifactId=dlm-aop-sdk \
+      -Dversion=1.0.0 \
+      -Dpackaging=jar
+-->
+
+
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- 방법 C: 프로젝트에 JAR 직접 포함 (system scope) — 비권장                    -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!--
+  보안 정책상 외부 저장소 접근이 불가능한 고립 환경에서만 사용.
+  system scope 는 재현 빌드가 어려워 일반적으로 권장 안 함.
+
+<dependency>
+    <groupId>datablocks</groupId>
+    <artifactId>dlm-aop-sdk</artifactId>
+    <version>1.0.0</version>
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/dlm-aop-sdk-1.0.0.jar</systemPath>
+</dependency>
+-->
+
+
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!-- 런타임 필수 의존성: Alibaba TransmittableThreadLocal                        -->
+<!-- ═════════════════════════════════════════════════════════════════════════ -->
+<!--
+  X-Audit SDK 가 내부적으로 'api' 로 선언하므로 자동 포함됩니다.
+  대부분의 경우 아래 블록은 추가할 필요가 없지만, 사내 Nexus 동기화 제약
+  (transitive dependency 가 자동 해결되지 않는 환경) 이 있다면 명시:
+-->
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>transmittable-thread-local</artifactId>
+    <version>2.14.5</version>
+</dependency>

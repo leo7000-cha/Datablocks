@@ -19,6 +19,9 @@ public interface AccessLogService {
     // ========== Access Log ==========
     void registerAccessLog(AccessLogVO log);
     void registerAccessLogBatch(List<AccessLogVO> logs);
+
+    /** AOP 수집 전용 래퍼: 별도 트랜잭션(REQUIRES_NEW)으로 비즈니스 롤백과 분리 */
+    void registerAccessLogFromAop(AccessLogVO log);
     AccessLogVO getAccessLog(Long logId);
     List<AccessLogVO> getAccessLogList(Criteria cri);
     int getAccessLogTotal(Criteria cri);

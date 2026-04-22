@@ -1,5 +1,6 @@
 package datablocks.dlm.controller;
 
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.Criteria;
 import datablocks.dlm.domain.PageDTO;
 import datablocks.dlm.domain.PiiMemberVO;
@@ -78,6 +79,8 @@ public class PiiMemberController {
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_MEMBER", action = "INSERT", importance = "HIGH", business = "PII_MEMBER",
+               maskParams = {"userpw", "password", "newPassword", "newpassword"})
     public String register(PiiMemberVO piimember, RedirectAttributes rttr) throws Exception {
 
         LogUtil.log("INFO", "register: " + piimember);
@@ -127,6 +130,8 @@ public class PiiMemberController {
     @ResponseBody
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_MEMBER", action = "UPDATE", importance = "HIGH", business = "PII_MEMBER",
+               maskParams = {"userpw", "password", "newPassword", "newpassword"})
     public ResponseEntity<String> modify(@RequestBody PiiMemberVO piimember, Model model, HttpServletRequest request) throws Exception {
         LogUtil.log("INFO", "@PostMapping modify:" + piimember);
 
@@ -178,6 +183,7 @@ public class PiiMemberController {
 
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_MEMBER", action = "DELETE", importance = "HIGH", business = "PII_MEMBER")
     public String remove(PiiMemberVO piimember, Criteria cri, RedirectAttributes rttr) {
 
         LogUtil.log("INFO", "@PostMapping remove..." + piimember.getUserid());

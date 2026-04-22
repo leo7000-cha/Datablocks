@@ -1,3 +1,4 @@
 rootProject.name = 'DLM'
 
 include 'dlm-agent'
+include 'dlm-aop-sdk'

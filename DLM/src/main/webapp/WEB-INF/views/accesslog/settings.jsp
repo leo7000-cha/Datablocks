@@ -161,6 +161,7 @@
                     <c:choose>
                         <c:when test="${entry.key == 'GENERAL'}"><i class="fas fa-sliders"></i></c:when>
                         <c:when test="${entry.key == 'COLLECT'}"><i class="fas fa-database"></i></c:when>
+                        <c:when test="${entry.key == 'AOP'}"><i class="fas fa-network-wired"></i></c:when>
                         <c:when test="${entry.key == 'ALERT'}"><i class="fas fa-bell"></i></c:when>
                         <c:when test="${entry.key == 'RETENTION'}"><i class="fas fa-clock-rotate-left"></i></c:when>
                         <c:when test="${entry.key == 'ARCHIVE'}"><i class="fas fa-box-archive"></i></c:when>
@@ -170,6 +171,7 @@
                 <c:choose>
                     <c:when test="${entry.key == 'GENERAL'}">일반</c:when>
                     <c:when test="${entry.key == 'COLLECT'}">수집</c:when>
+                    <c:when test="${entry.key == 'AOP'}">AOP 수집</c:when>
                     <c:when test="${entry.key == 'ALERT'}">알림</c:when>
                     <c:when test="${entry.key == 'RETENTION'}">보관</c:when>
                     <c:when test="${entry.key == 'ARCHIVE'}">아카이브</c:when>
@@ -188,12 +190,21 @@
                     <c:choose>
                         <c:when test="${entry.key == 'GENERAL'}">시스템 전반 동작에 관련된 기본 설정입니다.</c:when>
                         <c:when test="${entry.key == 'COLLECT'}">접속기록 수집 스케줄과 성능 관련 설정입니다.</c:when>
+                        <c:when test="${entry.key == 'AOP'}">Spring AOP 기반 DLM UI 행위 수집(WAS_AOP) 모드 및 마스킹 설정입니다. 기본 OFF — 어노테이션 모드 권장.</c:when>
                         <c:when test="${entry.key == 'ALERT'}">이상행위 탐지 및 알림 전송 관련 설정입니다.</c:when>
                         <c:when test="${entry.key == 'RETENTION'}">접속기록 보관 기간 관련 설정입니다.</c:when>
                         <c:when test="${entry.key == 'ARCHIVE'}">장기 보관 및 자동 아카이빙 관련 설정입니다.</c:when>
                         <c:otherwise>${entry.key} 카테고리 설정</c:otherwise>
                     </c:choose>
                 </span>
+                <c:if test="${entry.key == 'AOP'}">
+                    <div id="aopStatusCard" style="margin-left:16px;padding:6px 12px;border-radius:8px;background:#f1f5f9;font-size:12px;color:#475569;">
+                        <i class="fas fa-satellite-dish"></i> <span id="aopStatusText">상태 로딩중…</span>
+                        <button class="btn-outline" style="margin-left:8px;padding:4px 10px;font-size:11px;" onclick="reloadAopConfig()">
+                            <i class="fas fa-rotate"></i> 즉시 반영
+                        </button>
+                    </div>
+                </c:if>
                 <button class="toggle-key-btn" onclick="toggleKeys(this)" title="설정 키 표시/숨기기">
                     <i class="fas fa-code"></i> 키 보기
                 </button>
@@ -211,6 +222,22 @@
                             </div>
                             <div class="config-control">
                                 <c:choose>
+                                    <c:when test="${config.configKey == 'AOP_COLLECT_MODE'}">
+                                        <select id="cfg_${config.configId}"
+                                                onchange="saveSelectConfig('${config.configId}', this.value)">
+                                            <option value="OFF"        ${config.configValue == 'OFF' ? 'selected' : ''}>OFF (수집 안 함)</option>
+                                            <option value="ANNOTATION" ${config.configValue == 'ANNOTATION' ? 'selected' : ''}>ANNOTATION (@LogAccess 부착 메서드만, 권장)</option>
+                                            <option value="ALL"        ${config.configValue == 'ALL' ? 'selected' : ''}>ALL (전 컨트롤러, 감사 강화)</option>
+                                        </select>
+                                    </c:when>
+                                    <c:when test="${config.configKey == 'AOP_MIN_IMPORTANCE'}">
+                                        <select id="cfg_${config.configId}"
+                                                onchange="saveSelectConfig('${config.configId}', this.value)">
+                                            <option value="LOW"    ${config.configValue == 'LOW'    ? 'selected' : ''}>LOW (모두 기록)</option>
+                                            <option value="MEDIUM" ${config.configValue == 'MEDIUM' ? 'selected' : ''}>MEDIUM (중요 업무만)</option>
+                                            <option value="HIGH"   ${config.configValue == 'HIGH'   ? 'selected' : ''}>HIGH (최상위 민감 업무만)</option>
+                                        </select>
+                                    </c:when>
                                     <c:when test="${config.configValue == 'Y' || config.configValue == 'N'}">
                                         <label class="toggle-switch">
                                             <input type="checkbox" id="cfg_${config.configId}"
@@ -388,6 +415,48 @@ var CONFIG_HINTS = {
     'ARCHIVE_ENABLED': {
         icon: 'fa-box-archive',
         text: '보관기간이 지난 접속기록을 자동으로 아카이브 테이블로 이동합니다. 비활성화 시 수동으로 관리해야 하며, <strong>디스크 용량 증가</strong>에 주의하세요.'
+    },
+    'AOP_COLLECT_MODE': {
+        icon: 'fa-network-wired',
+        text: 'DLM UI 행위를 <strong>Spring AOP</strong>로 수집하는 모드입니다. <strong>OFF</strong>(기본, 수집 안 함) / <strong>ANNOTATION</strong>(@LogAccess 부착 메서드만, 금융권 권장) / <strong>ALL</strong>(전 컨트롤러, 감사 강화 기간). 변경 시 "즉시 반영" 버튼으로 1분 대기 없이 바로 적용할 수 있습니다.',
+        warn: true
+    },
+    'AOP_MASK_FIELDS': {
+        icon: 'fa-user-secret',
+        text: '파라미터 JSON 기록 시 <strong>값을 *** 로 마스킹할 필드명</strong>을 쉼표로 입력합니다. 대소문자 무시. 기본: password,passwd,pwd,token,secret,apiKey,accessKey,privateKey,ssn,jumin,cardNo,accountNo,authKey'
+    },
+    'AOP_INCLUDE_PATTERNS': {
+        icon: 'fa-filter',
+        text: '추가로 포함할 URI prefix를 쉼표로 지정합니다. 비워두면 기본 컨트롤러 전체가 대상입니다. 예: /piipolicy/,/piiauth/'
+    },
+    'AOP_EXCLUDE_PATTERNS': {
+        icon: 'fa-ban',
+        text: '제외할 URI prefix(쉼표). <strong>순환 기록 방지</strong>와 노이즈 억제용. /accesslog/, /common/, /locale/, /home, /api/agent/, /dlmapi/ 는 반드시 포함하는 것을 권장합니다.',
+        warn: true
+    },
+    'AOP_RECORD_PARAMS': {
+        icon: 'fa-code',
+        text: '요청 파라미터를 <strong>JSON으로 직렬화</strong>하여 searchCondition 에 기록합니다. 비활성화하면 용량은 줄지만 감사 추적성이 약해집니다.'
+    },
+    'AOP_PARAM_MAX_LEN': {
+        icon: 'fa-ruler',
+        text: '파라미터 JSON 최대 길이(바이트). 초과 시 <code>...[TRUNC]</code> 로 절삭됩니다. 권장: <strong>1000~3000</strong>'
+    },
+    'AOP_MIN_IMPORTANCE': {
+        icon: 'fa-star',
+        text: '이 중요도 이상만 기록합니다. <strong>LOW</strong>(모두) / <strong>MEDIUM</strong>(중요 업무) / <strong>HIGH</strong>(최상위 민감 업무만). 운영 안정화 후 MEDIUM 상향을 권장합니다.'
+    },
+    'AOP_RECORD_READS': {
+        icon: 'fa-eye',
+        text: '조회성(SELECT/GET) 요청 기록 여부. 비활성화하면 쓰기 작업만 기록되어 용량이 크게 줄지만 <strong>접근 로그 감사가 불가</strong>해집니다.'
+    },
+    'AOP_DURATION_THRESHOLD_MS': {
+        icon: 'fa-gauge-high',
+        text: '이 소요시간(ms) 이상인 호출만 기록합니다. <strong>0</strong> = 모두 기록. 성능 트러블슈팅 시 <strong>500~1000</strong> 등으로 설정하여 슬로우 쿼리만 선별 가능.'
+    },
+    'AOP_ERROR_MSG_LEN': {
+        icon: 'fa-triangle-exclamation',
+        text: '예외 발생 시 error 메시지 저장 최대 길이. 권장: <strong>100~200</strong>'
     }
 };
 
@@ -547,4 +616,50 @@ function saveToggleConfig(configId, checked) {
         error: function() { showToast('저장 실패', true); }
     });
 }
+
+function saveSelectConfig(configId, value) {
+    $.ajax({
+        url: '/accesslog/api/config/' + configId,
+        type: 'PUT', contentType: 'application/json',
+        data: JSON.stringify({ configValue: value }),
+        success: function(res) {
+            if (!res.success) { showToast('저장 실패', true); return; }
+            showToast('저장되었습니다', false);
+            // AOP 모드 변경 시 자동 재로딩 유도
+            loadAopStatus();
+        },
+        error: function() { showToast('저장 실패', true); }
+    });
+}
+
+// ===== AOP 수집 상태/제어 =====
+function loadAopStatus() {
+    var $el = $('#aopStatusText');
+    if (!$el.length) return;
+    $.getJSON('/accesslog/api/aop-status', function(s) {
+        if (!s.available) { $el.text('AOP 모듈 비가용'); return; }
+        var text = '모드: <strong>' + s.mode + '</strong>'
+                 + ' · 최소 중요도: <strong>' + s.minImportance + '</strong>'
+                 + ' · 어노테이션 메서드: <strong>' + s.annotatedMethods + '</strong>개'
+                 + ' · drop: ' + s.droppedCount;
+        $el.html(text);
+    }).fail(function() { $el.text('상태 조회 실패'); });
+}
+
+function reloadAopConfig() {
+    $.ajax({
+        url: '/accesslog/api/aop-reload', type: 'POST',
+        success: function(res) {
+            if (res.success) {
+                showToast('AOP 설정이 즉시 반영되었습니다 (mode=' + res.mode + ')', false);
+                loadAopStatus();
+            } else {
+                showToast('재로딩 실패: ' + (res.message || ''), true);
+            }
+        },
+        error: function() { showToast('재로딩 실패', true); }
+    });
+}
+
+$(function() { loadAopStatus(); });
 </script>

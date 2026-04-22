@@ -66,9 +66,7 @@ public class PiiDiscoveryController {
     @PreAuthorize("isAuthenticated()")
     public String index(Model model) {
         LogUtil.log("INFO", "PiiDiscovery index page");
-        // 대시보드 통계
-        DiscoveryStatVO stats = discoveryService.getDashboardStats();
-        model.addAttribute("stats", stats);
+        // 통계는 JSP ready 시점에 /api/stats 로 AJAX 로드하므로 여기서는 호출하지 않음 (첫 진입 지연 개선)
         return "piidiscovery/index";
     }
 

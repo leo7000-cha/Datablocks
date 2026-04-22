@@ -42,6 +42,25 @@ public class SpringAsyncConfig {
         return new HandlingExecutor(taskExecutor); // HandlingExecutor로 wrapping 합니다.
     }
 
+    /**
+     * AOP 접속기록 전용 Executor.
+     * - core=2 로 낮춰 해시체인 레이스(selectLastHash 중복) 가능성을 최소화
+     * - queue=200 로 버스트 흡수
+     * - UI 비동기 작업과 분리해 서로 영향 차단
+     */
+    @Bean(name = "accessLogAopExecutor", destroyMethod = "destroy")
+    public Executor accessLogAopExecutor() {
+        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        taskExecutor.setCorePoolSize(2);
+        taskExecutor.setMaxPoolSize(8);
+        taskExecutor.setQueueCapacity(200);
+        taskExecutor.setThreadNamePrefix("AopAccessLog-");
+        taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
+        taskExecutor.setAwaitTerminationSeconds(10);
+        taskExecutor.initialize();
+        return new HandlingExecutor(taskExecutor);
+    }
+
     public class HandlingExecutor implements AsyncTaskExecutor {
         private AsyncTaskExecutor executor;
 

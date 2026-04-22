@@ -1,5 +1,6 @@
 package datablocks.dlm.controller;
 
+import datablocks.dlm.aop.annotation.LogAccess;
 import datablocks.dlm.domain.*;
 import datablocks.dlm.service.*;
 import datablocks.dlm.util.LogUtil;
@@ -92,6 +93,7 @@ public class PiiApprovalUserController {
     @ResponseBody
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_APPROVAL_USER", action = "INSERT", importance = "HIGH", business = "PII_APPROVAL")
     public String register(@RequestBody PiiApprovalUserVO piiApprovalUserVO) {
         LogUtil.log("INFO", "@PostMapping register:" + piiApprovalUserVO);
         String rst = "success";
@@ -108,6 +110,7 @@ public class PiiApprovalUserController {
     @ResponseBody
     @PostMapping("/registerapprovalline")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_APPROVAL_USER", action = "INSERT", importance = "HIGH", business = "PII_APPROVAL")
     public String registerapprovalline(@RequestBody PiiApprovalLineVO piiApprovalLineVO) {
         LogUtil.log("INFO", "@PostMapping registerapprovalline:" + piiApprovalLineVO);
         piiApprovalLineVO.setApprovalname(approvalSV.get(piiApprovalLineVO.getApprovalid()).getApprovalname());
@@ -184,6 +187,7 @@ public class PiiApprovalUserController {
     @ResponseBody
     @PostMapping("/modify")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_APPROVAL_USER", action = "UPDATE", importance = "HIGH", business = "PII_APPROVAL")
     public String modify(@RequestBody PiiApprovalUserVO piiApprovalUserVO, @RequestParam("approverid_old") String approverid_old, @RequestParam("approvername_old") String approvername_old
             , Criteria cri) {
         LogUtil.log("INFO", "@PostMapping modify:  approverid_old=" + approverid_old + "    approvername_old=" + approvername_old + "  piiApprovalUserVO=" + piiApprovalUserVO);
@@ -289,6 +293,7 @@ public class PiiApprovalUserController {
     @ResponseBody
     @PostMapping("/remove")
     @PreAuthorize("isAuthenticated()")
+    @LogAccess(menu = "PII_APPROVAL_USER", action = "DELETE", importance = "HIGH", business = "PII_APPROVAL")
     public String remove(@RequestBody PiiApprovalUserVO piiApprovalUserVO, Criteria cri) {
 
         LogUtil.log("INFO", "@PostMapping remove..." + piiApprovalUserVO);

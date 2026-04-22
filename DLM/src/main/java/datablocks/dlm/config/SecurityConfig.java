@@ -91,13 +91,17 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
 
                 .requestMatchers(ant("/customLogin"), ant("/login"), ant("/customLogout"), ant("/accessError")).permitAll()
+                // JSP 웜업 전용 (localhost 에서만 호출되도록 컨트롤러에서 이중 체크)
+                .requestMatchers(ant("/__warmup/**")).permitAll()
                 .requestMatchers(ant("/resources/**"), ant("/favicon.ico")).permitAll()
                 .requestMatchers(ant("/sample/*")).permitAll()
                 .requestMatchers(ant("/piijob/order/by-prog")).permitAll()
                 .requestMatchers(ant("/pii/database/bridgeQuery")).permitAll()
                 .requestMatchers(ant("/dlmapi/**")).permitAll()
                 .requestMatchers(ant("/api/agent/**")).permitAll()
+                .requestMatchers(ant("/api/xaudit/**")).permitAll()
                 .requestMatchers(ant("/accesslog/justify/**")).permitAll()
+                .requestMatchers(ant("/xaudit/**")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
 
                 .requestMatchers(ant("/hub")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/index")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
@@ -279,7 +283,7 @@ public class SecurityConfig {
     * */
 
         http.csrf(csrf -> csrf
-                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"), ant("/accesslog/api/**"), ant("/api/agent/**"), ant("/accesslog/justify/**"))
+                .ignoringRequestMatchers(ant("/dlmapi/**"), ant("/piijob/order/by-prog"), ant("/pii/database/bridgeQuery"), ant("/accesslog/api/**"), ant("/api/agent/**"), ant("/api/xaudit/**"), ant("/accesslog/justify/**"))
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
         );
 

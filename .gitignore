@@ -24,6 +24,8 @@ Thumbs.db
 
 # --- Java / Gradle Build ---
 DLM/build/
+DLM/dlm-agent/build/
+DLM/dlm-aop-sdk/build/
 DLM/target/
 DLM/bin/
 DLM/.gradle/

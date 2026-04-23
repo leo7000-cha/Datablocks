@@ -643,47 +643,42 @@
         var selStart = textarea.selectionStart;
         var selEnd = textarea.selectionEnd;
 
-        // 1. If text is selected, use selected text
         if (selStart !== selEnd) {
             return text.substring(selStart, selEnd).trim();
         }
 
-        // 2. Find query at cursor position (between semicolons)
         var cursorPos = selStart;
 
-        // Find start: search backward for semicolon
-        var startPos = 0;
-        for (var i = cursorPos - 1; i >= 0; i--) {
-            if (text.charAt(i) === ';') {
-                startPos = i + 1;
-                break;
+        // If cursor sits right after ';' on the same line (only spaces/tabs between),
+        // run the statement that just ended — matches DBeaver / MySQL Workbench / DataGrip.
+        var endingSemi = -1;
+        for (var s = cursorPos - 1; s >= 0; s--) {
+            var ch = text.charAt(s);
+            if (ch === ';') { endingSemi = s; break; }
+            if (ch === '\n' || ch === '\r') break;
+            if (ch !== ' ' && ch !== '\t') break;
+        }
+
+        var startPos, endPos;
+
+        if (endingSemi >= 0) {
+            endPos = endingSemi;
+            startPos = 0;
+            for (var i = endingSemi - 1; i >= 0; i--) {
+                if (text.charAt(i) === ';') { startPos = i + 1; break; }
+            }
+        } else {
+            startPos = 0;
+            for (var i2 = cursorPos - 1; i2 >= 0; i2--) {
+                if (text.charAt(i2) === ';') { startPos = i2 + 1; break; }
+            }
+            endPos = text.length;
+            for (var j = cursorPos; j < text.length; j++) {
+                if (text.charAt(j) === ';') { endPos = j; break; }
             }
         }
 
-        // Find end: search forward for semicolon
-        var endPos = text.length;
-        for (var j = cursorPos; j < text.length; j++) {
-            if (text.charAt(j) === ';') {
-                endPos = j;
-                break;
-            }
-        }
-
-        var query = text.substring(startPos, endPos).trim();
-
-        // If empty at current position, try to get the previous query (cursor might be after semicolon)
-        if (!query && cursorPos > 0) {
-            // Find the previous semicolon
-            var prevSemicolon = text.lastIndexOf(';', cursorPos - 1);
-            if (prevSemicolon >= 0) {
-                // Find the semicolon before that
-                var prevPrevSemicolon = text.lastIndexOf(';', prevSemicolon - 1);
-                startPos = prevPrevSemicolon >= 0 ? prevPrevSemicolon + 1 : 0;
-                query = text.substring(startPos, prevSemicolon).trim();
-            }
-        }
-
-        return query;
+        return text.substring(startPos, endPos).trim();
     }
 
     function validateSelectedText(selectedText) {

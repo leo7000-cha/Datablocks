@@ -21,7 +21,7 @@ services:
   # DLM - Spring Boot Main Application
   # ============================================================================
   dlm:
-    image: datablocks-dlm:latest
+    image: datablocks-dlm:1.0.0
     container_name: dlm-app
     restart: unless-stopped
     env_file: .env.hanson
@@ -52,7 +52,7 @@ services:
   # DLM-Privacy-AI - FastAPI AI Service
   # ============================================================================
   dlm-privacy-ai:
-    image: datablocks-dlm-privacy-ai:latest
+    image: datablocks-dlm-privacy-ai:1.0.0
     container_name: dlm-privacy-ai
     restart: unless-stopped
     env_file: .env.hanson

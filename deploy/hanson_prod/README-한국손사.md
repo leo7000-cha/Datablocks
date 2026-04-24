@@ -1,10 +1,16 @@
 # DLM 배포 가이드 — 한국손사 (PROD: OS 설치형 MariaDB)
 
 > 폐쇄망 Ubuntu / Docker 설치됨 / **MariaDB 는 호스트 OS 에 직접 설치**
-> 작성일: 2026-04-08 | 갱신: 2026-04-22 (PROD 분기)
+> 작성일: 2026-04-08 | 갱신: 2026-04-24 (운영자 보안 기준 7개 반영 — v1.0.0)
 
 > 본 문서는 운영(PROD) 배포용입니다. MariaDB 가 Docker 컨테이너로 운영되는
 > 개발(DEV) 환경 가이드는 [`../hanson_dev/README-한국손사.md`](../hanson_dev/README-한국손사.md) 를 참조하세요.
+
+> **v1.0.0 변경 요약** — 운영자(박기용 선임) 보안 기준에 맞춰 전면 재빌드:
+> - 이미지 내부 DB 접속정보 / Jasypt 키 / 기타 평문 비밀 전면 제거
+> - `SPRING_DATASOURCE_*` (= 운영자 규약 `JDBC_*`) env 기반 주입
+> - 컨테이너 내부 `HEALTHCHECK` / `curl` / `wget` 제거 (호스트 외부 체크 전제)
+> - 전달 파일 형식: `third-party-app[-ai]_<version>.tar.gz` + SHA256
 
 ---
 
@@ -68,21 +74,27 @@ deploy/hanson_prod/ 폴더
 ```
 deploy/hanson_prod/
 ├── images/
-│   ├── dlm-app.tar.gz                 ← DLM 이미지 (~301MB)
-│   └── dlm-privacy-ai.tar.gz          ← Privacy-AI 이미지 (~78MB)
-├── docker-compose.hanson.yml          ← PROD Compose (host-gateway)
-├── .env.hanson                        ← PROD 환경변수 (host.docker.internal)
-├── custom-prod.cnf                    ← MariaDB 권장 설정 (호스트 OS 적용)
+│   ├── third-party-app_1.0.0.tar.gz        ← DLM 이미지 (~402MB)
+│   ├── third-party-app_1.0.0.tar.gz.sha256 ← DLM 체크섬 (운영자 전달 필수)
+│   ├── third-party-app-ai_1.0.0.tar.gz     ← Privacy-AI 이미지 (~73MB)
+│   └── third-party-app-ai_1.0.0.tar.gz.sha256 ← Privacy-AI 체크섬
+├── docker-compose.hanson.yml               ← PROD Compose (JDBC_* 주입 블록)
+├── .env.hanson                             ← PROD 환경변수 (JDBC_URL/_USERNAME/_PASSWORD)
+├── custom-prod.cnf                         ← MariaDB 권장 설정 (호스트 OS 적용)
 ├── database/
-│   ├── init/                          ← DB/계정/초기데이터 SQL
-│   ├── ddl/                           ← 코어/AccessLog/Discovery 마스터 DDL
-│   ├── ddl/patches/                   ← 스키마 패치 (날짜별)
-│   ├── batch-job/                     ← 배치 Job SQL
-│   └── sql-workbook/                  ← 운영 쿼리 모음
+│   ├── init/                               ← DB/계정/초기데이터 SQL
+│   ├── ddl/                                ← 코어/AccessLog/Discovery 마스터 DDL
+│   ├── ddl/patches/                        ← 스키마 패치 (날짜별)
+│   ├── batch-job/                          ← 배치 Job SQL
+│   └── sql-workbook/                       ← 운영 쿼리 모음
 ├── scripts/
-│   └── deploy.sh                      ← PROD 배포 스크립트 (OS MariaDB)
-└── README-한국손사.md                 ← 이 문서
+│   ├── deploy.sh                           ← PROD 배포 스크립트 (OS MariaDB)
+│   └── package.sh                          ← 이미지 패키징 + SHA256 생성 (릴리스 용)
+└── README-한국손사.md                      ← 이 문서
 ```
+
+> 이미지 파일명은 운영자 배포 규약 `third-party-app_<version>.tar.gz` 를 따릅니다.
+> 기존 `dlm-app.tar.gz` / `dlm-privacy-ai.tar.gz` 는 v1.0.0 부터 쓰지 않습니다.
 
 ---
 
@@ -134,9 +146,36 @@ FLUSH PRIVILEGES;
 
 ---
 
+## 2-a. 운영자 보안 기준 7개 준수 상태 (v1.0.0)
+
+한국손사 IT 운영 담당자(박기용 선임) 배포 규약 기준:
+
+| # | 기준 | 구현 | 근거 파일 |
+|---|---|---|---|
+| ① | 환경변수 기반 DB 연결 (`JDBC_URL` / `JDBC_USERNAME` / `JDBC_PASSWORD`) | ✓ | `.env.hanson`, `docker-compose.hanson.yml` |
+| ② | `application.properties` 접속정보 정리 | ✓ | 이미지 내 DB url/username/password 0건 |
+| ③ | 이미지 내부 비밀 금지 (Jasypt·ENC()·평문 암호 모두 제거) | ✓ | `docker run ... grep` 검증 완료 |
+| ④ | 기동 후 45초 내 0.0.0.0:8082 TCP LISTEN (컨테이너 내부 쉘/curl/wget 미사용) | ✓ | Dockerfile `HEALTHCHECK` 제거, `curl`/`wget` 미포함 |
+| ⑤ | 전달 형식 `docker save \| gzip > third-party-app_<version>.tar.gz` | ✓ | `scripts/package.sh` |
+| ⑥ | SHA256 체크섬 동봉 (`sha256sum -c` 검증 가능) | ✓ | `images/*.sha256` |
+| ⑦ | `services.dlm.environment:` 블록에 `JDBC_*` 명시, 컨테이너 `healthcheck:` 지시어 없음 | ✓ | `docker-compose.hanson.yml` |
+
+> 운영자 측 검증 예 (이미지 수령 후):
+> ```bash
+> sha256sum -c images/third-party-app_1.0.0.tar.gz.sha256
+> # → third-party-app_1.0.0.tar.gz: OK
+> ```
+
+---
+
 ## 3. 최초 배포 (deploy.sh)
 
 ```bash
+# (권장) 먼저 이미지 무결성 검증
+cd images && sha256sum -c third-party-app_1.0.0.tar.gz.sha256
+sha256sum -c third-party-app-ai_1.0.0.tar.gz.sha256
+cd ..
+
 bash scripts/deploy.sh
 ```
 
@@ -146,9 +185,9 @@ bash scripts/deploy.sh
 |------|------|------|
 | 1 | 호스트 MariaDB 접속정보 확인 | 호스트/포트 입력 (기본 host.docker.internal:3306) |
 | 2 | MariaDB 연결 테스트 | mysql 또는 nc 로 접근성 확인 |
-| 3 | Docker 이미지 로드 | dlm-app.tar.gz, dlm-privacy-ai.tar.gz |
-| 4 | 설정 확인 | 포트/호스트 최종 확인 후 .env 반영 |
-| 5 | 컨테이너 실행 | docker compose up -d + 헬스체크 |
+| 3 | Docker 이미지 로드 | `third-party-app_1.0.0.tar.gz`, `third-party-app-ai_1.0.0.tar.gz` |
+| 4 | 설정 확인 | 포트/호스트 최종 확인 후 `.env.hanson` 반영 (`JDBC_URL` 자동 치환) |
+| 5 | 컨테이너 실행 | `docker compose up -d` + 호스트측 포트 LISTEN 확인 (nc/curl) |
 
 ```
   ──────────────────────────────────────────

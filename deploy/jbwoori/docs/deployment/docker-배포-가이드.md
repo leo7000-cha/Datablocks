@@ -1015,7 +1015,8 @@ docker system prune -a -f
 | `MARIADB_ROOT_PASSWORD` | `!Dlm1234` | MariaDB root 비밀번호 |
 | `SPRING_PROFILES_ACTIVE` | `local` | Spring 프로파일 (local/dev/prod) |
 | `SPRING_DATASOURCE_URL` | `jdbc:mariadb://dlm-mariadb:3306/cotdl?...` | DB 접속 URL. `dlm-mariadb`는 Docker 내부 서비스명 |
-| `JASYPT_ENCRYPTOR_PASSWORD` | `datablocks` | 설정 파일 암호화 키 |
+| `SPRING_DATASOURCE_USERNAME` | `cotdl` | DB 계정명 (v1.0.0 부터 env 필수) |
+| `SPRING_DATASOURCE_PASSWORD` | `!Dlm1234` | DB 암호 (v1.0.0 부터 env 필수) |
 | `PRIVACY_AI_DB_HOST` | `dlm-mariadb` | Privacy-AI가 접속할 DB 호스트 |
 | `PRIVACY_AI_DB_PORT` | `3306` | DB 포트 |
 | `PRIVACY_AI_DB_NAME` | `cotdl` | DB 이름 |
@@ -1037,8 +1038,9 @@ docker system prune -a -f
 | 변수명 | 수정 필요? | 설명 |
 |--------|-----------|------|
 | `SPRING_DATASOURCE_URL` | **반드시 수정** | 고객사 DB 서버 IP로 변경 |
+| `SPRING_DATASOURCE_USERNAME` | **확인 필요** | DB 계정 (보통 `cotdl`) |
+| `SPRING_DATASOURCE_PASSWORD` | **확인 필요** | DB 암호 (현장 실암호) |
 | `SPRING_PROFILES_ACTIVE` | 보통 그대로 | `local` 유지 |
-| `JASYPT_ENCRYPTOR_PASSWORD` | 보통 그대로 | 암호화 키 |
 | `DLM_PORT` | 필요시 수정 | DLM 접속 포트 (기본 8080) |
 | `PRIVACY_AI_DB_HOST` | **반드시 수정** | 고객사 DB 서버 IP |
 | `PRIVACY_AI_DB_PORT` | 필요시 수정 | DB 포트 (기본 3306) |

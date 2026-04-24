@@ -124,9 +124,9 @@ MARIADB_ROOT_PASSWORD=your_root_password_here
 # --- Spring Datasource ---
 SPRING_DATASOURCE_URL=jdbc:mariadb://dlm-mariadb:3306/cotdl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true
 
-# --- Jasypt 암호화 키 ---
-# DLM application.properties의 ENC(xxx) 값을 복호화하는 키
-JASYPT_ENCRYPTOR_PASSWORD=datablocks
+# --- DB 접속 계정 (v1.0.0 부터 평문 env, Jasypt 제거됨) ---
+SPRING_DATASOURCE_USERNAME=cotdl
+SPRING_DATASOURCE_PASSWORD=your_cotdl_password_here
 
 # --- DLM-Privacy-AI 설정 ---
 PRIVACY_AI_DB_HOST=dlm-mariadb

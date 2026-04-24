@@ -214,35 +214,39 @@ grep SPRING_DATASOURCE_URL /app/Datablocks/.env
 # 호스트명이 "dlm-mariadb" (컨테이너명)인지 확인
 ```
 
-### 2.3 Jasypt 복호화 오류
+### 2.3 DB 접속 계정 환경변수 누락 (v1.0.0 이후)
 
-**증상**:
+**증상** — 기동 직후 컨테이너가 exit, 로그에 다음과 같은 오류:
 ```
-com.ulisesbocchio.jasyptspringboot.exception.DecryptionException
-Failed to decrypt property
-EncryptionOperationNotPossibleException
+Access denied for user 'cotdl'@'<ip>' (using password: NO)
+HikariPool-1 - dataSource or dataSourceClassName or jdbcUrl is required
 ```
 
-**원인**: Jasypt 암호화 키가 잘못 설정됨. `application.properties`의 `ENC(...)` 값을 복호화하지 못함.
+**원인**: `SPRING_DATASOURCE_USERNAME` 또는 `SPRING_DATASOURCE_PASSWORD` 환경변수가
+비어 있거나 `.env` 파일에서 누락. v1.0.0 부터 `application.properties` 내 DB 접속정보
+가 전면 제거됐으므로 env 주입이 필수.
 
 **진단**:
 ```bash
-# 현재 설정된 Jasypt 키 확인
-docker exec dlm-app env | grep JASYPT
-grep JASYPT_ENCRYPTOR_PASSWORD /app/Datablocks/.env
+# 현재 주입된 env 확인
+docker exec dlm-app env | grep SPRING_DATASOURCE
+grep -E "^SPRING_DATASOURCE_(USERNAME|PASSWORD)" /app/Datablocks/.env
 ```
 
 **해결**:
 ```bash
-# .env 파일에서 JASYPT 키 확인 및 수정
+# .env 파일에 DB 계정이 모두 있는지 확인
 vi /app/Datablocks/.env
-# JASYPT_ENCRYPTOR_PASSWORD=datablocks  ← 이 값이 정확해야 함
+# SPRING_DATASOURCE_URL=jdbc:mariadb://.../cotdl?...
+# SPRING_DATASOURCE_USERNAME=cotdl
+# SPRING_DATASOURCE_PASSWORD=<실제 암호>
 
-# 수정 후 재시작 (재빌드 불필요, 환경변수만 변경됨)
+# 수정 후 재시작 (재빌드 불필요, env 만 다시 주입)
 docker compose up -d dlm
 ```
 
-> **참고**: Jasypt 키 `datablocks`로 암호화된 값만 복호화됩니다. `application.properties`에 `ENC(xxx)` 형태로 저장된 패스워드들은 이 키로 복호화됩니다.
+> **참고 (v1.0.0 보안 변경)**: 운영자 보안 기준에 따라 Jasypt/ENC() 암호화 체계는
+> 제거됐습니다. DB 접속정보는 평문 env var 만 허용되며 이미지 내부에는 남지 않습니다.
 
 ### 2.4 Spring Boot 메모리 부족 (OutOfMemoryError)
 

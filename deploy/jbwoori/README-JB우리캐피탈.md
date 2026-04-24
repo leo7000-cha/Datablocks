@@ -1,7 +1,7 @@
 # DLM 배포 가이드 — JB우리캐피탈
 
 > 폐쇄망 Rocky Linux 9 / MariaDB 호스트 OS 직접 설치 / Docker 미설치
-> 작성일: 2026-04-08 | 갱신: 2026-04-21
+> 작성일: 2026-04-08 | 갱신: 2026-04-22
 
 ---
 
@@ -577,3 +577,117 @@ DB 설정
   ☐ MariaDB 자동시작 확인 (systemctl is-enabled mariadb)
   ☐ 담당자에게 운영 명령어/단축 명령 전달
 ```
+
+---
+
+## 🔐 HTTPS / SSL 운영 모드 (옵션)
+
+JB우리캐피탈 실운영 환경이 Tomcat HTTPS 기반으로 동작하는 경우, 아래 절차로 SSL 을 활성화할 수 있습니다. **기본값은 HTTP 8080 이며, 아래 설정 없이는 평소대로 동작**합니다.
+
+### 동작 개요
+
+| 포트 | 동작 |
+|------|------|
+| `8443` | HTTPS 메인 서비스 |
+| `8080` | HTTP 접속 시 `https://...:8443` 으로 **자동 302 리다이렉트** (Tomcat native) |
+
+Spring Profile `ssl` 이 활성화될 때만 작동하며, 다른 배포(hanson/imcapital/로컬 개발)에는 영향이 없습니다.
+
+### 활성화 4단계
+
+#### 1단계: 인증서 배치
+
+`deploy/jbwoori/certs/dlm-keystore.p12` 파일을 배치합니다.
+
+테스트용 자체 서명 인증서 생성 (운영용은 고객사 실 인증서로 교체):
+
+```bash
+cd deploy/jbwoori/certs
+keytool -genkeypair \
+  -alias dlm-keystore \
+  -storetype PKCS12 \
+  -keyalg RSA -keysize 2048 \
+  -validity 3650 \
+  -keystore dlm-keystore.p12 \
+  -storepass dlmssl \
+  -dname "CN=localhost,OU=DLM,O=Datablocks,L=Seoul,S=Seoul,C=KR"
+```
+
+자세한 내용: [certs/README.md](certs/README.md)
+
+#### 2단계: `.env.jbwoori` 수정
+
+- line 10: SPRING_PROFILES_ACTIVE=local → SPRING_PROFILES_ACTIVE=local,ssl
+- line 54~62: SERVER_* / DLM_PORT_HTTPS / LOGGING_CONFIG 블록 주석(#) 전부 해제
+- 실 인증서의 키스토어 비밀번호/alias를 바꿨다면 SERVER_SSL_KEY_STORE_PASSWORD, SERVER_SSL_KEY_PASSWORD, SERVER_SSL_KEY_ALIAS 값 같이 수정.
+
+```bash
+SPRING_PROFILES_ACTIVE=local,ssl
+
+SERVER_PORT=8443
+SERVER_SSL_ENABLED=true
+SERVER_SSL_KEY_STORE=file:/etc/ssl/dlm-keystore.p12
+SERVER_SSL_KEY_STORE_TYPE=PKCS12
+SERVER_SSL_KEY_STORE_PASSWORD=dlmssl
+SERVER_SSL_KEY_ALIAS=dlm-keystore
+SERVER_SSL_KEY_PASSWORD=dlmssl
+DLM_PORT_HTTPS=8443
+LOGGING_CONFIG=classpath:logback-local.xml
+```
+
+> ⚠️ `LOGGING_CONFIG` 는 필수입니다. `application.properties` 가 `logback-${spring.profiles.active}.xml` 규칙으로 로그 설정 파일을 찾기 때문에, `local,ssl` 조합에서는 존재하지 않는 `logback-local,ssl.xml` 을 찾아 기동이 실패합니다. 이 환경변수로 사용할 logback 파일을 명시적으로 지정합니다.
+
+> ⚠️ 현재 구현은 컨테이너 내부 HTTP 커넥터 `8080` + HTTPS 리다이렉트 대상 포트 `8443` 이 Java 코드에 **하드코딩**되어 있습니다. `DLM_PORT_HTTPS` 와 `SERVER_PORT` 는 기본값(8443)으로 유지해야 자동 리다이렉트가 정상 동작합니다.
+
+#### 3단계: `docker-compose.jbwoori.yml` 수정
+line 31·36 두 줄 주석 해제:
+`dlm` 서비스의 HTTPS 포트 매핑과 인증서 볼륨 마운트 라인 주석 해제:
+
+```yaml
+    ports:
+      - "${DLM_PORT:-8080}:8080"
+      - "${DLM_PORT_HTTPS:-8443}:8443"   # ← 주석 해제
+    volumes:
+      - dlm_logs:/app/logs
+      - dlm_upload:/app/upload
+      - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro   # ← 주석 해제
+```
+
+#### 4단계: 기동 & 확인
+
+```bash
+cd /app/Datablocks/deploy/jbwoori
+docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml down
+docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
+
+# 기동 대기 후
+curl -kv https://서버IP:8443/
+# → HTTP/1.1 302, Location: https://서버IP:8443/customLogin
+
+curl -v http://서버IP:8080/
+# → HTTP/1.1 302, Location: https://서버IP:8443/
+브라우저에서 http://서버IP:8080 입력하면 자동으로 https://서버IP:8443 으로 이동하면 성공.이동되어야 합니다.
+
+### 실 인증서 교체 (무중단)
+
+CA 서명 인증서 배치 후 컨테이너만 재시작하면 됩니다 — WAR 재빌드 불필요.
+
+```bash
+cp 새인증서.p12 deploy/jbwoori/certs/dlm-keystore.p12
+docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml restart dlm
+```
+
+### 트러블슈팅
+
+| 증상 | 원인 | 조치 |
+|------|------|------|
+| `IOException: keystore password was incorrect` | `.env` 의 `SERVER_SSL_KEY_STORE_PASSWORD` 불일치 | `keytool -list -keystore dlm-keystore.p12` 로 비밀번호 재확인 |
+| `Alias name [xxx] does not identify a key entry` | `SERVER_SSL_KEY_ALIAS` 값이 keystore 내부와 불일치 | `keytool -list -keystore dlm-keystore.p12` 로 실제 alias 확인 후 `.env` 수정 |
+| 8443 포트 충돌 | 기존 서비스 사용 중 | `DLM_PORT_HTTPS=9443` 등 다른 포트로 변경 + `SERVER_PORT` 도 동일하게 수정 |
+| 브라우저 "연결이 비공개로 설정되지 않음" 경고 | 자체 서명 인증서 | 운영 시 고객사 실 CA 인증서로 교체 |
+| Privacy-AI → DLM 내부 호출 루프 | `http://dlm:8080` 이 302 리턴 | `PRIVACY_AI_DLM_API_URL=https://dlm:8443` 로 교체하고 Privacy-AI 에서 `verify=False` 적용 |
+| HEALTHCHECK unhealthy | `wget http://localhost:8080/` 가 302 를 받아 비정상 종료 | `docker inspect dlm-app` 로 HEALTHCHECK 로그 확인, 필요 시 HTTPS 엔드포인트로 전환 |
+
+### SSL 비활성화로 복귀
+
+`.env.jbwoori` 의 `SPRING_PROFILES_ACTIVE` 를 `local` 로 되돌리고 나머지 `SERVER_*` 라인과 compose 의 8443 블록을 다시 주석 처리 후 `docker compose restart dlm`.

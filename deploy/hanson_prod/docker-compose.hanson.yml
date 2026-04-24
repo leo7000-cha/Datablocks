@@ -1,15 +1,23 @@
 # ==============================================================================
-# DLM Docker Compose — JB우리캐피탈 전용
+# DLM Docker Compose — 한국손해보험 (PROD: OS 설치형 MariaDB)
 # ==============================================================================
-# ★ MariaDB는 호스트 OS (Rocky 9)에 직접 설치되어 운영 중
-# ★ DLM + Privacy-AI 컨테이너가 host.docker.internal 로 호스트 DB에 접속
+# ★ MariaDB 가 호스트 OS 에 직접 설치되어 있음 (Docker 컨테이너 아님)
+# ★ DLM + Privacy-AI 가 host-gateway 를 통해 호스트의 MariaDB 로 접속
+#
+# 접속 경로:
+#   [dlm-app 컨테이너] ──host.docker.internal:3306──→ [호스트 OS MariaDB]
+#
+# 사전 조건:
+#   1. 호스트 OS 에 MariaDB 가 설치되어 실행 중
+#   2. MariaDB 의 bind-address 가 호스트의 docker0 bridge IP (또는 0.0.0.0) 를 수신
+#   3. cotdl 계정이 docker bridge 대역(예: 172.17.0.0/16)에서 접속 허용됨
 #
 # 사용법:
-#   docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
+#   docker compose --env-file .env.hanson -f docker-compose.hanson.yml up -d
 #
 # 로그:    docker logs -f dlm-app
-# 중지:    docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml down
-# 재시작:  docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml restart
+# 중지:    docker compose -f docker-compose.hanson.yml down
+# 재시작:  docker compose -f docker-compose.hanson.yml restart
 # ==============================================================================
 
 services:
@@ -20,22 +28,18 @@ services:
     image: datablocks-dlm:latest
     container_name: dlm-app
     restart: unless-stopped
-    env_file: .env.jbwoori
+    env_file: .env.hanson
     environment:
       TZ: Asia/Seoul
+    ports:
+      - "${DLM_PORT:-8082}:8080"
+    # ★ PROD: 호스트 OS 의 MariaDB 에 접속하기 위해 host-gateway 매핑
+    #   컨테이너에서 host.docker.internal → 호스트 IP 로 자동 해석됨
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "${DLM_PORT:-8080}:8080"
-      # HTTPS 활성 시 주석 해제 (.env.jbwoori 참조):
-      # - "${DLM_PORT_HTTPS:-8443}:8443"
     volumes:
       - dlm_logs:/app/logs
       - dlm_upload:/app/upload
-      # HTTPS 활성 시 주석 해제 (certs/dlm-keystore.p12 먼저 배치):
-      # - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro
-    networks:
-      - dlm-network
     deploy:
       resources:
         limits:
@@ -57,18 +61,17 @@ services:
     image: datablocks-dlm-privacy-ai:latest
     container_name: dlm-privacy-ai
     restart: unless-stopped
-    env_file: .env.jbwoori
+    env_file: .env.hanson
     environment:
       TZ: Asia/Seoul
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "${AI_PORT:-8000}:8000"
+    # ★ PROD: 호스트 OS 의 MariaDB 에 접속하기 위해 host-gateway 매핑
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - privacy_ai_logs:/app/logs
       - privacy_ai_models:/app/models
-    networks:
-      - dlm-network
     depends_on:
       dlm:
         condition: service_started
@@ -87,12 +90,11 @@ services:
         max-file: "5"
 
 # ==============================================================================
-# Networks — DLM 전용 브리지 네트워크
+# Networks
+# ------------------------------------------------------------------------------
+# PROD 는 외부 mariadb 컨테이너 네트워크가 없으므로 Compose 기본 네트워크 사용.
+# 컨테이너 간 통신(dlm ↔ dlm-privacy-ai)은 compose 기본 브리지로 처리.
 # ==============================================================================
-networks:
-  dlm-network:
-    driver: bridge
-    name: dlm-network
 
 # ==============================================================================
 # Volumes

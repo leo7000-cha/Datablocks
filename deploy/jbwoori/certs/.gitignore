@@ -1,0 +1,8 @@
+*.p12
+*.jks
+*.pfx
+*.pem
+*.key
+*.crt
+!README.md
+!.gitignore

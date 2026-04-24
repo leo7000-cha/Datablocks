@@ -1,7 +1,7 @@
 # DLM 배포 현행화 프롬프트
 
 > 이 문서를 Claude에게 그대로 전달하면 3개 사이트 배포 패키지를 현행화합니다.
-> 마지막 현행화: 2026-04-21
+> 마지막 현행화: 2026-04-22
 
 ---
 
@@ -32,7 +32,7 @@ DLM 3개 고객사 배포 패키지를 현재 버전으로 현행화해줘.
 4. 사이트 고유 파일 확인 (건드리지 않음, 존재 여부만 확인)
    - hanson:    docker-compose.hanson.yml, .env.hanson, scripts/deploy.sh, README-한국손사.md
    - imcapital: docker-compose.imcapital.yml, .env.imcapital, scripts/deploy.sh, scripts/install-docker.sh, README-iM캐피탈.md, docker-rpms/, dlm-agent/
-   - jbwoori:   docker-compose.jbwoori.yml, .env.jbwoori, scripts/deploy.sh, scripts/install-docker.sh, README-JB우리캐피탈.md, docker-rpms/, dlm-agent/
+   - jbwoori:   docker-compose.jbwoori.yml, .env.jbwoori, scripts/deploy.sh, scripts/install-docker.sh, README-JB우리캐피탈.md, docker-rpms/, dlm-agent/, certs/ (HTTPS 옵션)
 
 5. dlm-agent JAR 갱신 (imcapital, jbwoori)
    - /app/Datablocks/DLM/dlm-agent/build/libs/dlm-agent-*.jar 가 있으면 → 각 사이트 dlm-agent/ 에 복사
@@ -98,3 +98,14 @@ deploy/{사이트}/
 │   └── README-Agent설치가이드.md
 └── README-{사이트}.md                  ← 배포 가이드
 ```
+
+---
+
+## HTTPS / SSL 토글 (jbwoori 전용 옵션)
+
+jbwoori 는 `.env.jbwoori` 와 `docker-compose.jbwoori.yml` 의 주석 블록 해제만으로 HTTPS(8443) + 8080→8443 자동 리다이렉트를 활성화할 수 있음. 기본값은 HTTP 8080 그대로.
+
+- 인증서 배치: `deploy/jbwoori/certs/dlm-keystore.p12` (gitignore 처리됨)
+- Spring Profile: `SPRING_PROFILES_ACTIVE=local,ssl` 일 때만 `TomcatSslConfig` 빈 활성화
+- 구현 클래스: `DLM/src/main/java/datablocks/dlm/config/TomcatSslConfig.java` (`@Profile("ssl")`)
+- 상세 절차: `deploy/jbwoori/README-JB우리캐피탈.md` 의 `HTTPS / SSL 운영 모드` 섹션

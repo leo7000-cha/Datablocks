@@ -204,19 +204,32 @@ sleep 10
 echo ""
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "NAME|dlm"
 
-# 헬스체크
+# 헬스체크 — 호스트에서 외부 포트 확인 (컨테이너 내부 쉘/bash/curl 미사용 정책)
 echo ""
-log "애플리케이션 시작 대기... (최대 120초)"
-for i in $(seq 1 24); do
-    if docker exec dlm-app wget -qO- --timeout=3 http://localhost:8080/ &>/dev/null; then
-        echo ""
-        log "DLM 정상 시작!"
+HC_PORT="${FINAL_DLM_PORT:-8082}"
+log "애플리케이션 포트 LISTEN 대기... (${HC_PORT}, 최대 45초)"
+HC_OK=0
+for i in $(seq 1 15); do
+    # 호스트 기준 TCP LISTEN 체크 (nc 우선, curl 대체)
+    if command -v nc &>/dev/null; then
+        nc -z -w 2 127.0.0.1 "$HC_PORT" 2>/dev/null && HC_OK=1 && break
+    elif command -v curl &>/dev/null; then
+        curl -fs -o /dev/null -m 2 "http://127.0.0.1:${HC_PORT}/" && HC_OK=1 && break
+    elif command -v ss &>/dev/null; then
+        ss -ltn 2>/dev/null | grep -q ":${HC_PORT} " && HC_OK=1 && break
+    else
+        warn "nc / curl / ss 모두 없어 포트 확인 생략"
         break
     fi
     echo -n "."
-    sleep 5
+    sleep 3
 done
 echo ""
+if [ "$HC_OK" = "1" ]; then
+    log "DLM 포트 LISTEN 확인 (127.0.0.1:${HC_PORT})"
+else
+    warn "45초 이내 포트 LISTEN 미확인 — docker logs dlm-app 로 상태 확인하세요"
+fi
 
 # --- 결과 ---
 DLM_STATUS=$(docker inspect -f '{{.State.Status}}' dlm-app 2>/dev/null || echo "not found")

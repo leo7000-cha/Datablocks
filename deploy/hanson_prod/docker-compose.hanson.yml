@@ -25,12 +25,20 @@ services:
   # DLM - Spring Boot Main Application
   # ============================================================================
   dlm:
-    image: datablocks-dlm:latest
+    image: datablocks-dlm:1.0.0
     container_name: dlm-app
     restart: unless-stopped
+    # env_file: 포트·Privacy-AI·Mail 등 보조 변수만
     env_file: .env.hanson
+    # DB 접속정보: 운영자 규약(JDBC_*) → Spring Boot 표준(SPRING_DATASOURCE_*) alias 주입
     environment:
       TZ: Asia/Seoul
+      JDBC_URL: ${JDBC_URL}
+      JDBC_USERNAME: ${JDBC_USERNAME}
+      JDBC_PASSWORD: ${JDBC_PASSWORD}
+      SPRING_DATASOURCE_URL: ${JDBC_URL}
+      SPRING_DATASOURCE_USERNAME: ${JDBC_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${JDBC_PASSWORD}
     ports:
       - "${DLM_PORT:-8082}:8080"
     # ★ PROD: 호스트 OS 의 MariaDB 에 접속하기 위해 host-gateway 매핑

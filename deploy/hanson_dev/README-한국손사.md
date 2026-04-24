@@ -1,7 +1,10 @@
-# DLM 배포 가이드 — 한국손사
+# DLM 배포 가이드 — 한국손사 (DEV: Docker 컨테이너 MariaDB)
 
 > 폐쇄망 Ubuntu / Docker 설치됨 / MariaDB 컨테이너 이미 운영 중
-> 작성일: 2026-04-08 | 갱신: 2026-04-21
+> 작성일: 2026-04-08 | 갱신: 2026-04-22
+
+> 본 문서는 개발(DEV) 환경용입니다. MariaDB 가 **호스트 OS 에 직접 설치**된
+> 운영(PROD) 환경은 [`../hanson_prod/README-한국손사.md`](../hanson_prod/README-한국손사.md) 를 참조하세요.
 
 ---
 

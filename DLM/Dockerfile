@@ -62,8 +62,7 @@ ENV JAVA_OPTS="-Xms2g -Xmx8g \
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
-    CMD wget --no-verbose --tries=1 -O /dev/null http://localhost:8080/ || exit 1
+# HEALTHCHECK 제거 — 호스트에서 외부 포트 체크(컨테이너 내부 쉘/curl/wget 미사용 정책)
 
 # Exploded WAR에서 WarLauncher로 실행 → getRealPath() 정상 동작
 ENTRYPOINT ["sh", "-c", "cd /app/DLM && java $JAVA_OPTS org.springframework.boot.loader.launch.WarLauncher"]

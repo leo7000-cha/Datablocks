@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'datablocks'
-version = ''
+version = '1.0.0'
 sourceCompatibility = '21'
 // 아래 모두 추가 내용
 /*apply plugin: 'war'
@@ -76,7 +76,6 @@ dependencies {
     // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.2'
     // implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.2.2'
 
-    implementation group: 'com.github.ulisesbocchio', name: 'jasypt-spring-boot-starter', version: '3.0.5'
     // commons-fileupload 제거 — Spring Boot 3.x 내장 StandardServletMultipartResolver 사용
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 

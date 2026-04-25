@@ -16,25 +16,25 @@
 -- ============================================================
 -- 사이트별 배포 시 아래 변수를 해당 사이트 값으로 치환(Replace All)하세요.
 --
---   #{DLM_SCHEMA}    -> DLM 스키마명         (기본값: COTDL)
---   #{SOURCE_DB}     -> 원천 DB명            (예: DAON)
---   #{EDMS_DB}       -> EDMS DB명            (예: DW)
---   #{TARGET_OWNER}  -> 원천 테이블 OWNER     (예: COOWNHYP)
---   #{TARGET_TABLE}  -> 상태값 업데이트 대상   (예: DTBB1230)
---   #{STATUS_COL}    -> 상태값 컬럼명         (예: CSIF_DSTU_EXCL_RSN_CD)
---   #{CONTRACT_OWNER} -> 계약 테이블 OWNER    (예: COOWNSER)
---   #{ADMIN_USER}    -> 등록/수정 사용자 ID    (기본값: admin)
+--   COTDL    -> DLM 스키마명         (기본값: COTDL)
+--   DAON     -> 원천 DB명            (예: DAON)
+--   DW       -> EDMS DB명            (예: DW)
+--   COOWNHYP  -> 원천 테이블 OWNER     (예: COOWNHYP)
+--   DTBB1230  -> 상태값 업데이트 대상   (예: DTBB1230)
+--   CSIF_DSTU_EXCL_RSN_CD    -> 상태값 컬럼명         (예: CSIF_DSTU_EXCL_RSN_CD)
+--   COOWNSER -> 계약 테이블 OWNER    (예: COOWNSER)
+--   admin    -> 등록/수정 사용자 ID    (기본값: admin)
 -- ============================================================
 
 
 -- 기존 데이터 삭제 (초기화 용도)
-DELETE FROM #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC;
+DELETE FROM COTDL.TBL_PIISTEPTABLE_ETC;
 
 
 -- ────────────────────────────────────────────────────────────
 -- 1. 영구파기 완료 후처리: 원천 테이블 상태값 업데이트 (DELARC)
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -43,22 +43,22 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'ARC_DATA_DELETE', '1', 'EXE_FINISH', '#{SOURCE_DB}', '#{TARGET_OWNER}', '#{TARGET_TABLE}',
+    'ARC_DATA_DELETE', '1', 'EXE_FINISH', 'DAON', 'COOWNHYP', 'DTBB1230',
     NULL, NULL, 'FINISH', NULL, NULL, NULL, NULL,
     10, 400, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL,
-'UPDATE #{TARGET_OWNER}.#{TARGET_TABLE} SET #{STATUS_COL} = ''DELARC'' WHERE act_id IN
+'UPDATE COOWNHYP.DTBB1230 SET CSIF_DSTU_EXCL_RSN_CD = ''DELARC'' WHERE act_id IN
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 
 -- ────────────────────────────────────────────────────────────
 -- 2. 고객ID 복원 완료 후처리: 원천 테이블 상태값 업데이트 (RESTORE)
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -67,22 +67,22 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'RESTORE_CUSTID', '1', 'EXE_FINISH', '#{SOURCE_DB}', '#{TARGET_OWNER}', '#{TARGET_TABLE}',
+    'RESTORE_CUSTID', '1', 'EXE_FINISH', 'DAON', 'COOWNHYP', 'DTBB1230',
     NULL, NULL, 'FINISH', NULL, NULL, NULL, NULL,
     10, 500, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL,
-'UPDATE #{TARGET_OWNER}.#{TARGET_TABLE} SET #{STATUS_COL} = ''RESTORE'' WHERE act_id IN
+'UPDATE COOWNHYP.DTBB1230 SET CSIF_DSTU_EXCL_RSN_CD = ''RESTORE'' WHERE act_id IN
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 
 -- ────────────────────────────────────────────────────────────
 -- 3. 복구JOB 완료 후처리: 원천 테이블 상태값 업데이트 (RECOVERY)
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -91,22 +91,22 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'RECOVERY_JOB', '1', 'EXE_FINISH', '#{SOURCE_DB}', '#{TARGET_OWNER}', '#{TARGET_TABLE}',
+    'RECOVERY_JOB', '1', 'EXE_FINISH', 'DAON', 'COOWNHYP', 'DTBB1230',
     NULL, NULL, 'FINISH', NULL, NULL, NULL, NULL,
     10, 700, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL,
-'UPDATE #{TARGET_OWNER}.#{TARGET_TABLE} SET #{STATUS_COL} = ''RECOVERY'' WHERE act_id IN
+'UPDATE COOWNHYP.DTBB1230 SET CSIF_DSTU_EXCL_RSN_CD = ''RECOVERY'' WHERE act_id IN
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 
 -- ────────────────────────────────────────────────────────────
 -- 4. 복구ORDER 완료 후처리: 원천 테이블 상태값 업데이트 (RECOVERY)
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -115,15 +115,15 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'RECOVERY_ORDER', '1', 'EXE_FINISH', '#{SOURCE_DB}', '#{TARGET_OWNER}', '#{TARGET_TABLE}',
+    'RECOVERY_ORDER', '1', 'EXE_FINISH', 'DAON', 'COOWNHYP', 'DTBB1230',
     NULL, NULL, 'FINISH', NULL, NULL, NULL, NULL,
     10, 700, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL,
-'UPDATE #{TARGET_OWNER}.#{TARGET_TABLE} SET #{STATUS_COL} = ''RECOVERY'' WHERE act_id IN
+'UPDATE COOWNHYP.DTBB1230 SET CSIF_DSTU_EXCL_RSN_CD = ''RECOVERY'' WHERE act_id IN
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 
@@ -131,7 +131,7 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
 -- 5. 영구파기(EDMS) 완료 후처리: KEYMAP_HIST 이관 (BROADCAST)
 --    영구파기 대상의 이미지 시스템 키맵을 BROADCAST로 전파
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -140,21 +140,21 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'ARC_DATA_DELETE_EDMS', '1', 'EXE_BROADCAST', '#{EDMS_DB}', '#{DLM_SCHEMA}', 'TBL_PIIKEYMAP_HIST',
+    'ARC_DATA_DELETE_EDMS', '1', 'EXE_BROADCAST', 'DW', 'COTDL', 'TBL_PIIKEYMAP_HIST',
     NULL, NULL, 'BROADCAST', NULL, NULL, NULL, NULL,
     10, 200, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
-'EXISTS (SELECT 1 FROM #{DLM_SCHEMA}.TBL_PIIEXTRACT e WHERE e.custid = A.custid AND EXCLUDE_REASON=''DELARC'' AND ARC_DEL_DATE=TO_DATE(''#BASEDATE'',''yyyy/mm/dd''))
+'EXISTS (SELECT 1 FROM COTDL.TBL_PIIEXTRACT e WHERE e.custid = A.custid AND EXCLUDE_REASON=''DELARC'' AND ARC_DEL_DATE=TO_DATE(''#BASEDATE'',''yyyy/mm/dd''))
 AND A.db = ''DBPNCC'' AND A.KEY_NAME=''KEY_ECC_NBR''
 ',
-'INSERT INTO #{DLM_SCHEMA}.TBL_PIIKEYMAP_HIST
-SELECT * FROM #{DLM_SCHEMA}.TBL_PIIKEYMAP_HIST
+'INSERT INTO COTDL.TBL_PIIKEYMAP_HIST
+SELECT * FROM COTDL.TBL_PIIKEYMAP_HIST
 WHERE
-EXISTS (SELECT 1 FROM #{DLM_SCHEMA}.TBL_PIIEXTRACT e WHERE e.custid = A.custid AND EXCLUDE_REASON=''DELARC'' AND ARC_DEL_DATE=TO_DATE(''#BASEDATE'',''yyyy/mm/dd''))
+EXISTS (SELECT 1 FROM COTDL.TBL_PIIEXTRACT e WHERE e.custid = A.custid AND EXCLUDE_REASON=''DELARC'' AND ARC_DEL_DATE=TO_DATE(''#BASEDATE'',''yyyy/mm/dd''))
 AND A.db = ''DBPNCC'' AND A.KEY_NAME=''KEY_ECC_NBR''
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 
@@ -162,7 +162,7 @@ AND A.db = ''DBPNCC'' AND A.KEY_NAME=''KEY_ECC_NBR''
 -- 6. 영구파기 완료 후처리: 계약정보 TBL_PIICONTRACT 적재
 --    영구파기 대상 고객의 계약 정보를 원천 계약 테이블에서 조회하여 적재
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
+INSERT INTO COTDL.TBL_PIISTEPTABLE_ETC (
     JOBID, VERSION, STEPID, DB, OWNER, TABLE_NAME,
     PAGITYPE, PAGITYPEDETAIL, EXETYPE, ARCHIVEFLAG, STATUS, `PRECEDING`, SUCCEDDING,
     SEQ1, SEQ2, SEQ3, PIPELINE,
@@ -171,12 +171,12 @@ INSERT INTO #{DLM_SCHEMA}.TBL_PIISTEPTABLE_ETC (
     KEYMAP_ID, KEY_NAME, KEY_COLS, KEY_REFSTR, SQLTYPE,
     REGDATE, UPDDATE, REGUSERID, UPDUSERID
 ) VALUES (
-    'ARC_DATA_DELETE_CONTRACT', '1', 'EXE_FINISH', '#{SOURCE_DB}', '#{DLM_SCHEMA}', 'TBL_PIICONTRACT',
+    'ARC_DATA_DELETE_CONTRACT', '1', 'EXE_FINISH', 'DAON', 'COTDL', 'TBL_PIICONTRACT',
     NULL, NULL, 'FINISH', NULL, NULL, NULL, NULL,
     10, 500, 10, NULL,
     NULL, NULL, NULL, NULL, NULL,
     NULL,
-'INSERT INTO #{DLM_SCHEMA}.TBL_PIICONTRACT (
+'INSERT INTO COTDL.TBL_PIICONTRACT (
     custid, contractno, dept_cd, dept_name, contract_opn_dt, contract_close_dt,
     pd_cd, pd_nm, status, actid, rsdnt_altrntv_id, cust_nm,
     birth_dt, cb_dt, cust_pin, inst_cd, basedate, actrole_end_date,
@@ -206,9 +206,9 @@ SELECT
     e.arc_del_date,
     NULL AS real_doc_del_date,
     NULL AS real_doc_del_userid
-FROM #{DLM_SCHEMA}.TBL_PIIEXTRACT e
-   , #{CONTRACT_OWNER}.DOSACTEUR k
-   , #{CONTRACT_OWNER}.DOSSIER d
+FROM COTDL.TBL_PIIEXTRACT e
+   , COOWNSER.DOSACTEUR k
+   , COOWNSER.DOSSIER d
 WHERE 1=1
   AND ARC_DEL_DATE = TO_DATE(''#BASEDATE'', ''yyyy/mm/dd'')
   AND EXCLUDE_REASON = ''DELARC''
@@ -216,7 +216,7 @@ WHERE 1=1
   AND k.DOSID = d.DOSID
 ',
     NULL, NULL, NULL, NULL, 'AUTO',
-    NOW(), NOW(), '#{ADMIN_USER}', '#{ADMIN_USER}'
+    NOW(), NOW(), 'admin', 'admin'
 );
 
 

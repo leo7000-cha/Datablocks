@@ -101,7 +101,6 @@ public class SecurityConfig {
                 .requestMatchers(ant("/api/agent/**")).permitAll()
                 .requestMatchers(ant("/api/xaudit/**")).permitAll()
                 .requestMatchers(ant("/accesslog/justify/**")).permitAll()
-                .requestMatchers(ant("/xaudit/**")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
 
                 .requestMatchers(ant("/hub")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/index")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")

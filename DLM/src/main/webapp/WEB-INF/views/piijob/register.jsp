@@ -104,7 +104,7 @@
                     <select class="reg-select" name="system">
                         <option value="">-- Select --</option>
                         <c:forEach items="${listsystem}" var="piisystem">
-                            <c:if test="${'ARCHIVE_DB' ne piisystem.system_id && 'DLM' ne piisystem.system_id}">
+                            <c:if test="${'ARCHIVE_DB' ne piisystem.system_id && 'XOne' ne piisystem.system_id}">
                                 <option value="<c:out value="${piisystem.system_id}"/>"
                                         <c:if test="${piijob.system eq piisystem.system_id}">selected</c:if>>
                                     <c:out value="${piisystem.system_name}"/></option>

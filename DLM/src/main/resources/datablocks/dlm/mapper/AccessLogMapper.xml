@@ -49,102 +49,35 @@
         ORDER BY cnt DESC
     </select>
 
-    <!-- ========== Access Log ========== -->
-    <insert id="insertAccessLog" parameterType="datablocks.dlm.domain.AccessLogVO" useGeneratedKeys="true" keyProperty="logId">
-        INSERT INTO COTDL.TBL_ACCESS_LOG (
-            source_system_id, user_account, user_name, department, access_time, client_ip,
-            action_type, target_db, target_schema, target_table, target_columns,
-            pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
-            collect_type, access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
-        ) VALUES (
-            #{sourceSystemId}, #{userAccount}, #{userName}, #{department}, #{accessTime}, #{clientIp},
-            #{actionType}, #{targetDb}, #{targetSchema}, #{targetTable}, #{targetColumns},
-            #{piiTypeCodes}, #{piiGrade}, #{affectedRows}, #{searchCondition}, #{sqlText},
-            #{collectType}, #{accessChannel}, #{sessionId}, #{resultCode}, #{hashValue}, #{prevHash}, NOW(),
-            DATE_FORMAT(#{accessTime}, '%Y%m%d')
-        )
-    </insert>
-
-    <insert id="insertAccessLogBatch" parameterType="java.util.List">
-        INSERT INTO COTDL.TBL_ACCESS_LOG (
-            source_system_id, user_account, user_name, department, access_time, client_ip,
-            action_type, target_db, target_schema, target_table, target_columns,
-            pii_type_codes, pii_grade, affected_rows, search_condition, sql_text,
-            collect_type, access_channel, session_id, result_code, hash_value, prev_hash, collected_at, partition_key
-        ) VALUES
-        <foreach collection="list" item="item" separator=",">
-        (
-            #{item.sourceSystemId}, #{item.userAccount}, #{item.userName}, #{item.department},
-            #{item.accessTime}, #{item.clientIp}, #{item.actionType}, #{item.targetDb},
-            #{item.targetSchema}, #{item.targetTable}, #{item.targetColumns},
-            #{item.piiTypeCodes}, #{item.piiGrade}, #{item.affectedRows}, #{item.searchCondition},
-            #{item.sqlText}, #{item.collectType}, #{item.accessChannel}, #{item.sessionId}, #{item.resultCode},
-            #{item.hashValue}, #{item.prevHash}, NOW(), DATE_FORMAT(#{item.accessTime}, '%Y%m%d')
-        )
-        </foreach>
-    </insert>
-
-    <sql id="accessLogColumns">
-        a.log_id AS logId, a.source_system_id AS sourceSystemId,
-        a.user_account AS userAccount, a.user_name AS userName, a.department,
-        a.access_time AS accessTime, a.client_ip AS clientIp,
-        a.action_type AS actionType, a.target_db AS targetDb,
-        a.target_schema AS targetSchema, a.target_table AS targetTable,
-        a.target_columns AS targetColumns, a.pii_type_codes AS piiTypeCodes,
-        a.pii_grade AS piiGrade, a.affected_rows AS affectedRows,
-        a.search_condition AS searchCondition, a.sql_text AS sqlText,
-        a.collect_type AS collectType, a.access_channel AS accessChannel, a.session_id AS sessionId,
-        a.result_code AS resultCode, a.hash_value AS hashValue,
-        a.prev_hash AS prevHash, a.collected_at AS collectedAt,
-        a.partition_key AS partitionKey
-    </sql>
-
-    <select id="selectAccessLog" resultType="datablocks.dlm.domain.AccessLogVO">
-        SELECT <include refid="accessLogColumns"/>, s.source_name AS sourceName
-        FROM COTDL.TBL_ACCESS_LOG a
-        LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
-        WHERE a.log_id = #{logId}
+    <select id="selectCollectTypeDistribution" resultType="java.util.HashMap">
+        SELECT collect_type AS collectType, COUNT(*) AS cnt
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) = #{date}
+          AND collect_type IS NOT NULL
+        GROUP BY collect_type
+        ORDER BY cnt DESC
     </select>
 
-    <sql id="accessLogSearchCondition">
-        <where>
-            <if test="search1 != null and search1 != ''">AND a.source_system_id = #{search1}</if>
-            <if test="search2 != null and search2 != ''">AND a.user_account LIKE CONCAT('%', #{search2}, '%')</if>
-            <if test="search3 != null and search3 != ''">AND a.action_type = #{search3}</if>
-            <if test="search4 != null and search4 != ''">AND a.target_db = #{search4}</if>
-            <if test="search5 != null and search5 != ''">AND a.target_table LIKE CONCAT('%', #{search5}, '%')</if>
-            <if test="search6 != null and search6 != ''">AND a.pii_grade = #{search6}</if>
-            <if test="search7 != null and search7 != ''">AND a.access_time >= #{search7}</if>
-            <if test="search8 != null and search8 != ''">AND a.access_time &lt;= #{search8}</if>
-            <if test="search9 != null and search9 != ''">AND a.client_ip LIKE CONCAT('%', #{search9}, '%')</if>
-            <if test="search10 != null and search10 != ''">AND a.result_code = #{search10}</if>
-            <if test="search11 != null and search11 != ''">AND a.collect_type = #{search11}</if>
-            <if test="keyword != null and keyword != ''">
-                AND (a.user_account LIKE CONCAT('%', #{keyword}, '%')
-                     OR a.user_name LIKE CONCAT('%', #{keyword}, '%')
-                     OR a.target_table LIKE CONCAT('%', #{keyword}, '%'))
-            </if>
-        </where>
-    </sql>
-
-    <select id="selectAccessLogList" resultType="datablocks.dlm.domain.AccessLogVO">
-        SELECT <include refid="accessLogColumns"/>, s.source_name AS sourceName
-        FROM COTDL.TBL_ACCESS_LOG a
-        LEFT JOIN COTDL.TBL_ACCESS_LOG_SOURCE s ON a.source_system_id = s.source_id
-        <include refid="accessLogSearchCondition"/>
-        ORDER BY a.access_time DESC
-        LIMIT #{offset}, #{amount}
+    <select id="selectTopServices" resultType="java.util.HashMap">
+        SELECT service_name AS serviceName, COUNT(*) AS cnt
+        FROM COTDL.TBL_ACCESS_LOG
+        WHERE DATE(access_time) = #{date}
+          AND collect_type = 'WAS_SDK'
+          AND action_type = 'HTTP_ACCESS'
+          AND service_name IS NOT NULL
+          AND service_name != ''
+        GROUP BY service_name
+        ORDER BY cnt DESC
+        LIMIT #{limit}
     </select>
 
-    <select id="selectAccessLogTotal" resultType="int">
-        SELECT COUNT(*)
-        FROM COTDL.TBL_ACCESS_LOG a
-        <include refid="accessLogSearchCondition"/>
-    </select>
-
-    <select id="selectLastHash" resultType="String">
-        SELECT hash_value FROM COTDL.TBL_ACCESS_LOG ORDER BY log_id DESC LIMIT 1
-    </select>
+    <!-- ========== Access Log (TBL_ACCESS_LOG / _DETAIL) ==========
+         2026-04-25 V3 재설계:
+         - Master + Sidecar INSERT / SELECT 쿼리는 XauditJdbcWriter / XauditAccessLogReader 로 이관.
+         - 본 매퍼는 부속 테이블 (ALERT/RULE/SOURCE/CONFIG/HASH_VERIFY/ARCHIVE_HISTORY 등) 전용.
+         - 이상탐지 (detect*) / 리포트 통계 쿼리는 TBL_ACCESS_LOG 를 SELECT 하지만
+           DLM 내부 XAUDIT_DB (= 동일 COTDL DB) 기준으로만 동작. 외부 DB 로 전환 시
+           해당 쿼리는 Reader 로 이관 필요 (Phase 2). -->
 
     <!-- ========== Source ========== -->
     <insert id="insertSource" parameterType="datablocks.dlm.domain.AccessLogSourceVO">

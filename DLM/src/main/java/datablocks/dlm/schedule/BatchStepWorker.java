@@ -135,14 +135,23 @@ public class BatchStepWorker implements Runnable {
         String curIsolationDb = null;
         String curHomeDb = null;
 
+        // processOneTable 진입 직전(커넥션 획득 단계)에 터졌을 때
+        // 어떤 테이블이 lost 되는지 catch 에서 추적하기 위한 핸들
+        PiiOrderStepTableVO inFlightTable = null;
+
         try {
             PiiOrderStepTableVO table;
             while ((table = tableQueue.poll()) != null) {
                 if (stopFlag.get()) {
                     LogUtil.log("INFO", "BatchStepWorker stopping (error detected): thread="
                             + Thread.currentThread().getName());
+                    // 큐에서 꺼냈지만 처리하지 않을 테이블은 다른 worker 의 정리 루틴이
+                    // 함께 마감할 수 있도록 다시 큐로 돌려놓는다
+                    tableQueue.offer(table);
                     break;
                 }
+
+                inFlightTable = table;
 
                 // step type별 DB key 결정
                 String targetDb = resolveTargetDbKey(table, steptype);
@@ -194,14 +203,22 @@ public class BatchStepWorker implements Runnable {
                 if (connHome != null) connHome = ensureValidConnection(connHome, curHomeDb);
 
                 processOneTable(connTarget, connSource, connIsolation, connHome, table);
+                inFlightTable = null;
             }
 
             LogUtil.log("INFO", "BatchStepWorker completed: thread=" + Thread.currentThread().getName());
 
         } catch (Exception e) {
-            stopFlag.set(true);
+            // processOneTable 안에서 던진 게 아니라
+            // 커넥션 획득 / ensureValidConnection 등 worker 외곽에서 터진 케이스.
+            // handleException 을 못 타기 때문에 여기서 직접 ORDER/STEP/TABLE 상태를 마감한다.
+            boolean firstFailure = stopFlag.compareAndSet(false, true);
             logger.error("BatchStepWorker connection failed: thread={}, error={}",
                     Thread.currentThread().getName(), e.getMessage(), e);
+
+            if (firstFailure) {
+                cleanupAfterWorkerFailure(inFlightTable, e);
+            }
         } finally {
             JdbcUtil.close(connTarget);
             JdbcUtil.close(connSource);
@@ -659,6 +676,51 @@ public class BatchStepWorker implements Runnable {
         return ordersteptableMapper.readCntBeforeAsc(
                 table.getOrderid(), table.getJobid(), table.getVersion(),
                 table.getStepid(), table.getSeq1(), table.getSeq2(), table.getSeq3()) > 0;
+    }
+
+    // ========================================================================================
+    // Worker 외곽 실패 정리 (커넥션 획득 단계 등 processOneTable 진입 전 실패)
+    // ========================================================================================
+
+    private void cleanupAfterWorkerFailure(PiiOrderStepTableVO inFlightTable, Exception e) {
+        String exMsg = e.getMessage();
+        if (exMsg != null && exMsg.length() > 2000) {
+            exMsg = exMsg.substring(0, 2000);
+        }
+        String reason = "Worker pre-exec failure: " + (exMsg == null ? e.getClass().getSimpleName() : exMsg);
+
+        // 1) in-flight 테이블 (큐에서 꺼냈지만 처리 못한 것)
+        if (inFlightTable != null) {
+            safeMarkTableFailed(inFlightTable, reason);
+        }
+
+        // 2) 큐에 남아있는 테이블 모두 마감 (다른 worker 도 같은 이유로 곧 죽을 것)
+        PiiOrderStepTableVO remaining;
+        while ((remaining = tableQueue.poll()) != null) {
+            safeMarkTableFailed(remaining, reason);
+        }
+
+        // 3) step / order 마감 + thread 정리
+        try {
+            orderstepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
+                    piiorderstep.getVersion(), piiorderstep.getStepid());
+            orderMapper.updateend(piiorderstep.getOrderid());
+            orderthreadMapper.delete(piiorderstep.getOrderid());
+        } catch (Exception ex) {
+            logger.warn("cleanupAfterWorkerFailure: order/step finalize failed: {}", ex.getMessage());
+        }
+    }
+
+    private void safeMarkTableFailed(PiiOrderStepTableVO table, String reason) {
+        try {
+            ordersteptableMapper.updateend(table.getOrderid(), table.getJobid(),
+                    table.getVersion(), table.getStepid(),
+                    table.getSeq1(), table.getSeq2(), table.getSeq3(),
+                    "Ended not OK", 0, reason);
+        } catch (Exception ex) {
+            logger.warn("cleanupAfterWorkerFailure: table mark failed: table={}, err={}",
+                    table.getTable_name(), ex.getMessage());
+        }
     }
 
     // ========================================================================================

@@ -295,6 +295,13 @@ public class AccessLogController {
         return ResponseEntity.ok(accessLogService.getAccessLog(logId));
     }
 
+    /** 동일 req_id 의 HTTP_ACCESS 1건 + SQL N건 — 처리계 SDK 요청 드릴다운. */
+    @GetMapping("/api/logs/by-req/{reqId}")
+    @ResponseBody
+    public ResponseEntity<List<AccessLogVO>> getLogsByReqId(@PathVariable String reqId) {
+        return ResponseEntity.ok(accessLogService.getAccessLogByReqId(reqId));
+    }
+
     // --- 연계 DB 목록 ---
     @GetMapping("/api/databases")
     @ResponseBody

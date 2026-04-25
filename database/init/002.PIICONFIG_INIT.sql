@@ -11,13 +11,13 @@
 --   #{SITE}             -> 고객사 코드          (예: JBCAP)
 --   DLM_ENV             -> 환경 구분            (PROD / DEV)
 --   DLM_CURRENT_ORDERID -> 현재 ORDER 시퀀스    (신규: 1, 이관: 기존값)
---   DLM_ENC_PWD_SQL     -> 사이트별 암호화 SQL
---   DLM_LOG_PATH        -> 서버 로그 디렉토리
+--   DLM_ENC_PWD_SQL     -> 사이트별 암호화 SQL  통합로그인 사용시 반드시 해당 사이트 쿼리로 적용하애 한다...
+
 -- ============================================================
 
 
 -- 기존 설정 전체 삭제 (초기화 용도)
--- DELETE FROM COTDL.TBL_PIICONFIG;
+DELETE FROM COTDL.TBL_PIICONFIG;
 
 
 -- ────────────────────────────────────────────────────────────
@@ -66,6 +66,32 @@ INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 -- ────────────────────────────────────────────────────────────
 -- [분리보관 테이블 관리]
 -- ────────────────────────────────────────────────────────────
+-- ARCHIVE_SCHEMA_NAMING_PII / ARCHIVE_SCHEMA_NAMING_ILM 패턴 종류:
+--
+--   PII 지원 패턴 (언더스코어 없음):
+--     PIIOWNER       -> PIICUSTOMER
+--     PIIDBOWNER     -> PIIARCDBCUSTOMER
+--     OWNERPII       -> CUSTOMERPII
+--     DBOWNERPII     -> ARCDBCUSTOMERPII
+--
+--   PII 지원 패턴 (언더스코어 있음):
+--     PII_OWNER      -> PII_CUSTOMER
+--     PII_DB_OWNER   -> PII_ARCDB_CUSTOMER
+--     OWNER_PII      -> CUSTOMER_PII
+--     DB_OWNER_PII   -> ARCDB_CUSTOMER_PII
+--
+--   ILM 지원 패턴 (언더스코어 없음):
+--     ILMOWNER       -> ILMCUSTOMER
+--     ILMDBOWNER     -> ILMARCDBCUSTOMER
+--     OWNERILM       -> CUSTOMERILM
+--     DBOWNERILM     -> ARCDBCUSTOMERILM
+--
+--   ILM 지원 패턴 (언더스코어 있음):
+--     ILM_OWNER      -> ILM_CUSTOMER
+--     ILM_DB_OWNER   -> ILM_ARCDB_CUSTOMER
+--     OWNER_ILM      -> CUSTOMER_ILM
+--     DB_OWNER_ILM   -> ARCDB_CUSTOMER_ILM
+-- ────────────────────────────────────────────────────────────
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 ('DLM_ARC_TAB_AUTO_MGMT_FLAG', 'N',   '분리보관테이블 자동생성 및 동기화 FLAG입니다. ''N'' 이면 자동 생성 및 동기화 되지 않습니다.');
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
@@ -106,13 +132,13 @@ INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 -- [COMMIT 루프 / 작업 중지 시간대]
 -- ────────────────────────────────────────────────────────────
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
-('SCRAMBLE_COMMIT_LOOP_CNT',   '15',   'SCRAMBLE 처리 시 Looping 건수 for COMMIT');
+('SCRAMBLE_COMMIT_LOOP_CNT',   '5',   'SCRAMBLE 처리 시 Looping 건수 for COMMIT');
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
-('ILM_COMMIT_LOOP_CNT',        '15',   'ILM 처리 시 Looping 건수 for COMMIT');
+('ILM_COMMIT_LOOP_CNT',        '5',   'ILM 처리 시 Looping 건수 for COMMIT');
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 ('ILM_STOPHOUR_FROM_TO',       '',     'ILM 작업 중지 시간대 (예: 09-18)');
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
-('MIGRATE_COMMIT_LOOP_CNT',    '15',   'Migration 처리 시 Looping 건수 for COMMIT');
+('MIGRATE_COMMIT_LOOP_CNT',    '5',   'Migration 처리 시 Looping 건수 for COMMIT');
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 ('MIGRATE_STOPHOUR_FROM_TO',   '',     'Migration 작업 중지 시간대 (예: 09-18)');
 
@@ -134,7 +160,21 @@ INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
 -- [테스트데이터]
 -- ────────────────────────────────────────────────────────────
 INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
-('TESTDATA_AUTO_GEN_JOB_MAX_CNT', '5', '테스트데이터 자동 생성 JOB 최대 동시 실행 개수');
+('TESTDATA_AUTO_GEN_JOB_MAX_CNT', '2', '테스트데이터 자동 생성 JOB 최대 동시 실행 개수');
+
+
+-- ────────────────────────────────────────────────────────────
+-- [HUB 모듈 표시]
+-- HUB 페이지에서 모듈별 카드 표시/숨김 제어 (Y=표시, N=숨김)
+-- ────────────────────────────────────────────────────────────
+INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
+('MODULE_XPURGE', 'Y', 'HUB 모듈 표시: X-Purge (개인정보 파기). Y=표시, N=숨김');
+INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
+('MODULE_XGEN',   'Y', 'HUB 모듈 표시: X-Gen (테스트데이터 생성). Y=표시, N=숨김');
+INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
+('MODULE_XSCAN',  'Y', 'HUB 모듈 표시: X-Scan (개인정보 탐지). Y=표시, N=숨김');
+INSERT INTO COTDL.TBL_PIICONFIG (CFGKEY, VALUE, COMMENTS) VALUES
+('MODULE_XAUDIT', 'Y', 'HUB 모듈 표시: X-Audit (접속기록·소명). Y=표시, N=숨김');
 
 
 -- ────────────────────────────────────────────────────────────

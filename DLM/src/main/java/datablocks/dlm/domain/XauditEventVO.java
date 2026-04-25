@@ -5,9 +5,11 @@ import lombok.Data;
 /**
  * X-Audit SDK 가 처리계에서 쏘는 이벤트 수신 DTO.
  *
- * type=ACCESS : HTTP 진입/종료 → TBL_XAUDIT_ACCESS_LOG
- * type=SQL    : 개별 SQL 실행    → TBL_XAUDIT_SQL_LOG
- * reqId 로 두 테이블을 조인하여 "누가-어디서-무엇을-어떤 SQL로" 통합 조회.
+ * <p>Phase 1 통합 (2026-04-24) 후 저장 대상:
+ *   type=ACCESS : HTTP 진입/종료 → TBL_ACCESS_LOG (collect_type=WAS_SDK, action_type=HTTP_ACCESS)
+ *   type=SQL    : 개별 SQL 실행  → TBL_ACCESS_LOG (collect_type=WAS_SDK, action_type=SELECT/INSERT/...)
+ *                                   + TBL_ACCESS_LOG_SQL_DETAIL (SQL 풀 원문 sidecar)
+ * reqId 로 "누가-어디서-무엇을-어떤 SQL로" 드릴다운 가능.
  */
 @Data
 public class XauditEventVO {

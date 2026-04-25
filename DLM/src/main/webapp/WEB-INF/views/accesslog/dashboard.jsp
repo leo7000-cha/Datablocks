@@ -366,7 +366,7 @@
                                             <div class="source-card-name">${src.sourceName}</div>
                                             <div class="source-card-meta">
                                                 <span class="source-tag">${src.dbType}</span>
-                                                <span class="source-tag type">${src.sourceType == 'DB_AUDIT' ? 'DB감사' : src.sourceType == 'DB_DAC' ? '접근제어' : src.sourceType == 'WAS_AGENT' ? 'Agent' : src.sourceType}</span>
+                                                <span class="source-tag type">${src.sourceType == 'DB_AUDIT' ? 'DB감사' : src.sourceType == 'DB_DAC' ? 'DB 접근제어' : src.sourceType == 'WAS_AGENT' ? 'Agent' : src.sourceType}</span>
                                                 <c:if test="${not empty src.hostname}"><span class="source-host">${src.hostname}</span></c:if>
                                             </div>
                                         </div>
@@ -416,6 +416,29 @@
         <div class="content-panel">
             <div class="panel-header"><h3 class="panel-title">작업유형별 분포</h3></div>
             <div class="panel-body" style="padding:8px 14px;"><div style="height:200px;"><canvas id="actionChart"></canvas></div></div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 5: 수집 경로별 분포 + 처리계 SDK 상위 서비스           -->
+    <!-- ============================================================ -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div class="content-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">수집 경로별 분포</h3>
+                <a href="javascript:void(0)" onclick="$('.nav-link[data-page=logs]').click()" style="font-size:0.8rem; color:var(--monitor-primary); text-decoration:none;">기록 보기 &rarr;</a>
+            </div>
+            <div class="panel-body" style="padding:8px 14px;"><div style="height:200px;"><canvas id="collectChart"></canvas></div></div>
+        </div>
+        <div class="content-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">처리계 SDK 상위 서비스 <span style="font-weight:400; font-size:0.78rem; color:#94a3b8; margin-left:6px;">오늘</span></h3>
+            </div>
+            <div class="panel-body" id="topServicesBody" style="padding:14px 18px;">
+                <div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:30px 0;">
+                    <i class="fas fa-spinner fa-spin"></i> 로딩 중...
+                </div>
+            </div>
         </div>
     </div>
 
@@ -826,8 +849,64 @@ $(function() {
         if (data.charts) {
             renderHourlyChart(data.charts.hourlyTrend || []);
             renderActionChart(data.charts.actionTypeDistribution || []);
+            renderCollectChart(data.charts.collectTypeDistribution || []);
+            renderTopServices(data.charts.topServices || []);
         }
     });
+
+    var COLLECT_LABEL = {
+        'DB_AUDIT': 'DB Audit',
+        'DB_DAC': 'DB 접근제어',
+        'WAS_AGENT': 'WAS Agent',
+        'WAS_SDK': '처리계 SDK'
+    };
+    var COLLECT_COLOR = {
+        'DB_AUDIT': '#0ea5e9',
+        'DB_DAC': '#f59e0b',
+        'WAS_AGENT': '#8b5cf6',
+        'WAS_SDK': '#0d9488'
+    };
+
+    function renderCollectChart(data) {
+        var labels = [], values = [], colors = [];
+        data.forEach(function(d) {
+            var t = d.collectType || 'UNKNOWN';
+            labels.push(COLLECT_LABEL[t] || t);
+            values.push(d.cnt);
+            colors.push(COLLECT_COLOR[t] || '#94a3b8');
+        });
+        if (labels.length === 0) { labels = ['데이터 없음']; values = [1]; colors = ['#e2e8f0']; }
+        new Chart(document.getElementById('collectChart'), {
+            type: 'doughnut',
+            data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 8, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } } }, cutout: '60%' }
+        });
+    }
+
+    function renderTopServices(data) {
+        var $body = $('#topServicesBody');
+        if (!data || data.length === 0) {
+            $body.html('<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:30px 0;">처리계 SDK 수집이 없습니다.</div>');
+            return;
+        }
+        var max = Math.max.apply(null, data.map(function(d){ return Number(d.cnt) || 0; }));
+        var html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+        data.forEach(function(s) {
+            var pct = max > 0 ? Math.round((Number(s.cnt) / max) * 100) : 0;
+            html +=
+                '<div>' +
+                  '<div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px;">' +
+                    '<span style="font-weight:600; color:#1e293b; max-width:65%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + (s.serviceName||'') + '">' + (s.serviceName || '-') + '</span>' +
+                    '<span style="color:#0d9488; font-weight:700;">' + Number(s.cnt).toLocaleString() + '</span>' +
+                  '</div>' +
+                  '<div style="height:6px; background:#f1f5f9; border-radius:999px; overflow:hidden;">' +
+                    '<div style="height:100%; width:' + pct + '%; background:linear-gradient(90deg, #0d9488, #06b6d4); border-radius:999px;"></div>' +
+                  '</div>' +
+                '</div>';
+        });
+        html += '</div>';
+        $body.html(html);
+    }
 
     function renderHourlyChart(data) {
         var labels = [], values = [];

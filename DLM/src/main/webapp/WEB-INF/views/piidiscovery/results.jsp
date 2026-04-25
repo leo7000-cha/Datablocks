@@ -296,8 +296,11 @@
             <c:if test="${not empty resultList}">
                 <div class="panel-footer" style="padding: 12px 20px; border-top: 1px solid #e2e8f0;">
                     <div class="d-flex justify-content-between align-items-center">
+                        <c:set var="showFrom" value="${(pageMaker.cri.pagenum - 1) * pageMaker.cri.amount + 1}" />
+                        <c:set var="showTo" value="${pageMaker.cri.pagenum * pageMaker.cri.amount}" />
+                        <c:if test="${showTo > pageMaker.total}"><c:set var="showTo" value="${pageMaker.total}" /></c:if>
                         <span class="text-muted" style="font-size: 0.85rem;">
-                            전체 ${pageMaker.total} 건 중 ${pageMaker.cri.amount} 건 표시
+                            전체 ${pageMaker.total} 건 중 <strong>${showFrom}</strong> - <strong>${showTo}</strong> 건 표시
                         </span>
                         <nav>
                             <ul class="pagination pagination-sm mb-0">

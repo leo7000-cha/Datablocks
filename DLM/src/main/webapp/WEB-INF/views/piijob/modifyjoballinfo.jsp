@@ -3,6 +3,7 @@
 
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
 <link rel="stylesheet" href="/resources/jquery-ui-themes-1.12.1/themes/base/jquery-ui.css">
@@ -40,6 +41,7 @@
                 </c:if>
             </sec:authorize>
             <button data-oper='modifyjoballinfolist' class="btn-list"><i class="fa-solid fa-list"></i> List</button>
+            <button data-oper='jobcopy' class="btn-tool btn-wizard"><i class="fa-solid fa-copy"></i> Create/Copy</button>
         </div>
     </div>
 
@@ -168,6 +170,108 @@
             </div>
         </div>
     </div>
+    <!-- The Modal end-->
+
+    <!-- JOB Create/Copy Modal - Modern Style -->
+    <div class="modal fade" id="copymodal" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 520px;">
+            <div class="modal-content" style="border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                <!-- Modal Header -->
+                <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); padding: 18px 24px; border: none;">
+                    <h5 class="modal-title" style="color: #fff; font-weight: 600; font-size: 1.1rem; display: flex; align-items: center;">
+                        <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <i class="fa-solid fa-copy" style="font-size: 14px;"></i>
+                        </div>
+                        JOB Create/Copy
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" style="color: #fff; opacity: 0.8; text-shadow: none; font-size: 1.5rem;">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <!-- Modal body -->
+                <div class="modal-body" style="padding: 24px; background: #f8fafc;">
+                    <div id="copyInfoBox" style="margin-bottom: 20px; padding: 14px 16px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 10px; border-left: 4px solid #3b82f6;">
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <i class="fa-solid fa-info-circle" style="color: #3b82f6; margin-right: 10px; font-size: 1.1rem;"></i>
+                            <span id="copyInfoTitle" style="color: #1e40af; font-weight: 600; font-size: 0.9rem;"></span>
+                        </div>
+                        <div id="copyInfoDesc" style="color: #475569; font-size: 0.8rem; line-height: 1.5; padding-left: 26px;"></div>
+                    </div>
+                    <!-- Hidden message holders -->
+                    <input type="hidden" id="msg_copy_title" value="<spring:message code='msg.jobcopy.title' text='현재 Job을 복사하여 새로운 Job을 생성합니다.'/>">
+                    <input type="hidden" id="msg_copy_desc" value="<spring:message code='msg.jobcopy.desc' text='복사된 Job은 CHECKOUT 상태로 생성되며, Step/Table 정보가 함께 복사됩니다.'/>">
+                    <input type="hidden" id="msg_backdated_title" value="<spring:message code='msg.jobbackdated.title' text='소급 파기 Job을 생성합니다.'/>">
+                    <input type="hidden" id="msg_backdated_desc" value="<spring:message code='msg.jobbackdated.desc' text='과거 특정 시점의 파기 대상을 소급하여 처리하는 Job입니다. 기준일자를 과거로 지정하여 Order합니다.'/>">
+                    <input type="hidden" id="msg_recovery_title" value="<spring:message code='msg.jobrecovery.title' text='복구 Job을 생성합니다.'/>">
+                    <input type="hidden" id="msg_recovery_desc" value="<spring:message code='msg.jobrecovery.desc' text='분리보관된 데이터를 원본 테이블로 복구하는 Job입니다. 복구 대상 고객을 지정하여 실행합니다.'/>">
+
+                    <!-- New JOBID -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 0.85rem;">
+                            <i class="fa-solid fa-fingerprint" style="color: #3b82f6; margin-right: 6px;"></i> New JOBID
+                        </label>
+                        <input type="text" class="form-control" id='jobid_copy' value='<c:out value="${piijob.jobid}"/>_'
+                               style="border: 2px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; transition: all 0.2s ease;">
+                    </div>
+
+                    <!-- New JOBNAME -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 0.85rem;">
+                            <i class="fa-solid fa-tag" style="color: #3b82f6; margin-right: 6px;"></i> New JOBNAME
+                        </label>
+                        <input type="text" class="form-control" id='jobname_copy' value='<c:out value="${piijob.jobname}"/>_'
+                               style="border: 2px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; transition: all 0.2s ease;">
+                    </div>
+
+                    <!-- Creation type -->
+                    <div>
+                        <label style="display: block; font-weight: 600; color: #374151; margin-bottom: 12px; font-size: 0.85rem;">
+                            <i class="fa-solid fa-list-check" style="color: #3b82f6; margin-right: 6px;"></i> Creation type
+                        </label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <label class="creation-type-card" style="flex: 1; min-width: 120px; display: flex; align-items: center; padding: 12px 14px; background: #fff; border: 2px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">
+                                <input type="radio" name="radiocopy" id="radiocopy-1" value="COPY" style="display: none;">
+                                <span class="radio-custom" style="width: 18px; height: 18px; border: 2px solid #d1d5db; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0;"></span>
+                                <span style="font-weight: 500; color: #374151; font-size: 0.85rem;"><spring:message code="etc.job_copy" text="Copy JOB"/></span>
+                            </label>
+                            <c:if test="${fn:startsWith(piijob.jobid, 'PII_POLICY')}">
+                                <label class="creation-type-card" style="flex: 1; min-width: 120px; display: flex; align-items: center; padding: 12px 14px; background: #fff; border: 2px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">
+                                    <input type="radio" name="radiocopy" id="radiocopy-2" value="BACKDATED" checked style="display: none;">
+                                    <span class="radio-custom" style="width: 18px; height: 18px; border: 2px solid #d1d5db; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0;"></span>
+                                    <span style="font-weight: 500; color: #374151; font-size: 0.85rem;"><spring:message code="etc.backdated" text="Backdated"/> JOB</span>
+                                </label>
+                                <label class="creation-type-card" style="flex: 1; min-width: 120px; display: flex; align-items: center; padding: 12px 14px; background: #fff; border: 2px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">
+                                    <input type="radio" name="radiocopy" id="radiocopy-3" value="RECOVERY" style="display: none;">
+                                    <span class="radio-custom" style="width: 18px; height: 18px; border: 2px solid #d1d5db; border-radius: 50%; margin-right: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0;"></span>
+                                    <span style="font-weight: 500; color: #374151; font-size: 0.85rem;"><spring:message code="etc.recovery" text="Recovery"/> JOB</span>
+                                </label>
+                            </c:if>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="modal-footer" style="border-top: 1px solid #e5e7eb; padding: 16px 24px; background: #fff; display: flex; gap: 10px;">
+                    <button data-dismiss="modal"
+                            style="flex: 1; background: #f1f5f9; color: #64748b; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-times" style="margin-right: 6px;"></i> Cancel
+                    </button>
+                    <button data-oper='requestcopy'
+                            style="flex: 1; background: linear-gradient(135deg, #3b82f6, #60a5fa); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); transition: all 0.2s ease;">
+                        <i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+    .creation-type-card:hover { border-color: #93c5fd; background: #f0f9ff; }
+    .creation-type-card:has(input:checked) { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
+    .creation-type-card:has(input:checked) .radio-custom { border-color: #3b82f6; background: #3b82f6; }
+    .creation-type-card:has(input:checked) .radio-custom::after { content: ''; width: 8px; height: 8px; background: #fff; border-radius: 50%; }
+    .creation-type-card .radio-custom { display: flex; align-items: center; justify-content: center; }
+    </style>
     <!-- The Modal end-->
 
 </div>
@@ -726,6 +830,118 @@
 
     });
 
+
+    // 복사 타입에 따른 안내 메시지 업데이트
+    function updateCopyInfo(copytype) {
+        var title = "", desc = "";
+        if (copytype == "COPY") {
+            title = $("#msg_copy_title").val();
+            desc = $("#msg_copy_desc").val();
+        } else if (copytype == "BACKDATED") {
+            title = $("#msg_backdated_title").val();
+            desc = $("#msg_backdated_desc").val();
+        } else if (copytype == "RECOVERY") {
+            title = $("#msg_recovery_title").val();
+            desc = $("#msg_recovery_desc").val();
+        }
+        $("#copyInfoTitle").text(title);
+        $("#copyInfoDesc").text(desc);
+    }
+
+    $("button[data-oper='jobcopy']").on("click", function (e) {
+        e.preventDefault();e.stopPropagation();
+        doubleSubmitFlag = true;
+        $("input:radio[id='radiocopy-1']").prop('checked', true);
+        $("#jobid_copy").val('<c:out value="${piijob.jobid}"/>_' + getToday());
+        $("#jobname_copy").val('<c:out value="${piijob.jobname}"/>_' + getToday());
+        updateCopyInfo("COPY");
+        $("#copymodal").modal();
+        $('#jobid_copy').focus();
+    });
+
+    $("input[name='radiocopy']:radio").change(function () {
+        var copytype = this.value;
+        var id = "";
+        var name = "";
+
+        if(copytype == "BACKDATED"){
+            id = "RETRO"+"_";
+            name = "<spring:message code="etc.backdated" text="Retroactive Purging"/>"+"_";
+        }
+        else if(copytype == "RECOVERY"){
+            id = "RECOVER"+"_";
+            name = "<spring:message code="etc.recovery" text="Recovery"/>"+"_";
+        }
+
+        $("#jobid_copy").val('<c:out value="${piijob.jobid}"/>_' +id+ getToday());
+        $("#jobname_copy").val('<c:out value="${piijob.jobname}"/>_' +name+ getToday());
+        updateCopyInfo(copytype);
+    });
+
+    $("button[data-oper='requestcopy']").on("click", function (e) {
+        e.preventDefault();e.stopPropagation();
+
+        var copytype = $('input[name="radiocopy"]:checked').val();
+
+        var serchkeyno1 = $('#jobget_global_jobid').val();
+        var serchkeyno2 = $('#jobget_global_version').val();
+        var serchkeyno3 = $('#jobid_copy').val();
+        var serchkeyno4 = $('#jobname_copy').val();
+        var serchkeyno5 = copytype;
+
+        var url_search = "";
+        var url_view = "";
+        var pagenum = $('#searchForm [name="pagenum"]').val();
+        var amount = $('#searchForm [name="amount"]').val();
+        var search1 = $('#searchForm [name="search1"]').val();
+        var search2 = $('#searchForm [name="search2"]').val();
+        var search3 = $('#searchForm [name="search3"]').val();
+        var search4 = $('#searchForm [name="search4"]').val();
+        var search5 = $('#searchForm [name="search5"]').val();
+        var search6 = $('#searchForm [name="search6"]').val();
+        var search7 = $('#searchForm [name="search7"]').val();
+        var search8 = $('#searchForm [name="search8"]').val();
+
+        if (isEmpty(pagenum)) pagenum = 1;
+        if (isEmpty(amount)) amount = 100;
+
+        if (!isEmpty(search1)) { url_search += "&search1=" + search1; }
+        if (!isEmpty(search2)) { url_search += "&search2=" + search2; }
+        if (!isEmpty(search3)) { url_search += "&search3=" + search3; }
+        if (!isEmpty(search4)) { url_search += "&search4=" + search4; }
+        if (!isEmpty(search5)) { url_search += "&search5=" + search5; }
+        if (!isEmpty(search6)) { url_search += "&search6=" + search6; }
+        if (!isEmpty(search7)) { url_search += "&search7=" + search7; }
+        if (!isEmpty(search8)) { url_search += "&search8=" + search8; }
+
+        url_view = "/piijob/" + "copy?jobid=" + serchkeyno1 + "&version=" + serchkeyno2
+            + "&jobid_copy=" + serchkeyno3 + "&jobname_copy=" + serchkeyno4
+            + "&copytype=" + serchkeyno5
+            + "&";
+
+        ingShow(); $.ajax({
+            type: "GET",
+            url: url_view
+                + "pagenum=" + pagenum
+                + "&amount=" + amount
+                + url_search,
+            dataType: "html",
+            error: function (request, error) { ingHide();
+                $("#errormodalbody").html("The JOBID is already existed");
+                $("#errormodal").modal("show");
+            },
+            success: function (data) { ingHide();
+                $("#GlobalSuccessMsgModal").removeClass("in");
+                $(".modal-backdrop").remove();
+                $('body').removeClass('modal-open');
+                $('body').css('padding-right', '');
+                $("#GlobalSuccessMsgModal").modal("hide");
+                $("#copymodal").modal("hide");
+
+                $('#content_home').html(data);
+            }
+        });
+    });
 
     $("button[data-oper='modifyjoballinfolist']").on("click", function (e) {
         e.preventDefault();e.stopPropagation();

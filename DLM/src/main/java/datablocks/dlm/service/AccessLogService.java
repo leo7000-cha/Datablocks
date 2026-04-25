@@ -26,6 +26,9 @@ public interface AccessLogService {
     List<AccessLogVO> getAccessLogList(Criteria cri);
     int getAccessLogTotal(Criteria cri);
 
+    /** 동일 req_id (WAS_SDK 한 요청) 내 HTTP_ACCESS + SQL 행 전체. */
+    List<AccessLogVO> getAccessLogByReqId(String reqId);
+
     // ========== Source ==========
     void registerSource(AccessLogSourceVO source);
     AccessLogSourceVO getSource(String sourceId);

@@ -1,55 +1,44 @@
 -- ============================================================
--- Discovery 모듈 패치: DLM PIICODE 체계 정렬 + 규칙 보강
+-- Discovery PII Type & Rule 초기 데이터 (금융사 표준)
 -- ============================================================
--- 적용 대상: 기존 운영 환경 (Discovery 테이블이 이미 존재하는 경우)
--- 적용 날짜: 2026-04-06
--- 적용 순서: 이 파일 하나만 실행하면 됩니다.
+-- DLM TBL_LKPIISCRTYPE PIICODE 체계와 1:1 정렬
+-- pii_type_code = DLM PIICODE (예: 1_1_rrn, 2_1_name)
+-- scramble_type = DLM SCRTYPE (예: SCRAMBLE_RRN_AFTER7)
 --
--- [변경 내용]
--- 1. TBL_LKPIISCRTYPE: 1_2_criminalHistory PIIGROUPNAME 수정 ('인증정보'→'민감정보')
--- 2. pii_type_code 컬럼 VARCHAR(20) → VARCHAR(50) 확장
---    - DLM PIICODE(예: 1_2_sexualOrientation=22자) 수용을 위해 확장
---    - 대상: TBL_DISCOVERY_PII_TYPE, TBL_DISCOVERY_RULE, TBL_DISCOVERY_SCAN_RESULT
--- 3. PII Type Master를 DLM PIICODE 체계로 전면 교체 (51개 유형)
--- 4. Detection Rules을 DLM 체계 + 한국 금융사 표준으로 전면 교체
---    - META 규칙 41개 (컬럼명/코멘트 키워드)
---    - PATTERN 규칙 33개 (정규식 데이터 매칭)
--- 5. 카테고리 체계 변경 (6개→11개)
---    - 변경전: NAME, SSN, CONTACT, FINANCIAL, ADDRESS, CUSTOM
---    - 변경후: ID, SENSITIVE, AUTH, FINANCIAL, MEDICAL, PERSONAL,
---             CONTACT, PRIVATE, AUTO, LIMITED_ID, CUSTOM
+-- [카테고리 체계] (UI 사이드바 그룹핑용)
+--   ID          : 1급-그룹1 고유식별정보
+--   SENSITIVE   : 1급-그룹2 민감정보
+--   AUTH        : 1급-그룹3 인증정보
+--   FINANCIAL   : 1급-그룹4 금융정보
+--   MEDICAL     : 1급-그룹5,6 의료/위치정보
+--   PERSONAL    : 2급-그룹1 개인식별정보
+--   CONTACT     : 2급-그룹2 연락정보
+--   PRIVATE     : 2급-그룹3 개인관련정보
+--   AUTO        : 3급-그룹1,2 자동생성/가공정보
+--   LIMITED_ID  : 3급-그룹3 제한적 식별정보
+--   CUSTOM      : 사용자 정의 (UI에서 추가)
 --
--- [주의]
--- - 기존 스캔 결과(TBL_DISCOVERY_SCAN_RESULT)의 pii_type_code는
---   이전 코드(RRN, NAME 등)로 저장되어 있으므로 기존 결과 조회 시 참고
--- - 필요 시 섹션 5의 UPDATE문으로 기존 결과의 코드를 마이그레이션 가능
+-- 실행 순서: ALTER (기존DB) → DELETE → PII_TYPE → RULE
 -- ============================================================
 
 
 -- ============================================================
--- 1. DLM 마스터 데이터 수정: TBL_LKPIISCRTYPE
+-- 0. DDL 전제 조건
 -- ============================================================
--- 1_2_criminalHistory의 PIIGROUPNAME이 '인증정보'로 잘못 등록 → '민감정보'로 수정
-UPDATE COTDL.TBL_LKPIISCRTYPE SET PIIGROUPNAME = '민감정보' WHERE PIICODE = '1_2_criminalHistory';
+-- 신규 설치: 20_DDL_MASTER_DISCOVERY.sql 실행 (이미 VARCHAR(50))
+-- 기존 운영: patches/DISCOVERY_PATCH_20260406.sql 먼저 실행
+-- ============================================================
 
 
 -- ============================================================
--- 2. DDL 변경: pii_type_code VARCHAR(20) → VARCHAR(50)
--- ============================================================
-ALTER TABLE COTDL.TBL_DISCOVERY_PII_TYPE    MODIFY COLUMN pii_type_code VARCHAR(50) NOT NULL;
-ALTER TABLE COTDL.TBL_DISCOVERY_RULE        MODIFY COLUMN pii_type_code VARCHAR(50);
-ALTER TABLE COTDL.TBL_DISCOVERY_SCAN_RESULT MODIFY COLUMN pii_type_code VARCHAR(50) NOT NULL;
-
-
--- ============================================================
--- 3. 기존 데이터 정리
+-- 1. 기존 데이터 정리
 -- ============================================================
 DELETE FROM COTDL.TBL_DISCOVERY_RULE;
 DELETE FROM COTDL.TBL_DISCOVERY_PII_TYPE;
 
 
 -- ============================================================
--- 4. PII Type Master (DLM PIICODE 체계)
+-- 2. PII Type Master (DLM PIICODE 체계)
 -- ============================================================
 INSERT INTO COTDL.TBL_DISCOVERY_PII_TYPE
     (pii_type_code, pii_type_name, pii_type_name_en, category, description, scramble_type, sort_order) VALUES
@@ -131,12 +120,19 @@ INSERT INTO COTDL.TBL_DISCOVERY_PII_TYPE
 
 
 -- ============================================================
--- 5-A. Discovery Rules - META (컬럼명/코멘트 키워드 매칭)
+-- 3. Discovery Rules - META (컬럼명/코멘트 키워드 매칭)
 -- ============================================================
+-- rule_type='META': 컬럼 물리명 또는 코멘트에 키워드가 포함되면 매칭
+-- weight: 0.0~1.0 (높을수록 해당 PII일 가능성 높음)
+-- 키워드: 대소문자 무관 매칭, 한글/영문 혼합
+-- ============================================================
+
 INSERT INTO COTDL.TBL_DISCOVERY_RULE
     (rule_id, rule_name, rule_type, pii_type_code, category, pattern, description, weight, priority, status) VALUES
 
--- ── ID: 고유식별정보 (1급-그룹1) ──
+-- ══════════════════════════════════════════
+-- ID: 고유식별정보 (1급-그룹1)
+-- ══════════════════════════════════════════
 (UUID(), '주민/외국인등록번호 컬럼',  'META', '1_1_rrn',           'ID',
  'SSN,JUMIN,RRN,RESIDENT,REG_NO,주민번호,주민등록,외국인등록,FOREIGNER_REG,주민,SOCIAL_SEC,NATL_ID,PERSONAL_ID,PERS_REG_NO,FRN_REG_NO,RES_REG_NO,RESIDENT_NO,IDNT_NO,IDEN_NO,식별번호,JUMIN_NO,RRN_NO,SSN_NO,CUST_RRN,CUST_JUMIN,ID_NO',
  '주민/외국인등록번호 관련 컬럼', 0.70, 10, 'ACTIVE'),
@@ -153,7 +149,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'GOV_ID,GOVT_NO,공무원증,공무원번호,GOVERNMENT_ID',
  '공무원증번호 관련 컬럼', 0.50, 10, 'ACTIVE'),
 
--- ── SENSITIVE: 민감정보 (1급-그룹2) ──
+-- ══════════════════════════════════════════
+-- SENSITIVE: 민감정보 (1급-그룹2)
+-- ══════════════════════════════════════════
 (UUID(), '사상·신념 컬럼',            'META', '1_2_beliefs',        'SENSITIVE',
  'BELIEF,RELIGION,종교,신념,사상,FAITH,신앙,교파',
  '사상, 신념, 종교 관련 컬럼', 0.50, 20, 'ACTIVE'),
@@ -178,7 +176,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'UNION,LABOR,노동조합,노조,PARTY_JOIN,정당가입,조합원,LABOR_UNION',
  '노동조합, 정당 가입 관련 컬럼', 0.50, 20, 'ACTIVE'),
 
--- ── AUTH: 인증정보 (1급-그룹3) ──
+-- ══════════════════════════════════════════
+-- AUTH: 인증정보 (1급-그룹3)
+-- ══════════════════════════════════════════
 (UUID(), '바이오정보 컬럼',           'META', '1_3_biometrics',     'AUTH',
  'BIOMETRIC,FINGERPRINT,IRIS,FACE_ID,지문,홍체,안면,바이오,FIDO,VOICE_PRINT,성문,FACE_RECOG,안면인식,생체,PALM',
  '바이오인증 관련 컬럼', 0.60, 15, 'ACTIVE'),
@@ -187,7 +187,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'PASSWORD,PASSWD,PWD,비밀번호,암호,PIN,PIN_NO,OTP,SECRET,CREDENTIALS,AUTH_KEY,인증번호,PASSCODE,LOGIN_PW,USER_PW,USERPW,USER_PWD,SIGN_KEY,SECURE_KEY,인증키,LOGIN_PWD,ACCESS_KEY',
  '비밀번호, PIN, 인증정보 관련 컬럼', 0.70, 15, 'ACTIVE'),
 
--- ── FINANCIAL: 금융정보 (1급-그룹4) ──
+-- ══════════════════════════════════════════
+-- FINANCIAL: 금융정보 (1급-그룹4)
+-- ══════════════════════════════════════════
 (UUID(), '계좌번호 컬럼',             'META', '1_4_account',        'FINANCIAL',
  'ACCT,ACCOUNT,계좌,통장,BANK_ACCT,ACCT_NO,ACCTNO,DEPOSIT_NO,예금계좌,SAVING,출금계좌,ACNO,AC_NO,BANK_NO,BANKNO,WITHDRAW_ACCT,입금계좌,RECV_ACCT,SEND_ACCT,수취계좌,이체계좌,가상계좌,VIRTUAL_ACCT,DPST_ACCT,WDRL_ACCT,SETL_ACCT,LOAN_ACCT,대출계좌,결제계좌',
  '계좌번호 관련 컬럼', 0.60, 10, 'ACTIVE'),
@@ -208,7 +210,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'CVV,CVC,PVV,ICVV,ICVC,보안코드,SECURITY_CODE,SEC_CODE,CVV2,CVC2,카드보안',
  'CVV/CVC 보안코드 관련 컬럼', 0.70, 10, 'ACTIVE'),
 
--- ── MEDICAL: 의료/위치정보 (1급-그룹5,6) ──
+-- ══════════════════════════════════════════
+-- MEDICAL: 의료/위치정보 (1급-그룹5,6)
+-- ══════════════════════════════════════════
 (UUID(), '진료기록 컬럼',             'META', '1_5_medicalRecords', 'MEDICAL',
  'MEDICAL,TREATMENT,진료,처방,PRESCRIPTION,진단서,DIAGNOSIS_RECORD,병원,HOSPITAL,CLINIC,의료,수술,SURGERY,입원,ADMISSION,외래,OUTPATIENT',
  '진료기록 관련 컬럼', 0.50, 20, 'ACTIVE'),
@@ -221,7 +225,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'GPS,LATITUDE,LONGITUDE,위도,경도,위치,LOCATION,COORD,LAT,LNG,LON,GEOLOCATION,GEO_X,GEO_Y,좌표',
  '위치정보 관련 컬럼', 0.50, 20, 'ACTIVE'),
 
--- ── PERSONAL: 개인식별정보 (2급-그룹1) ──
+-- ══════════════════════════════════════════
+-- PERSONAL: 개인식별정보 (2급-그룹1)
+-- ══════════════════════════════════════════
 (UUID(), '성명 컬럼',                 'META', '2_1_name',           'PERSONAL',
  'NAME,NM,성명,이름,고객명,사용자명,CUST_NM,USER_NM,EMP_NM,FULL_NAME,KOR_NM,ENG_NM,한글명,영문명,PERSON_NM,담당자명,수취인명,예금주명,DEPOSITOR,FIRST_NM,LAST_NM,FAMILY_NM,GIVEN_NM,사원명,대표자명,REPR_NM,차주명,보증인명,CORP_NM,COMP_NM,INSURED_NM,BENEFICIARY_NM,SURNAME,성,법인명,회사명,OWNER_NM,소유자명,피보험자명,수익자명',
  '성명 관련 컬럼', 0.50, 10, 'ACTIVE'),
@@ -242,7 +248,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'CI,DI,CI_VAL,DI_VAL,연계정보,중복가입,CI_NO,DI_NO,CONNECTING_INFO,DUPLICATION_INFO,CI_VALUE,DI_VALUE,본인확인,CI_KEY,DI_KEY,본인인증,CONN_INFO,DUP_CHK_INFO',
  'CI/DI 관련 컬럼', 0.60, 10, 'ACTIVE'),
 
--- ── CONTACT: 연락정보 (2급-그룹2) ──
+-- ══════════════════════════════════════════
+-- CONTACT: 연락정보 (2급-그룹2)
+-- ══════════════════════════════════════════
 (UUID(), '전화번호 컬럼',             'META', '2_2_telno',          'CONTACT',
  'PHONE,TEL,HP,MOBILE,전화,휴대폰,연락처,FAX,CELL,TEL_NO,TELNO,HP_NO,HPNO,PHONE_NO,MOBILE_NO,자택전화,직장전화,비상연락처,CELLPHONE,CELL_NO,HANDPHONE,핸드폰,FAX_NO,FAXNO,팩스,CONTACT_NO,EMERGENCY_TEL,긴급연락처,OFFICE_TEL,HOME_TEL,회사전화,HP_NUM,TEL_NUM,SMS_NO',
  '전화번호 관련 컬럼', 0.55, 10, 'ACTIVE'),
@@ -259,7 +267,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'ZIP,ZIPCODE,ZIP_CODE,우편번호,POST_NO,POSTNO,POSTAL,POSTAL_CD,POST_CD,우편',
  '우편번호 관련 컬럼', 0.40, 10, 'ACTIVE'),
 
--- ── PRIVATE: 개인관련정보 (2급-그룹3) ──
+-- ══════════════════════════════════════════
+-- PRIVATE: 개인관련정보 (2급-그룹3)
+-- ══════════════════════════════════════════
 (UUID(), '직업 컬럼',                 'META', '2_3_job',            'PRIVATE',
  'JOB,OCCUPATION,직업,직종,WORK_TYPE,JOB_TYPE,JOB_NM,직장명,WORKPLACE,근무지,EMPLOYER,JOB_CD,직업코드',
  '직업 관련 컬럼', 0.35, 20, 'ACTIVE'),
@@ -276,7 +286,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'FAMILY,가족,부양가족,DEPENDENT,FAMILY_CNT,HOUSEHOLD,가구,세대,세대원,FAMILY_MEMBER,가족수',
  '가족 관련 컬럼', 0.30, 20, 'ACTIVE'),
 
--- ── AUTO: 자동생성/가공정보 (3급-그룹1,2) ──
+-- ══════════════════════════════════════════
+-- AUTO: 자동생성/가공정보 (3급-그룹1,2)
+-- ══════════════════════════════════════════
 (UUID(), 'IP 주소 컬럼',              'META', '3_1_ipAddress',      'AUTO',
  'IP,IP_ADDR,IP_ADDRESS,IPADDR,접속IP,CLIENT_IP,REMOTE_IP,SERVER_IP,SRC_IP,DST_IP,ACCESS_IP,LOGIN_IP,CONN_IP',
  'IP주소 관련 컬럼', 0.50, 15, 'ACTIVE'),
@@ -297,7 +309,9 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  'UUID,GUID,UNIQUE_ID,TRACE_ID',
  'UUID 관련 컬럼', 0.30, 15, 'ACTIVE'),
 
--- ── LIMITED_ID: 제한적 식별정보 (3급-그룹3) ──
+-- ══════════════════════════════════════════
+-- LIMITED_ID: 제한적 식별정보 (3급-그룹3)
+-- ══════════════════════════════════════════
 (UUID(), '법인번호/사업자번호 컬럼',  'META', '3_3_corpno',         'LIMITED_ID',
  'CORP_NO,CORPNO,법인번호,CORP_REG,CORP_REG_NO,사업자등록,BIZ_NO,BIZNO,BIZ_REG,사업자번호,BRNO,BR_NO,BUSINESS_NO,BUSINESS_REG,TAX_NO,납세번호,TXPR_NO,사업자,법인등록,COMP_REG_NO',
  '법인번호/사업자번호 관련 컬럼', 0.50, 15, 'ACTIVE'),
@@ -316,12 +330,20 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
 
 
 -- ============================================================
--- 5-B. Discovery Rules - PATTERN (정규식 기반 데이터 패턴 매칭)
+-- 4. Discovery Rules - PATTERN (정규식 기반 데이터 패턴 매칭)
 -- ============================================================
+-- rule_type='PATTERN': 샘플 데이터에서 정규식 매칭
+-- Java Pattern 호환 정규식 사용
+-- ============================================================
+
 INSERT INTO COTDL.TBL_DISCOVERY_RULE
     (rule_id, rule_name, rule_type, pii_type_code, category, pattern, description, weight, priority, status) VALUES
 
--- ── ID: 고유식별정보 ──
+-- ══════════════════════════════════════════
+-- ID: 고유식별정보
+-- ══════════════════════════════════════════
+
+-- 주민등록번호
 (UUID(), '주민등록번호 (하이픈)',          'PATTERN', '1_1_rrn',           'ID',
  '^\\d{6}-[1-4]\\d{6}$',
  '주민등록번호 13자리 (하이픈 포함)', 0.95, 5, 'ACTIVE'),
@@ -338,6 +360,7 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^\\d{6}-[1-8]\\*{6}$',
  '마스킹된 주민등록번호 (뒷자리 *)', 0.70, 8, 'ACTIVE'),
 
+-- 운전면허번호
 (UUID(), '운전면허번호 (하이픈)',          'PATTERN', '1_1_driverLicense', 'ID',
  '^\\d{2}-\\d{2}-\\d{6}-\\d{2}$',
  '운전면허번호 12자리 (표준형)', 0.85, 5, 'ACTIVE'),
@@ -346,6 +369,7 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^(1[1-9]|2[0-8])\\d{10}$',
  '운전면허번호 12자리 (하이픈 없음, 지역코드 검증)', 0.70, 7, 'ACTIVE'),
 
+-- 여권번호
 (UUID(), '여권번호 (구형)',                'PATTERN', '1_1_passport',      'ID',
  '^[MSRGD]\\d{8}$',
  '한국 여권번호 구형 (영문1+숫자8)', 0.80, 5, 'ACTIVE'),
@@ -354,7 +378,11 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^[MSRGD]\\d{3}[A-Z]\\d{4}$',
  '차세대 여권번호 (2021.12~ 발급)', 0.85, 5, 'ACTIVE'),
 
--- ── FINANCIAL: 금융정보 ──
+-- ══════════════════════════════════════════
+-- FINANCIAL: 금융정보
+-- ══════════════════════════════════════════
+
+-- 카드번호
 (UUID(), '카드번호 16자리',                'PATTERN', '1_4_creditCard',    'FINANCIAL',
  '^\\d{4}-?\\d{4}-?\\d{4}-?\\d{4}$',
  '카드번호 16자리 (하이픈 옵션)', 0.85, 5, 'ACTIVE'),
@@ -367,6 +395,7 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^3[47]\\d{2}-?\\d{6}-?\\d{5}$',
  'AMEX 카드번호 15자리', 0.80, 6, 'ACTIVE'),
 
+-- 계좌번호
 (UUID(), '계좌번호 (3파트)',               'PATTERN', '1_4_account',       'FINANCIAL',
  '^\\d{3,6}-\\d{2,6}-\\d{3,7}$',
  '계좌번호 3파트 (주요 은행)', 0.75, 6, 'ACTIVE'),
@@ -375,19 +404,26 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^\\d{3,4}-\\d{2,4}-\\d{4,6}-\\d{1,5}$',
  '계좌번호 4파트 (농협/부산은행 등)', 0.75, 6, 'ACTIVE'),
 
+-- 카드유효기간
 (UUID(), '카드유효기간 (MM/YY)',           'PATTERN', '1_4_cardExpiration','FINANCIAL',
  '^(0[1-9]|1[0-2])/?([2-3]\\d)$',
  '카드 유효기간 (MM/YY 또는 MMYY)', 0.50, 8, 'ACTIVE'),
 
+-- CVV
 (UUID(), 'CVV 3자리',                      'PATTERN', '1_4_cvv',          'FINANCIAL',
  '^\\d{3}$',
  'CVV 3자리 숫자 (META 결합 시 유효)', 0.30, 10, 'ACTIVE'),
 
--- ── PERSONAL: 개인식별정보 ──
+-- ══════════════════════════════════════════
+-- PERSONAL: 개인식별정보
+-- ══════════════════════════════════════════
+
+-- 한글 이름
 (UUID(), '한글 이름 2~5자',                'PATTERN', '2_1_name',          'PERSONAL',
  '^[가-힣]{2,5}$',
  '한글 이름 (2~5자)', 0.40, 10, 'ACTIVE'),
 
+-- 생년월일
 (UUID(), '생년월일 YYYYMMDD',              'PATTERN', '2_1_dob',           'PERSONAL',
  '^(19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])$',
  '생년월일 8자리 (연속)', 0.60, 8, 'ACTIVE'),
@@ -404,6 +440,7 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^(19|20)\\d{2}\\.(0[1-9]|1[0-2])\\.(0[1-9]|[12]\\d|3[01])$',
  '생년월일 (점 구분)', 0.65, 7, 'ACTIVE'),
 
+-- CI/DI
 (UUID(), 'CI (88byte Base64)',             'PATTERN', '2_1_cidi',          'PERSONAL',
  '^[A-Za-z0-9+/]{86}==$',
  '본인확인 연계정보(CI) 88byte Base64', 0.90, 5, 'ACTIVE'),
@@ -412,7 +449,11 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^[A-Za-z0-9+/=]{60,70}$',
  '중복가입확인정보(DI) 64byte', 0.70, 7, 'ACTIVE'),
 
--- ── CONTACT: 연락정보 ──
+-- ══════════════════════════════════════════
+-- CONTACT: 연락정보
+-- ══════════════════════════════════════════
+
+-- 전화번호
 (UUID(), '휴대폰 번호',                    'PATTERN', '2_2_telno',         'CONTACT',
  '^01[016789]-?\\d{3,4}-?\\d{4}$',
  '한국 휴대폰 번호', 0.85, 5, 'ACTIVE'),
@@ -425,14 +466,17 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^\\+82-?10-?\\d{4}-?\\d{4}$',
  '한국 국제전화 형식 (+82)', 0.85, 5, 'ACTIVE'),
 
+-- 이메일
 (UUID(), '이메일 패턴',                    'PATTERN', '2_2_email',         'CONTACT',
  '^[\\w.-]+@[\\w.-]+\\.\\w+$',
  '이메일 주소', 0.90, 5, 'ACTIVE'),
 
+-- 주소 (도로명)
 (UUID(), '한국 주소 (시도 포함)',          'PATTERN', '2_2_address2',      'CONTACT',
  '(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주).{2,}(시|군|구)',
  '한국 주소 (행정구역 포함)', 0.70, 7, 'ACTIVE'),
 
+-- 우편번호
 (UUID(), '우편번호 5자리',                 'PATTERN', '2_2_zipcode',       'CONTACT',
  '^\\d{5}$',
  '신 우편번호 5자리 (META 결합 시 유효)', 0.30, 10, 'ACTIVE'),
@@ -441,7 +485,11 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^\\d{3}-\\d{3}$',
  '구 우편번호 6자리 (하이픈 포함)', 0.60, 8, 'ACTIVE'),
 
--- ── AUTO: 자동생성정보 ──
+-- ══════════════════════════════════════════
+-- AUTO: 자동생성정보
+-- ══════════════════════════════════════════
+
+-- IP 주소
 (UUID(), 'IPv4 패턴',                      'PATTERN', '3_1_ipAddress',     'AUTO',
  '^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$',
  'IPv4 주소', 0.80, 5, 'ACTIVE'),
@@ -450,15 +498,21 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
  '^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$',
  'IPv6 주소 (전체형)', 0.85, 5, 'ACTIVE'),
 
+-- MAC 주소
 (UUID(), 'MAC 주소 패턴',                  'PATTERN', '3_1_macAddress',    'AUTO',
  '^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$',
  'MAC 주소 (콜론/하이픈 구분)', 0.85, 5, 'ACTIVE'),
 
+-- UUID
 (UUID(), 'UUID 패턴',                      'PATTERN', '3_1_uuid',          'AUTO',
  '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
  'UUID v4 표준형', 0.80, 5, 'ACTIVE'),
 
--- ── LIMITED_ID: 제한적 식별정보 ──
+-- ══════════════════════════════════════════
+-- LIMITED_ID: 제한적 식별정보
+-- ══════════════════════════════════════════
+
+-- 법인번호/사업자등록번호
 (UUID(), '사업자등록번호 패턴',            'PATTERN', '3_3_corpno',        'LIMITED_ID',
  '^\\d{3}-\\d{2}-\\d{5}$',
  '사업자등록번호 10자리 (하이픈)', 0.85, 5, 'ACTIVE'),
@@ -469,75 +523,7 @@ INSERT INTO COTDL.TBL_DISCOVERY_RULE
 
 
 -- ============================================================
--- 6. 기존 스캔 결과 pii_type_code 마이그레이션 (선택사항)
--- ============================================================
--- 기존 단축코드 → DLM PIICODE 변환
--- 기존 스캔 결과를 유지하려면 아래 UPDATE문의 주석을 해제하고 실행하세요.
--- 새로 스캔하면 자동으로 DLM PIICODE가 적용되므로 필수는 아닙니다.
--- ============================================================
-/*
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_1_rrn'             WHERE pii_type_code = 'RRN';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_1_driverLicense'   WHERE pii_type_code = 'DRIVER';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_1_passport'        WHERE pii_type_code = 'PASSPORT';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_1_governmentID'    WHERE pii_type_code = 'GOV_ID';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_beliefs'         WHERE pii_type_code = 'BELIEFS';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_politicalViews'  WHERE pii_type_code = 'POLITICAL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_health'          WHERE pii_type_code = 'HEALTH';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_sexualOrientation' WHERE pii_type_code = 'SEXUAL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_geneticInfo'     WHERE pii_type_code = 'GENETIC';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_criminalHistory' WHERE pii_type_code = 'CRIMINAL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_2_unionParty'      WHERE pii_type_code = 'UNION_PARTY';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_3_biometrics'      WHERE pii_type_code = 'BIOMETRICS';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_3_pwd'             WHERE pii_type_code = 'PASSWORD';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_4_account'         WHERE pii_type_code = 'ACCOUNT';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_4_creditCard'      WHERE pii_type_code = 'CARD';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_4_cardReplacement' WHERE pii_type_code = 'CARD_REPLACE';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_4_cardExpiration'  WHERE pii_type_code = 'CARD_EXP';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_4_cvv'             WHERE pii_type_code = 'CVV';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_5_medicalRecords'  WHERE pii_type_code = 'MEDICAL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_5_healthStatus'    WHERE pii_type_code = 'HEALTH_STATUS';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '1_6_location'        WHERE pii_type_code = 'LOCATION';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_1_name'            WHERE pii_type_code = 'NAME';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_1_dob'             WHERE pii_type_code = 'BIRTH';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_1_gender'          WHERE pii_type_code = 'GENDER';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_1_age'             WHERE pii_type_code = 'AGE';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_1_cidi'            WHERE pii_type_code = 'CIDI';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_2_telno'           WHERE pii_type_code = 'PHONE';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_2_email'           WHERE pii_type_code = 'EMAIL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_2_address2'        WHERE pii_type_code = 'ADDRESS';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_2_zipcode'         WHERE pii_type_code = 'ZIPCODE';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_3_job'             WHERE pii_type_code = 'JOB';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_3_education'       WHERE pii_type_code = 'EDUCATION';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_3_maritalStatus'   WHERE pii_type_code = 'MARITAL';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '2_3_familyStatus'    WHERE pii_type_code = 'FAMILY';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_1_ipAddress'       WHERE pii_type_code = 'IP';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_1_macAddress'      WHERE pii_type_code = 'MAC';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_1_imei'            WHERE pii_type_code = 'IMEI';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_1_usim'            WHERE pii_type_code = 'USIM';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_3_corpno'          WHERE pii_type_code IN ('CORP_NO', 'CORP_REG');
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_3_employeeID'      WHERE pii_type_code = 'EMP_ID';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_3_internalID'      WHERE pii_type_code = 'INTERNAL_ID';
-UPDATE COTDL.TBL_DISCOVERY_SCAN_RESULT SET pii_type_code = '3_3_memberID'        WHERE pii_type_code = 'MEMBER_ID';
-
--- PII Registry도 동일하게 마이그레이션
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_1_rrn'             WHERE pii_type_code = 'RRN';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_1_driverLicense'   WHERE pii_type_code = 'DRIVER';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_1_passport'        WHERE pii_type_code = 'PASSPORT';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '2_1_name'            WHERE pii_type_code = 'NAME';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '2_2_telno'           WHERE pii_type_code = 'PHONE';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '2_2_email'           WHERE pii_type_code = 'EMAIL';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '2_2_address2'        WHERE pii_type_code = 'ADDRESS';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_4_creditCard'      WHERE pii_type_code = 'CARD';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_4_account'         WHERE pii_type_code = 'ACCOUNT';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '2_1_dob'             WHERE pii_type_code = 'BIRTH';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '1_3_pwd'             WHERE pii_type_code = 'PASSWORD';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '3_1_ipAddress'       WHERE pii_type_code = 'IP';
-UPDATE COTDL.TBL_DISCOVERY_PII_REGISTRY SET pii_type_code = '3_3_corpno'          WHERE pii_type_code IN ('CORP_NO', 'CORP_REG');
-*/
-
-
--- ============================================================
--- 7. 검증
+-- 검증
 -- ============================================================
 SELECT 'PII Type Master' AS DATA, COUNT(*) AS CNT FROM COTDL.TBL_DISCOVERY_PII_TYPE
 UNION ALL
@@ -546,5 +532,3 @@ UNION ALL
 SELECT 'PATTERN Rules',           COUNT(*)        FROM COTDL.TBL_DISCOVERY_RULE WHERE rule_type = 'PATTERN'
 UNION ALL
 SELECT 'Total Rules',             COUNT(*)        FROM COTDL.TBL_DISCOVERY_RULE;
-
-SELECT 'DISCOVERY_PATCH_20260406 applied successfully' AS MESSAGE;

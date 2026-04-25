@@ -217,7 +217,7 @@
             <select id="srcTypeFilter" onchange="applyFilters()">
                 <option value="">방식 전체</option>
                 <option value="DB_AUDIT">DB 접근 감사 (Audit)</option>
-                <option value="DB_DAC">DB 접근 감사 (접근제어)</option>
+                <option value="DB_DAC">DB 접근제어</option>
                 <option value="WAS_AGENT">WAS 접근 감사</option>
             </select>
         </div>
@@ -240,7 +240,7 @@
                                 <div class="src-card-top">
                                     <c:choose>
                                         <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit"><i class="fas fa-database"></i> DB 접근 감사 (Audit)</span></c:when>
-                                        <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac"><i class="fas fa-shield-alt"></i> DB 접근 감사 (접근제어)</span></c:when>
+                                        <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac"><i class="fas fa-shield-alt"></i> DB 접근제어</span></c:when>
                                         <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent"><i class="fas fa-globe"></i> WAS 접근 감사</span></c:when>
                                         <c:otherwise><span class="src-type-badge dlm-self"><i class="fas fa-cog"></i> ${src.sourceType}</span></c:otherwise>
                                     </c:choose>
@@ -314,7 +314,7 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit" style="font-size:0.68rem;">DB 접근 감사 (Audit)</span></c:when>
-                                        <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac" style="font-size:0.68rem;">DB 접근 감사 (접근제어)</span></c:when>
+                                        <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac" style="font-size:0.68rem;">DB 접근제어</span></c:when>
                                         <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent" style="font-size:0.68rem;">WAS 접근 감사</span></c:when>
                                         <c:otherwise>${src.sourceType}</c:otherwise>
                                     </c:choose>
@@ -365,8 +365,8 @@
                     </div>
                     <div class="method-card" data-type="DB_DAC" onclick="selectMethod(this)">
                         <i class="fas fa-shield-alt"></i>
-                        <div class="method-name">DB 접근 감사 (접근제어)</div>
-                        <div class="method-desc">접근제어 솔루션<br>로그 연동</div>
+                        <div class="method-name">DB 접근제어</div>
+                        <div class="method-desc">DB 접근제어 솔루션<br>로그 연동</div>
                     </div>
                     <div class="method-card" data-type="WAS_AGENT" onclick="selectMethod(this)">
                         <i class="fas fa-globe"></i>
@@ -440,17 +440,17 @@
                 </div>
             </div>
 
-            <!-- ===== DB 접근 감사 (접근제어) 설정 ===== -->
+            <!-- ===== DB 접근제어 설정 ===== -->
             <div id="section_dac" style="display:none;">
                 <!-- 안내 카드 -->
                 <div style="background:linear-gradient(135deg,#fef3c7,#fffbeb);border:1px solid #fbbf24;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
                         <i class="fas fa-shield-alt" style="color:#92400e;"></i>
-                        <span style="font-size:0.85rem;font-weight:700;color:#92400e;">DB 접근 감사 (접근제어)</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#92400e;">DB 접근제어</span>
                     </div>
                     <div style="font-size:0.78rem;color:#78716c;line-height:1.6;">
-                        DB접근제어 솔루션(차크라맥스, 페트라, DBSafer 등)이 기록하는 접속 로그를 SELECT문으로 직접 조회하여 수집합니다.<br>
-                        위에서 접근제어 솔루션의 DB를 선택한 뒤, 아래에 조회 SQL을 작성하세요.
+                        DB 접근제어 솔루션(차크라맥스, 페트라, DBSafer 등)이 기록하는 접속 로그를 SELECT문으로 직접 조회하여 수집합니다.<br>
+                        위에서 DB 접근제어 솔루션의 DB를 선택한 뒤, 아래에 조회 SQL을 작성하세요.
                     </div>
                 </div>
 
@@ -1260,7 +1260,7 @@ var _dbaGuides = {
         'CREATE INDEX idx_event_time ON mysql.general_log(event_time);</pre>' +
         '<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:0.72rem;color:#92400e;">' +
         '<i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i>' +
-        '<strong>성능 주의:</strong> General Log는 모든 쿼리를 기록합니다. 운영 환경에서는 DB 접근 감사 (접근제어) 방식을 권장합니다.</div>' +
+        '<strong>성능 주의:</strong> General Log는 모든 쿼리를 기록합니다. 운영 환경에서는 DB 접근제어 방식을 권장합니다.</div>' +
         '</div>',
 
     MSSQL: '<strong>MSSQL Server Audit 설정 (DBA 작업 필요)</strong>' +
@@ -1287,7 +1287,7 @@ function updateDbaGuide() {
 
 // ========== DB_DAC 기본 샘플 SQL ==========
 var _dacDefaultSql =
-    "-- 접근제어 솔루션 로그 조회 SQL\n" +
+    "-- DB 접근제어 솔루션 로그 조회 SQL\n" +
     "-- 테이블명, 컬럼명을 솔루션 환경에 맞게 수정하세요\n" +
     "-- 아래 SQL 템플릿 버튼으로 솔루션별 샘플을 불러올 수 있습니다\n" +
     "-- #" + "{LAST_OFFSET} → DATETIME (예: '2026-04-14 09:00:00')\n" +

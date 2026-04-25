@@ -3,6 +3,11 @@
 -- 설계서 3.4절 M3.1 기본 제공 탐지 규칙 10개
 -- ============================================================
 
+-- ============================================================
+-- 1. 기존 데이터 정리
+-- ============================================================
+DELETE FROM COTDL.TBL_ACCESS_LOG_ALERT_RULE;
+
 INSERT INTO COTDL.TBL_ACCESS_LOG_ALERT_RULE (rule_id, rule_code, rule_name, description, severity, condition_type, threshold_value, time_window_min, time_range_start, time_range_end, target_action, target_pii_grade, is_active, sort_order) VALUES
 (UUID(), 'R01', '대량 조회', '1시간 내 동일 사용자가 N건 이상 조회', 'HIGH', 'VOLUME', 1000, 60, NULL, NULL, 'SELECT', NULL, 'Y', 1),
 (UUID(), 'R02', '대량 다운로드', '1일 내 다운로드 건수 N건 초과', 'HIGH', 'VOLUME', 100, 1440, NULL, NULL, 'DOWNLOAD', NULL, 'Y', 2),

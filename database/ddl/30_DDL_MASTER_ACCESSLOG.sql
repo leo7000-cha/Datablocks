@@ -1,19 +1,22 @@
 -- ============================================================
--- Privacy Monitor — 접속기록관리 DDL (통합본)
--- 대상 DB: MariaDB 10.11+
--- 스키마 : COTDL
--- 날짜   : 2026-04-06
--- ** 반복 실행 가능 (DROP IF EXISTS + CREATE IF NOT EXISTS + INSERT IGNORE) **
+-- Privacy Monitor — 접속기록관리 DDL (통합본, V2)
+-- 대상 DB  : MariaDB 10.11+
+-- 스키마   : COTDL
+-- 최종수정 : 2026-04-25
+-- 적용방법 : 본 MASTER 를 그대로 실행하면 모든 스키마가 최신 상태로 적용됨
+--            (DROP IF EXISTS + CREATE IF NOT EXISTS — 반복 실행 가능)
 --
--- [변경이력]
--- 2026-04-14  TBL_ACCESS_LOG_ALERT_SUPPRESSION, _AUDIT, BCI_TARGET, EXCLUDE_SQL 추가
--- 2026-04-11  TBL_ACCESS_LOG_ALERT 소명 워크플로우 컬럼 추가
---             - notification_sent_at, notification_token, token_expires_at, target_user_email
---             - justification, justified_at, justified_by
---             - approver_id, approval_comment, approved_at
---             - sla_deadline, escalation_level
---             - status 확장: NEW/NOTIFIED/JUSTIFIED/RESOLVED/RE_JUSTIFY/OVERDUE/ESCALATED/DISMISSED
---             - 적용 방법: patches/ALERT_JUSTIFY_PATCH_20260411.sql 실행 (기존 환경)
+-- 설계 원칙:
+--   · Master (TBL_ACCESS_LOG) : 고정 길이 컬럼 전용, 4 수집경로 통합
+--   · Sidecar (TBL_ACCESS_LOG_DETAIL) : TEXT/대형 필드 전용 (1:1)
+--   · 해시체인 (SHA-256, 단일 체인) : 안전성확보조치 제8조 3항
+--   · 월별 파티셔닝 (RANGE COLUMNS access_time)
+--   · 업계 Best Practice: IBM Guardium / Oracle AVDF / OCSF 스타일
+--
+-- 근거 법규:
+--   · 개인정보 안전성 확보조치 기준 제8조 (접속기록 1-2년, 위변조 방지)
+--   · 신용정보업감독규정 별표3 (개인신용정보 3년)
+--   · 전자금융감독규정 시행세칙 제13조제1항제9호 (SQL 원문 의무, 2025.2.3)
 -- ============================================================
 
 -- ============================================================
@@ -53,46 +56,68 @@ CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG_SOURCE (
 
 
 -- ============================================================
--- 2. TBL_ACCESS_LOG — 접속기록 메인 (파티셔닝 대응 PK)
+-- 2. TBL_ACCESS_LOG — 접속기록 메인 (Lean Master Fact Table)
+--
+-- 설계 원칙 (2026-04-24 재설계):
+--   · 고정 길이 컬럼만 보관 (VARCHAR ≤ 500, 숫자, DATETIME, CHAR)
+--   · TEXT/CLOB/BLOB 금지 — sidecar TBL_ACCESS_LOG_SQL_DETAIL 로 분리
+--   · 1 row ≈ 1 KB 이내 → InnoDB buffer pool 효율 + 파티션 pruning 성능
+--   · 모든 수집 경로 (DB_AUDIT/DB_DAC/WAS_AGENT/WAS_SDK) 공통 수용
+--     - DB 경로: user_account/target_*/action_type 중심 (WAS 컬럼 NULL)
+--     - WAS_SDK 경로: 추가로 req_id/service_name/menu_id/uri/http_* 채움
 -- ============================================================
 DROP TABLE IF EXISTS COTDL.TBL_ACCESS_LOG;
 CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG (
-    log_id            BIGINT        NOT NULL AUTO_INCREMENT COMMENT '로그 ID',
-    source_system_id  VARCHAR(36)   COMMENT '수집원 시스템 ID (FK)',
-    user_account      VARCHAR(100)  COMMENT '접속자 계정 (Who)',
-    user_name         VARCHAR(100)  COMMENT '접속자 이름',
-    department        VARCHAR(100)  COMMENT '소속 부서',
-    access_time       DATETIME(3)   NOT NULL COMMENT '접속일시 (When)',
-    client_ip         VARCHAR(45)   COMMENT '접속지 IP (Where, IPv6 대응)',
-    action_type       VARCHAR(20)   NOT NULL COMMENT '수행업무 (What): SELECT/UPDATE/DELETE/INSERT/DOWNLOAD/EXPORT',
-    target_db         VARCHAR(100)  COMMENT '대상 DB명',
-    target_schema     VARCHAR(100)  COMMENT '대상 스키마',
-    target_table      VARCHAR(200)  COMMENT '대상 테이블',
-    target_columns    TEXT          COMMENT '접근한 컬럼 목록',
-    pii_type_codes    VARCHAR(500)  COMMENT '관련 PII 유형 코드',
-    pii_grade         CHAR(1)       COMMENT '개인정보 등급 (1/2/3)',
-    affected_rows     INT           DEFAULT 0 COMMENT '영향받은 행 수',
-    search_condition  TEXT          COMMENT '검색 조건문 (Whom)',
-    sql_text          TEXT          COMMENT '실행 SQL (선택)',
-    collect_type      VARCHAR(20)   COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)',
-    access_channel    VARCHAR(20)   DEFAULT 'WEB' COMMENT '접근 경로 (WEB/WAS/DB_DIRECT/API/BATCH)',
-    session_id        VARCHAR(100)  COMMENT '세션 ID',
-    result_code       VARCHAR(10)   DEFAULT 'SUCCESS' COMMENT '수행 결과 (SUCCESS/FAIL/DENIED)',
-    hash_value        VARCHAR(64)   COMMENT 'SHA-256 해시 (위변조 방지)',
-    prev_hash         VARCHAR(64)   COMMENT '이전 레코드 해시 (해시 체인)',
-    collected_at      DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT 'DLM 수집 시간',
-    partition_key     VARCHAR(8)    COMMENT '파티셔닝 키 (YYYYMMDD)',
+    log_id             BIGINT        NOT NULL AUTO_INCREMENT COMMENT '로그 ID',
+    -- WHO
+    source_system_id   VARCHAR(36)   COMMENT '수집원 시스템 ID (FK)',
+    user_account       VARCHAR(100)  COMMENT '접속자 계정',
+    user_name          VARCHAR(100)  COMMENT '접속자 이름',
+    department         VARCHAR(100)  COMMENT '소속 부서',
+    -- WHEN
+    access_time        DATETIME(3)   NOT NULL COMMENT '접속일시 (파티셔닝 키)',
+    -- WHERE
+    client_ip          VARCHAR(45)   COMMENT '접속지 IP (IPv6)',
+    session_id         VARCHAR(100)  COMMENT '세션 ID',
+    -- WHAT
+    action_type        VARCHAR(20)   NOT NULL COMMENT 'SELECT/INSERT/UPDATE/DELETE/DOWNLOAD/EXPORT/HTTP_ACCESS',
+    target_db          VARCHAR(100)  COMMENT '대상 DB명',
+    target_schema      VARCHAR(100)  COMMENT '대상 스키마',
+    target_table       VARCHAR(200)  COMMENT '대상 테이블',
+    affected_rows      INT           DEFAULT 0 COMMENT '영향받은 행 수',
+    result_code        VARCHAR(10)   DEFAULT 'SUCCESS' COMMENT 'SUCCESS/FAIL/DENIED',
+    -- PII 플래그 (요약만 — 상세/검색조건은 sidecar)
+    pii_type_codes     VARCHAR(200)  COMMENT 'PII 유형 CSV (예: JUMIN,CARD)',
+    pii_grade          CHAR(1)       COMMENT '개인정보 등급 1/2/3',
+    pii_detected_flag  CHAR(1)       DEFAULT 'N' COMMENT 'Y/N — PII 포함 빠른 필터',
+    -- 수집 메타
+    collect_type       VARCHAR(20)   COMMENT 'DB_AUDIT / DB_DAC / WAS_AGENT / WAS_SDK',
+    access_channel     VARCHAR(20)   DEFAULT 'WEB' COMMENT 'WEB/WAS/DB_DIRECT/API/BATCH',
+    -- 무결성 + 시각
+    hash_value         VARCHAR(64)   COMMENT 'SHA-256 해시 (위변조 방지)',
+    prev_hash          VARCHAR(64)   COMMENT '이전 레코드 해시 (해시 체인)',
+    collected_at       DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT 'DLM 수집 시간',
+    partition_key      VARCHAR(8)    COMMENT 'YYYYMMDD',
+    -- WAS_SDK (X-Audit) HTTP 컨텍스트 — 다른 경로에서는 NULL
+    req_id             VARCHAR(36)   COMMENT 'WAS 요청 UUID (sidecar 조인키)',
+    service_name       VARCHAR(50)   COMMENT '처리계 시스템 ID',
+    menu_id            VARCHAR(100)  COMMENT '메뉴 ID / 업무코드',
+    uri                VARCHAR(500)  COMMENT 'HTTP 요청 URI (path only, 쿼리스트링은 sidecar.full_uri)',
+    http_method        VARCHAR(10)   COMMENT 'HTTP 메소드',
+    http_status        INT           COMMENT 'HTTP 응답 코드',
+    duration_ms        BIGINT        COMMENT '소요시간 ms (HTTP 전체 or SQL 개별)',
     PRIMARY KEY (log_id, access_time),
-    -- 개별 필터 단독 조회 대응: (필터컬럼, access_time) → 단독 사용 + 기간 복합 모두 커버
-    INDEX idx_al_access_time (access_time),
+    INDEX idx_al_access_time  (access_time),
     INDEX idx_al_user_account (user_account, access_time),
-    INDEX idx_al_action_type (action_type, access_time),
-    INDEX idx_al_pii_grade (pii_grade, access_time),
+    INDEX idx_al_action_type  (action_type, access_time),
+    INDEX idx_al_pii_flag     (pii_detected_flag, access_time),
+    INDEX idx_al_pii_grade    (pii_grade, access_time),
     INDEX idx_al_target_table (target_table, access_time),
     INDEX idx_al_collect_type (collect_type, access_time),
-    -- 해시 체인 검증
-    INDEX idx_al_hash (hash_value)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='접속기록 메인'
+    INDEX idx_al_req_id       (req_id),
+    INDEX idx_al_service      (service_name, access_time),
+    INDEX idx_al_hash         (hash_value)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='접속기록 Master (Lean — DB_AUDIT/DB_DAC/WAS_AGENT/WAS_SDK 통합)'
 PARTITION BY RANGE COLUMNS (access_time) (
     PARTITION p202601 VALUES LESS THAN ('2026-02-01'),
     PARTITION p202602 VALUES LESS THAN ('2026-03-01'),
@@ -404,10 +429,97 @@ CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG_EXCLUDE_SQL (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='수집 제외 SQL 패턴';
 
 -- ============================================================
+-- (히스토리 노트) 이전 버전(2026-04-20)에는 WAS SDK 수신을 위한
+-- TBL_XAUDIT_ACCESS_LOG / TBL_XAUDIT_SQL_LOG / V_XAUDIT_UNIFIED 가 별도로
+-- 존재했으나, Phase 1 통합 (2026-04-24) 으로 TBL_ACCESS_LOG
+-- (collect_type='WAS_SDK') + TBL_ACCESS_LOG_SQL_DETAIL 로 통합되었습니다.
+-- 업계 Best Practice(IBM Guardium / Oracle AVDF / OCSF) 에 따른 단일
+-- Master Fact Table + Sidecar 모델.
+--
+-- 기존 운영 환경에서 레거시 TBL_XAUDIT_* 를 제거하려면 patches/
+-- XAUDIT_UNIFICATION_PHASE1.sql 하단의 [OPTIONAL DROP] 섹션 실행.
+-- ============================================================
+
+-- ============================================================
+-- TBL_ACCESS_LOG_DETAIL — Sidecar (대형/가변 데이터 전용)
+--
+-- Master 에서 분리된 모든 대형/가변 필드 수용 (SQL 외 HTTP 컨텍스트 포함):
+--   · sql_text        MEDIUMTEXT    — 실행 SQL 풀 원문 (법규 13조9항 대응)
+--   · bind_params     TEXT          — 바인딩 파라미터 JSON
+--   · search_condition VARCHAR(4000)— 검색 조건문 (Oracle/DAC 감사의 Whom)
+--   · target_columns  VARCHAR(4000) — 접근 컬럼 목록
+--   · full_uri        VARCHAR(2000) — 전체 URI + 쿼리스트링
+--   · user_agent      VARCHAR(500)  — WAS 접속 브라우저
+--   · error_message   VARCHAR(500)  — 실패 예외 요약
+--
+-- 수집 경로별 사용 양상:
+--   · DB_AUDIT/DB_DAC : sql_text + search_condition
+--   · WAS_AGENT       : sql_text + target_columns
+--   · WAS_SDK         : sql_text(풀) + bind_params + full_uri + user_agent
+--
+-- 1:1 매칭 — Master row 당 최대 1건 (필요한 경우만 INSERT).
+-- FK: (log_id, access_time) → TBL_ACCESS_LOG (파티션 정합 + 앱 레이어 관리)
+-- ============================================================
+DROP TABLE IF EXISTS COTDL.TBL_ACCESS_LOG_DETAIL;
+CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG_DETAIL (
+    log_id           BIGINT         NOT NULL                            COMMENT 'TBL_ACCESS_LOG.log_id',
+    access_time      DATETIME(3)    NOT NULL                            COMMENT '파티션 정합 (FK)',
+    req_id           VARCHAR(36)    NULL                                COMMENT 'WAS 요청 UUID',
+    sql_id           VARCHAR(255)   NULL                                COMMENT 'MappedStatement ID 또는 JDBC',
+    sql_text         MEDIUMTEXT     NULL                                COMMENT '실행 SQL 원문 (풀버전)',
+    bind_params      TEXT           NULL                                COMMENT '바인딩 파라미터 JSON',
+    search_condition VARCHAR(4000)  NULL                                COMMENT '검색 조건문 (4000자 cap)',
+    target_columns   VARCHAR(4000)  NULL                                COMMENT '접근 컬럼 목록 (4000자 cap)',
+    full_uri         VARCHAR(2000)  NULL                                COMMENT '전체 URI (쿼리스트링 포함)',
+    user_agent       VARCHAR(500)   NULL                                COMMENT 'WAS User-Agent',
+    error_message    VARCHAR(500)   NULL                                COMMENT '실패 예외 요약',
+    collected_at     DATETIME(3)    NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT 'DLM 수신 시각',
+    PRIMARY KEY (log_id, access_time),
+    INDEX idx_ald_req  (req_id),
+    INDEX idx_ald_time (access_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='접속기록 상세 sidecar (TEXT/대형 필드 전용)'
+PARTITION BY RANGE COLUMNS (access_time) (
+    PARTITION p202601 VALUES LESS THAN ('2026-02-01'),
+    PARTITION p202602 VALUES LESS THAN ('2026-03-01'),
+    PARTITION p202603 VALUES LESS THAN ('2026-04-01'),
+    PARTITION p202604 VALUES LESS THAN ('2026-05-01'),
+    PARTITION p202605 VALUES LESS THAN ('2026-06-01'),
+    PARTITION p202606 VALUES LESS THAN ('2026-07-01'),
+    PARTITION p202607 VALUES LESS THAN ('2026-08-01'),
+    PARTITION p202608 VALUES LESS THAN ('2026-09-01'),
+    PARTITION p202609 VALUES LESS THAN ('2026-10-01'),
+    PARTITION p_future VALUES LESS THAN (MAXVALUE)
+);
+
+-- ============================================================
+-- V_ACCESS_LOG_UNIFIED — Master + Sidecar JOIN 통합 뷰
+--  모든 collect_type (DB_AUDIT/DB_DAC/WAS_AGENT/WAS_SDK) 일관 조회용
+-- ============================================================
+DROP VIEW IF EXISTS COTDL.V_ACCESS_LOG_UNIFIED;
+CREATE VIEW COTDL.V_ACCESS_LOG_UNIFIED AS
+SELECT
+    a.log_id, a.source_system_id, a.user_account, a.user_name, a.department,
+    a.access_time, a.client_ip, a.session_id,
+    a.action_type, a.target_db, a.target_schema, a.target_table,
+    a.affected_rows, a.result_code,
+    a.pii_type_codes, a.pii_grade, a.pii_detected_flag,
+    a.collect_type, a.access_channel,
+    a.hash_value, a.prev_hash, a.collected_at, a.partition_key,
+    a.req_id, a.service_name, a.menu_id, a.uri, a.http_method,
+    a.http_status, a.duration_ms,
+    d.sql_id, d.sql_text, d.bind_params, d.search_condition,
+    d.target_columns, d.full_uri, d.user_agent, d.error_message
+FROM COTDL.TBL_ACCESS_LOG a
+LEFT JOIN COTDL.TBL_ACCESS_LOG_DETAIL d
+       ON a.log_id = d.log_id AND a.access_time = d.access_time;
+
+
+-- ============================================================
 -- Verification
 -- ============================================================
 SELECT 'AccessLog DDL Deploy Complete!' AS MESSAGE;
 SELECT TABLE_NAME, TABLE_ROWS
 FROM INFORMATION_SCHEMA.TABLES
-WHERE TABLE_SCHEMA = 'COTDL' AND TABLE_NAME LIKE 'TBL_ACCESS_LOG%'
+WHERE TABLE_SCHEMA = 'COTDL'
+  AND TABLE_NAME LIKE 'TBL_ACCESS_LOG%'
 ORDER BY TABLE_NAME;

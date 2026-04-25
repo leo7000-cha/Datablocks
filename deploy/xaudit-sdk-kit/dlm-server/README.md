@@ -1,45 +1,66 @@
 # X-Audit — DLM 서버 운영자 가이드
 
-**고객사에 전달하지 마세요.** 이 디렉토리는 DLM 서버(COTDL 스키마가 있는 MariaDB) 에서만 수행하는 작업을 담고 있습니다.
+**고객사에 전달하지 마세요.** 이 디렉토리는 DLM 서버 운영자가 사용하는 DDL 원본을 담고 있습니다.
 
 ---
 
-## 이 디렉토리의 용도
+## 이 디렉토리의 용도 — DDL 2종
 
-| 경로 | 용도 |
-|------|------|
-| `database/XAUDIT_SCHEMA_20260420.sql` | DLM MariaDB 의 **COTDL** 스키마에 1회 실행 — 수신용 테이블·뷰·인덱스 생성 |
+| 파일 | DBMS | 사용 시점 |
+|------|------|-----------|
+| `database/XAUDIT_SCHEMA_MARIADB.sql` | **MariaDB / MySQL** | `XAUDIT_STORAGE_MODE=EXTERNAL` 일 때 고객사 **별도 MariaDB** 에 실행 |
+| `database/XAUDIT_SCHEMA_ORACLE.sql` | **Oracle / Tibero** | `XAUDIT_STORAGE_MODE=EXTERNAL` 일 때 고객사 **별도 Oracle/Tibero** 에 실행 |
+
+> ⚠️ **DLM 내부 MariaDB(COTDL 스키마) 에는 실행할 필요 없음.**
+> `XAUDIT_STORAGE_MODE=COTDL` (default) 저장 경로는 `database/ddl/DLM_DDL_MASTER_ACCESSLOG.sql`
+> 에 이미 통합되어 있어 DLM 신규 설치 시 자동 생성됨.
 
 ---
 
-## 배포 절차 (1회)
+## 배포 절차 (EXTERNAL 모드 전환 시 1회)
 
-### Step 1. DDL 실행
+### Step 1. 고객사 별도 DB 에 DDL 실행
+
+**MariaDB 고객사:**
 ```bash
-# DLM 운영 서버에서
-mariadb -u root -p COTDL < database/XAUDIT_SCHEMA_20260420.sql
+mariadb -h <host> -u <xaudit_user> -p <xaudit_db> < database/XAUDIT_SCHEMA_MARIADB.sql
 ```
 
-또는 Docker Compose 환경:
+**Oracle / Tibero 고객사:**
 ```bash
-docker cp database/XAUDIT_SCHEMA_20260420.sql dlm-mariadb:/tmp/
-docker exec -it dlm-mariadb mariadb -u root -p COTDL \
-  -e "source /tmp/XAUDIT_SCHEMA_20260420.sql"
+sqlplus <xaudit_user>/<pwd>@<host>:<port>/<service> @database/XAUDIT_SCHEMA_ORACLE.sql
 ```
 
 ### Step 2. 생성 확인
+
+**MariaDB:**
 ```sql
 SHOW TABLES LIKE 'TBL_XAUDIT%';
 -- → TBL_XAUDIT_ACCESS_LOG, TBL_XAUDIT_SQL_LOG
-SHOW FULL TABLES WHERE Table_type='VIEW' AND Tables_in_COTDL='V_XAUDIT_UNIFIED';
--- → V_XAUDIT_UNIFIED
 ```
 
-### Step 3. DLM 애플리케이션은 이미 수신 엔드포인트 탑재
+**Oracle / Tibero:**
+```sql
+SELECT table_name FROM user_tables WHERE table_name LIKE 'TBL_XAUDIT%';
+-- → TBL_XAUDIT_ACCESS_LOG, TBL_XAUDIT_SQL_LOG
+```
+
+### Step 3. DLM 설정 전환
+
+`.env` (또는 고객사 배포 `.env.*`) 수정:
+```bash
+XAUDIT_STORAGE_MODE=EXTERNAL
+# XAUDIT_STORAGE_DB_KEY 는 default=XAUDIT_DB 이므로 생략 가능
+# Oracle/Tibero 에서 dbuser=스키마 사용 시 XAUDIT_STORAGE_SCHEMA 는 빈값 유지
+```
+
+TBL_PIIDATABASE 에 `db='XAUDIT_DB'` 엔트리 등록(UI 권장 — pwd 자동 AES256 암호화).
+`docker compose up -d dlm` 재기동 → 로그에 `[X-Audit] external DataSource initialized` 확인.
+
+### Step 4. DLM 애플리케이션은 이미 수신 엔드포인트 탑재
 - `POST /api/xaudit/events` — 고객사 처리계의 SDK가 호출
 - `/xaudit/dashboard` / `/xaudit/access` / `/xaudit/sql` / `/xaudit/detail/{reqId}` — DLM 운영자 조회 UI
-
-추가 작업 불필요. DLM 재기동도 불필요.
+  (Phase 1 — EXTERNAL 모드에서 조회 UI 는 Phase 2 에서 지원 예정)
 
 ---
 

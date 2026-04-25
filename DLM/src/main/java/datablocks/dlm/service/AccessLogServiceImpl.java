@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import datablocks.dlm.domain.*;
+import datablocks.dlm.jdbc.XauditAccessLogReader;
+import datablocks.dlm.jdbc.XauditJdbcWriter;
 import datablocks.dlm.mapper.AccessLogMapper;
 import datablocks.dlm.util.LogUtil;
 
@@ -32,7 +34,13 @@ public class AccessLogServiceImpl implements AccessLogService {
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
-    private AccessLogMapper mapper;
+    private AccessLogMapper mapper;      // 부속 테이블 전용 (ALERT/SOURCE/CONFIG/...)
+
+    @Autowired
+    private XauditJdbcWriter xauditWriter;   // Raw 접속기록 쓰기 (XAUDIT_DB)
+
+    @Autowired
+    private XauditAccessLogReader xauditReader;  // Raw 접속기록 조회 (XAUDIT_DB)
 
     @Autowired
     private AccessLogEmailService emailService;
@@ -50,6 +58,8 @@ public class AccessLogServiceImpl implements AccessLogService {
         Map<String, Object> chartData = new HashMap<>();
         chartData.put("hourlyTrend", mapper.selectHourlyAccessTrend(date));
         chartData.put("actionTypeDistribution", mapper.selectActionTypeDistribution(date));
+        chartData.put("collectTypeDistribution", mapper.selectCollectTypeDistribution(date));
+        chartData.put("topServices", mapper.selectTopServices(date, 5));
         return chartData;
     }
 
@@ -60,58 +70,59 @@ public class AccessLogServiceImpl implements AccessLogService {
     }
 
     // ========== Access Log ==========
+    // Raw 접속기록 (TBL_ACCESS_LOG + TBL_ACCESS_LOG_DETAIL) 은 XauditJdbcWriter/Reader 경유.
+    // XAUDIT_DB 로 논리 엔드포인트 고정 — 기본은 DLM 내부 DB, 필요 시 고객사 별도 DB 로 전환 가능.
+    // 해시체인 (SHA256) 은 Writer 내부에서 단일 체인으로 자동 생성.
+
+    /** 단일 접속기록 저장. AOP/Collector/SDK 모든 경로에서 공통 사용. */
     @Override
-    @Transactional
     public void registerAccessLog(AccessLogVO log) {
         LogUtil.log("INFO", "AccessLog registerAccessLog: " + log.getUserAccount() + " -> " + log.getActionType());
-        // 해시 체인 생성
-        String prevHash = mapper.selectLastHash();
-        log.setPrevHash(prevHash != null ? prevHash : "GENESIS");
-        log.setHashValue(computeHash(log));
-        mapper.insertAccessLog(log);
+        try {
+            xauditWriter.insertOne(log);
+        } catch (java.sql.SQLException e) {
+            throw new RuntimeException("AccessLog insert failed: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registerAccessLogFromAop(AccessLogVO log) {
-        // 비즈니스 트랜잭션이 롤백되더라도 감사 로그는 보존 (REQUIRES_NEW)
+        // Writer 가 수동 TX 로 commit 하므로 비즈니스 TX 롤백에도 감사 로그 보존
         registerAccessLog(log);
     }
 
+    /** 배치 수집. Writer 내부에서 개별 loop + 해시체인 연결 + Sidecar 원자적 처리. */
     @Override
-    @Transactional
     public void registerAccessLogBatch(List<AccessLogVO> logs) {
         LogUtil.log("INFO", "AccessLog registerAccessLogBatch: " + logs.size() + " records");
         if (logs.isEmpty()) return;
-
-        // 해시 체인 생성
-        String prevHash = mapper.selectLastHash();
-        if (prevHash == null) prevHash = "GENESIS";
-
-        for (AccessLogVO log : logs) {
-            log.setPrevHash(prevHash);
-            String hash = computeHash(log);
-            log.setHashValue(hash);
-            prevHash = hash;
+        try {
+            xauditWriter.insertUnified(logs);
+        } catch (java.sql.SQLException e) {
+            throw new RuntimeException("AccessLog batch insert failed: " + e.getMessage(), e);
         }
-        mapper.insertAccessLogBatch(logs);
     }
 
     @Override
     public AccessLogVO getAccessLog(Long logId) {
         LogUtil.log("INFO", "AccessLog getAccessLog: " + logId);
-        return mapper.selectAccessLog(logId);
+        return xauditReader.selectById(logId);
     }
 
     @Override
     public List<AccessLogVO> getAccessLogList(Criteria cri) {
         LogUtil.log("INFO", "AccessLog getAccessLogList");
-        return mapper.selectAccessLogList(cri);
+        return xauditReader.selectList(cri);
     }
 
     @Override
     public int getAccessLogTotal(Criteria cri) {
-        return mapper.selectAccessLogTotal(cri);
+        return xauditReader.selectTotal(cri);
+    }
+
+    @Override
+    public List<AccessLogVO> getAccessLogByReqId(String reqId) {
+        return xauditReader.selectByReqId(reqId);
     }
 
     // ========== Source ==========
@@ -397,7 +408,7 @@ public class AccessLogServiceImpl implements AccessLogService {
         cri.setSearch7(date + " 00:00:00");
         cri.setSearch8(date + " 23:59:59");
 
-        List<AccessLogVO> logs = mapper.selectAccessLogList(cri);
+        List<AccessLogVO> logs = xauditReader.selectList(cri);
         long total = logs.size();
         long valid = 0;
         long invalid = 0;

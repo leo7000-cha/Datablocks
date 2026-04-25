@@ -564,8 +564,8 @@
                                 <div class="settings-flag-key">${piiconfig.cfgkey}</div>
                                 <div class="settings-flag-desc">${piiconfig.comments}</div>
                             </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" ${piiconfig.value eq 'Y' ? 'checked' : ''} disabled>
+                            <label class="settings-toggle flag-toggle-direct" onclick="event.stopPropagation();">
+                                <input type="checkbox" class="flag-toggle-input" ${piiconfig.value eq 'Y' ? 'checked' : ''}>
                                 <span class="settings-toggle-slider"></span>
                             </label>
                         </div>
@@ -589,8 +589,8 @@
                                 <div class="settings-flag-key">${piiconfig.cfgkey}</div>
                                 <div class="settings-flag-desc">${piiconfig.comments}</div>
                             </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" ${piiconfig.value eq 'Y' ? 'checked' : ''} disabled>
+                            <label class="settings-toggle flag-toggle-direct" onclick="event.stopPropagation();">
+                                <input type="checkbox" class="flag-toggle-input" ${piiconfig.value eq 'Y' ? 'checked' : ''}>
                                 <span class="settings-toggle-slider"></span>
                             </label>
                         </div>
@@ -947,10 +947,41 @@
             openModifyModal($(this));
         });
 
-        // Click on FLAG item
-        $('.settings-flag').on('click', function () {
-            if (!is_admin) return;
-            openModifyModal($(this));
+        // FLAG 토글 직접 변경 (모달 X)
+        $('.flag-toggle-input').on('change', function (e) {
+            e.stopPropagation();
+            if (!is_admin) {
+                $(this).prop('checked', !$(this).is(':checked'));
+                return;
+            }
+            var $input = $(this);
+            var $row = $input.closest('.settings-flag');
+            var cfgkey = $row.data('cfgkey');
+            var comments = $row.data('comments') || '';
+            var newValue = $input.is(':checked') ? 'Y' : 'N';
+
+            $.ajax({
+                type: "POST",
+                url: "/piiconfig/modify",
+                data: {
+                    cfgkey: cfgkey,
+                    value: newValue,
+                    comments: comments,
+                    '${_csrf.parameterName}': '${_csrf.token}'
+                },
+                dataType: "html",
+                success: function () {
+                    $row.attr('data-value', newValue);
+                    $row.data('value', newValue);
+                    showToast(cfgkey + ' = ' + newValue, false);
+                },
+                error: function (request) {
+                    // 실패 시 원래 상태로 복원
+                    $input.prop('checked', !$input.is(':checked'));
+                    $("#errormodalbody").html(request.responseText);
+                    $("#errormodal").modal("show");
+                }
+            });
         });
 
         // Click on Other Settings item

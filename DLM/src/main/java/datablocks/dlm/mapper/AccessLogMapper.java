@@ -20,18 +20,17 @@ public interface AccessLogMapper {
 
     List<Map<String, Object>> selectActionTypeDistribution(@Param("date") String date);
 
-    // ========== Access Log (접속기록) ==========
-    void insertAccessLog(AccessLogVO log);
+    /** 오늘 수집 경로(collect_type) 별 행 수. */
+    List<Map<String, Object>> selectCollectTypeDistribution(@Param("date") String date);
 
-    void insertAccessLogBatch(@Param("list") List<AccessLogVO> list);
+    /** 오늘 WAS_SDK 처리계별 요청 수 상위 N. */
+    List<Map<String, Object>> selectTopServices(@Param("date") String date, @Param("limit") int limit);
 
-    AccessLogVO selectAccessLog(@Param("logId") Long logId);
-
-    List<AccessLogVO> selectAccessLogList(Criteria cri);
-
-    int selectAccessLogTotal(Criteria cri);
-
-    String selectLastHash();
+    // ========== Access Log (접속기록) — XAUDIT_DB 라우팅 ==========
+    // TBL_ACCESS_LOG / TBL_ACCESS_LOG_DETAIL 직접 INSERT/SELECT 는
+    // XauditJdbcWriter / XauditAccessLogReader 로 이관됨. 이 매퍼에는
+    // 부속 테이블 (ALERT/RULE/SOURCE/CONFIG/HASH_VERIFY/ARCHIVE_HISTORY 등)
+    // 쿼리만 유지한다.
 
     // ========== Access Log Source (수집 대상) ==========
     void insertSource(AccessLogSourceVO source);

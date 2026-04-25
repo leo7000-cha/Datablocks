@@ -3,6 +3,9 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <%@ taglib uri="http://www.springframework.org/tags" prefix="spring" %>
+<%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
+
+<sec:authentication property="principal.member.userid" var="currentUserId"/>
 
 <!-- Policy Management CSS (shared styles) -->
 <link rel="stylesheet" href="/resources/css/piipolicy-refactor.css">
@@ -132,7 +135,11 @@
                 </colgroup>
                 <thead>
                 <tr>
-                    <th>&nbsp;</th>
+                    <th class="text-center">
+                        <c:if test="${currentUserId eq 'admin'}">
+                            <input type="checkbox" id="checkall" style="width:15px;height:15px;">
+                        </c:if>
+                    </th>
                     <th style="white-space: nowrap;"><spring:message code="col.orderid" text="ORDERID"/></th>
                     <th style="white-space: nowrap;"><spring:message code="col.status" text="상태"/></th>
                     <th style="white-space: nowrap;"><spring:message code="col.confirm" text="컨펌"/></th>

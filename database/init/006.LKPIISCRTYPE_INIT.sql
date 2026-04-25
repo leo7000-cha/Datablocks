@@ -21,22 +21,22 @@
 -- ============================================================
 -- 사이트별 배포 시 아래 변수를 해당 사이트 값으로 치환(Replace All)하세요.
 --
---   #{DLM_SCHEMA}  -> DLM 스키마명  (기본값: COTDL)
+--   COTDL  -> DLM 스키마명  (기본값: COTDL)
 -- ============================================================
 
 
 -- 기존 데이터 삭제 (초기화 용도)
--- DELETE FROM #{DLM_SCHEMA}.TBL_LKPIISCRTYPE;
+DELETE FROM COTDL.TBL_LKPIISCRTYPE;
 
 
 -- ────────────────────────────────────────────────────────────
 -- 1급 - 그룹1: 생명·신체에 중대한 위해를 초래할 우려가 있는 정보
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('1_1_driverLicense',1,'1급',1,'생명·신체에 중대한 위해를 초래할 우려가 있는 정보','driverLicense','운전면허번호','SCRAMBLE_NORMAL_AFTER3','SCRAMBLE','NORMAL','AFTER3','','',NULL,NULL,NULL),
 	 ('1_1_governmentID',1,'1급',1,'생명·신체에 중대한 위해를 초래할 우려가 있는 정보','governmentID','공무원증번호','SCRAMBLE_NORMAL_AFTER3','SCRAMBLE','NORMAL','AFTER3','','',NULL,NULL,NULL),
 	 ('1_1_passport',1,'1급',1,'생명·신체에 중대한 위해를 초래할 우려가 있는 정보','passport','여권번호','SCRAMBLE_NORMAL_AFTER2','SCRAMBLE','NORMAL','AFTER2','','',NULL,NULL,NULL),
-	 ('1_1_rrn',1,'1급',1,'생명·신체에 중대한 위해를 초래할 우려가 있는 정보','rrn','주민/외국인등록번호','SCRAMBLE_RRN_AFTER7','SCRAMBLE','RRN','AFTER7','RRN','ALL, AFTER7 선택 가능','DB','#{DLM_SCHEMA}.encrypt(#COLNAME)','#{DLM_SCHEMA}.decrypt(#COLNAME)'),
+	 ('1_1_rrn',1,'1급',1,'생명·신체에 중대한 위해를 초래할 우려가 있는 정보','rrn','주민/외국인등록번호','SCRAMBLE_RRN_AFTER7','SCRAMBLE','RRN','AFTER7','RRN','ALL, AFTER7 선택 가능','DB','COTDL.encrypt(#COLNAME)','COTDL.decrypt(#COLNAME)'),
 -- ────────────────────────────────────────────────────────────
 -- 1급 - 그룹2: 민감정보
 -- ────────────────────────────────────────────────────────────
@@ -46,17 +46,17 @@ INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIG
 	 ('1_2_health',1,'1급',2,'민감정보','health','건강','FIXED_*','FIXED','*','','','',NULL,NULL,NULL),
 	 ('1_2_politicalViews',1,'1급',2,'민감정보','politicalViews','정치적 견해','FIXED_*','FIXED','*','','','',NULL,NULL,NULL),
 	 ('1_2_sexualOrientation',1,'1급',2,'민감정보','sexualOrientation','성적취향','FIXED_*','FIXED','*','','','',NULL,NULL,NULL);
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('1_2_unionParty',1,'1급',2,'민감정보','unionParty','노동조합ㆍ정당의 가입ㆍ탈퇴','FIXED_*','FIXED','*','','','',NULL,NULL,NULL),
 -- ────────────────────────────────────────────────────────────
 -- 1급 - 그룹3: 인증정보
 -- ────────────────────────────────────────────────────────────
 	 ('1_3_biometrics',1,'1급',3,'인증정보','biometrics','바이오정보(홍체,  지문 등)','FIXED_*','FIXED','*','','','',NULL,NULL,NULL),
-	 ('1_3_pwd',1,'1급',3,'인증정보','pwd','비밀번호','FIXED_1111','FIXED','1111','','','','DB','#{DLM_SCHEMA}.encrypt(#COLNAME)','#{DLM_SCHEMA}.decrypt(#COLNAME)'),
+	 ('1_3_pwd',1,'1급',3,'인증정보','pwd','비밀번호','FIXED_1111','FIXED','1111','','','','DB','COTDL.encrypt(#COLNAME)','COTDL.decrypt(#COLNAME)'),
 -- ────────────────────────────────────────────────────────────
 -- 1급 - 그룹4: 신용정보/금융정보
 -- ────────────────────────────────────────────────────────────
-	 ('1_4_account',1,'1급',4,'신용정보/금융정보','account','계좌번호','SCRAMBLE_NORMAL_LAST8','SCRAMBLE','NORMAL','LAST8','','','DB','#{DLM_SCHEMA}.encrypt(#COLNAME)','#{DLM_SCHEMA}.decrypt(#COLNAME)'),
+	 ('1_4_account',1,'1급',4,'신용정보/금융정보','account','계좌번호','SCRAMBLE_NORMAL_LAST8','SCRAMBLE','NORMAL','LAST8','','','DB','COTDL.encrypt(#COLNAME)','COTDL.decrypt(#COLNAME)'),
 	 ('1_4_cardExpiration',1,'1급',4,'신용정보/금융정보','cardExpiration','카드유효년월','FIXED_11/11','FIXED','11/11','','','',NULL,NULL,NULL),
 	 ('1_4_cardReplacement',1,'1급',4,'신용정보/금융정보','cardReplacement','카드대체번호','SCRAMBLE_NORMAL_LAST8','SCRAMBLE','NORMAL','LAST8','','',NULL,NULL,NULL),
 	 ('1_4_creditCard',1,'1급',4,'신용정보/금융정보','creditCard','신용카드번호','SCRAMBLE_NORMAL_LAST8','SCRAMBLE','NORMAL','LAST8','','',NULL,NULL,NULL),
@@ -69,7 +69,7 @@ INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIG
 -- ────────────────────────────────────────────────────────────
 -- 1급 - 그룹6: 위치정보
 -- ────────────────────────────────────────────────────────────
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('1_6_location',1,'1급',6,'위치정보','location','개인 위치 정보','FIXED_*','FIXED','*','','','',NULL,NULL,NULL),
 -- ────────────────────────────────────────────────────────────
 -- 2급 - 그룹1: 개인식별정보
@@ -84,9 +84,9 @@ INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIG
 -- ────────────────────────────────────────────────────────────
 	 ('2_2_address1',2,'2급',2,'연락정보','address1','주소 상(행정구역)','PASS_','PASS','','','','',NULL,NULL,NULL),
 	 ('2_2_address2',2,'2급',2,'연락정보','address2','주소 하(상세영역)','SCRAMBLE_NORMAL_ALL','SCRAMBLE','NORMAL','ALL','','',NULL,NULL,NULL),
-	 ('2_2_email',2,'2급',2,'연락정보','email','이메일','SCRAMBLE_EMAIL_ALL','SCRAMBLE','EMAIL','ALL','','@ 이전까지 변환','DB','#{DLM_SCHEMA}.encrypt(#COLNAME)','#{DLM_SCHEMA}.decrypt(#COLNAME)'),
+	 ('2_2_email',2,'2급',2,'연락정보','email','이메일','SCRAMBLE_EMAIL_ALL','SCRAMBLE','EMAIL','ALL','','@ 이전까지 변환','DB','COTDL.encrypt(#COLNAME)','COTDL.decrypt(#COLNAME)'),
 	 ('2_2_telno',2,'2급',2,'연락정보','telno','전화번호','SCRAMBLE_NORMAL_LAST7','SCRAMBLE','NORMAL','LAST7','','',NULL,NULL,NULL);
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('2_2_zipcode',2,'2급',2,'연락정보','zipcode','우편번호','PASS_','PASS','','','','',NULL,NULL,NULL),
 -- ────────────────────────────────────────────────────────────
 -- 2급 - 그룹3: 개인관련정보
@@ -103,7 +103,7 @@ INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIG
 -- 3급 - 그룹1: 자동 생성 정보
 -- ────────────────────────────────────────────────────────────
 	 ('3_1_cookies',3,'3급',1,'자동 생성 정보','cookies','쿠키','FIXED_*','FIXED','*','','','',NULL,NULL,NULL);
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('3_1_imei',3,'3급',1,'자동 생성 정보','imei','IMEI','SCRAMBLE_NORMAL_ALL','SCRAMBLE','NORMAL','ALL','','',NULL,NULL,NULL),
 	 ('3_1_ipAddress',3,'3급',1,'자동 생성 정보','ipAddress','IP 주소','SCRAMBLE_NORMAL_ALL','SCRAMBLE','NORMAL','ALL','','',NULL,NULL,NULL),
 	 ('3_1_macAddress',3,'3급',1,'자동 생성 정보','macAddress','MAC 주소','SCRAMBLE_NORMAL_ALL','SCRAMBLE','NORMAL','ALL','','',NULL,NULL,NULL),
@@ -118,9 +118,9 @@ INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIG
 -- ────────────────────────────────────────────────────────────
 -- 3급 - 그룹3: 제한적 본인 식별정보
 -- ────────────────────────────────────────────────────────────
-	 ('3_3_corpno',3,'3급',3,'제한적 본인 식별정보','corpno','법인번호','SCRAMBLE_CORPNO_ALL','SCRAMBLE','CORPNO','ALL','','','DB','#{DLM_SCHEMA}.encrypt(#COLNAME)','#{DLM_SCHEMA}.decrypt(#COLNAME)'),
+	 ('3_3_corpno',3,'3급',3,'제한적 본인 식별정보','corpno','법인번호','SCRAMBLE_CORPNO_ALL','SCRAMBLE','CORPNO','ALL','','','DB','COTDL.encrypt(#COLNAME)','COTDL.decrypt(#COLNAME)'),
 	 ('3_3_employeeID',3,'3급',3,'제한적 본인 식별정보','employeeID','사번','SCRAMBLE_NORMAL_AFTER2','SCRAMBLE','NORMAL','AFTER2','','',NULL,NULL,NULL);
-INSERT INTO #{DLM_SCHEMA}.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
+INSERT INTO COTDL.TBL_LKPIISCRTYPE (PIICODE,PIIGRADEID,PIIGRADENAME,PIIGROUPID,PIIGROUPNAME,PIITYPEID,PIITYPENAME,SCRTYPE,SCRMETHOD,SCRCATEGORY,SCRDIGITS,SCRVALIDITY,REMARKS,ENCDECFUNCTYPE,ENCFUNC,DECFUNC) VALUES
 	 ('3_3_internalID',3,'3급',3,'제한적 본인 식별정보','internalID','내부용 개인식별정보','SCRAMBLE_NORMAL_AFTER2','SCRAMBLE','NORMAL','AFTER2','','',NULL,NULL,NULL),
 	 ('3_3_memberID',3,'3급',3,'제한적 본인 식별정보','memberID','회원번호','SCRAMBLE_NORMAL_AFTER2','SCRAMBLE','NORMAL','AFTER2','','',NULL,NULL,NULL);
 

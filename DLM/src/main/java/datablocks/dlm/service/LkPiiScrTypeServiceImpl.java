@@ -2,6 +2,7 @@ package datablocks.dlm.service;
 
 import datablocks.dlm.domain.Criteria;
 import datablocks.dlm.domain.LkPiiScrTypeVO;
+import datablocks.dlm.mapper.DiscoveryMapper;
 import datablocks.dlm.mapper.LkPiiScrTypeMapper;
 import datablocks.dlm.util.LogUtil;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,9 @@ public class LkPiiScrTypeServiceImpl implements LkPiiScrTypeService {
 	private static final Logger logger = LoggerFactory.getLogger(LkPiiScrTypeServiceImpl.class);
 	@Autowired
 	private LkPiiScrTypeMapper mapper;
+
+	@Autowired
+	private DiscoveryMapper discoveryMapper;
 
 	@Override
 	public List<LkPiiScrTypeVO> getList() {
@@ -90,6 +94,13 @@ public class LkPiiScrTypeServiceImpl implements LkPiiScrTypeService {
 	public void updateVisible(String piicode, String visible) {
 		LogUtil.log("INFO", "updateVisible: " + piicode + " -> " + visible);
 		mapper.updateVisible(piicode, visible);
+
+		String discoveryStatus = "Y".equals(visible) ? "ACTIVE" : "INACTIVE";
+		int affected = discoveryMapper.updatePiiTypeStatus(piicode, discoveryStatus);
+		if (affected == 0) {
+			LogUtil.log("WARN", "DISCOVERY_PII_TYPE row missing for piicode=" + piicode
+					+ " — visible toggle applied to LKPIISCRTYPE only");
+		}
 	}
 
 }

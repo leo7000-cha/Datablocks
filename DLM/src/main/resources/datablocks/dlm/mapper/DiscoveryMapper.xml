@@ -642,6 +642,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE pii_type_code = #{piiTypeCode}
     </select>
 
+    <update id="updatePiiTypeStatus">
+        UPDATE COTDL.TBL_DISCOVERY_PII_TYPE
+           SET status = #{status},
+               upd_date = NOW()
+         WHERE pii_type_code = #{piiTypeCode}
+    </update>
+
     <!-- ========== Config (설정 관리) ========== -->
     <insert id="insertConfig">
         INSERT INTO COTDL.TBL_DISCOVERY_CONFIG (

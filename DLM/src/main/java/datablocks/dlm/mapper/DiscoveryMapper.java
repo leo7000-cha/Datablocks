@@ -134,6 +134,9 @@ public interface DiscoveryMapper {
 
     DiscoveryPiiTypeVO selectPiiType(@Param("piiTypeCode") String piiTypeCode);
 
+    int updatePiiTypeStatus(@Param("piiTypeCode") String piiTypeCode,
+                            @Param("status") String status);
+
     // ========== Config (설정 관리) ==========
     void insertConfig(DiscoveryConfigVO config);
 

@@ -21,12 +21,12 @@ UPDATE COTDL.TBL_ACCESS_LOG_SOURCE SET source_type = 'WAS_AGENT' WHERE source_ty
 
 ALTER TABLE COTDL.TBL_ACCESS_LOG_SOURCE
   MODIFY COLUMN source_type VARCHAR(20) DEFAULT 'DB_AUDIT'
-  COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)';
+  COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: DB 접근제어, WAS_AGENT: Java Agent (BCI))';
 
 -- 3. ACCESS_LOG 테이블: collect_type 컬럼 추가
 ALTER TABLE COTDL.TBL_ACCESS_LOG
   ADD COLUMN IF NOT EXISTS collect_type VARCHAR(20)
-  COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)' AFTER sql_text;
+  COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: DB 접근제어, WAS_AGENT: Java Agent (BCI))' AFTER sql_text;
 
 -- 4. 기존 collect_type 데이터 마이그레이션
 UPDATE COTDL.TBL_ACCESS_LOG SET collect_type = 'DB_DAC' WHERE collect_type = 'DAC';

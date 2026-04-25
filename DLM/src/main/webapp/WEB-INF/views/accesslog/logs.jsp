@@ -14,10 +14,10 @@
             <i class="fas fa-shield-alt"></i> DB 접근제어
         </button>
         <button type="button" class="qf-chip" data-collect="WAS_AGENT">
-            <i class="fas fa-server"></i> WAS Agent
+            <i class="fas fa-server"></i> Java Agent (BCI)
         </button>
         <button type="button" class="qf-chip" data-collect="WAS_SDK">
-            <i class="fas fa-network-wired"></i> 처리계 SDK
+            <i class="fas fa-network-wired"></i> SDK (AOP/Filter)
         </button>
     </div>
 
@@ -47,8 +47,8 @@
             <option value="">수집 방식</option>
             <option value="DB_AUDIT">DB Audit</option>
             <option value="DB_DAC">DB 접근제어</option>
-            <option value="WAS_AGENT">WAS Agent</option>
-            <option value="WAS_SDK">처리계 SDK</option>
+            <option value="WAS_AGENT">Java Agent (BCI)</option>
+            <option value="WAS_SDK">SDK (AOP/Filter)</option>
         </select>
         <input type="hidden" id="filterAmount" value="100">
         <button class="btn-monitor" onclick="searchLogs(1)"><i class="fas fa-search"></i> 조회</button>
@@ -146,8 +146,8 @@ function validateFilters() {
 function formatCollectType(type) {
     if (type === 'DB_AUDIT') return '<span class="status-badge info" style="font-size:0.68rem;">DB Audit</span>';
     if (type === 'DB_DAC') return '<span class="status-badge info" style="font-size:0.68rem;background:#fef3c7;color:#92400e;">DB 접근제어</span>';
-    if (type === 'WAS_AGENT') return '<span class="status-badge info" style="font-size:0.68rem;background:#ede9fe;color:#7c3aed;">WAS Agent</span>';
-    if (type === 'WAS_SDK') return '<span class="status-badge info" style="font-size:0.68rem;background:#cffafe;color:#0e7490;">처리계 SDK</span>';
+    if (type === 'WAS_AGENT') return '<span class="status-badge info" style="font-size:0.68rem;background:#ede9fe;color:#7c3aed;">Java Agent (BCI)</span>';
+    if (type === 'WAS_SDK') return '<span class="status-badge info" style="font-size:0.68rem;background:#cffafe;color:#0e7490;">SDK (AOP/Filter)</span>';
     return type || '';
 }
 

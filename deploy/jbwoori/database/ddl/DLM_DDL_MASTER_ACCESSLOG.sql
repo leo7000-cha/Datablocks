@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS COTDL.TBL_ACCESS_LOG_SOURCE;
 CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG_SOURCE (
     source_id         VARCHAR(36)   NOT NULL PRIMARY KEY COMMENT '수집원 ID (UUID)',
     source_name       VARCHAR(100)  NOT NULL COMMENT '시스템명',
-    source_type       VARCHAR(20)   DEFAULT 'DB_AUDIT' COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)',
+    source_type       VARCHAR(20)   DEFAULT 'DB_AUDIT' COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: DB 접근제어, WAS_AGENT: Java Agent (BCI))',
     db_name           VARCHAR(50)   COMMENT '연계 DB명 (DLM DB 등록 참조)',
     db_type           VARCHAR(20)   COMMENT 'DB 유형 (ORACLE, MARIADB, MYSQL, MSSQL, TIBERO, DB2)',
     hostname          VARCHAR(200)  COMMENT '호스트명',
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG (
     affected_rows     INT           DEFAULT 0 COMMENT '영향받은 행 수',
     search_condition  TEXT          COMMENT '검색 조건문 (Whom)',
     sql_text          TEXT          COMMENT '실행 SQL (선택)',
-    collect_type      VARCHAR(20)   COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)',
+    collect_type      VARCHAR(20)   COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: DB 접근제어, WAS_AGENT: Java Agent (BCI))',
     access_channel    VARCHAR(20)   DEFAULT 'WEB' COMMENT '접근 경로 (WEB/WAS/DB_DIRECT/API/BATCH)',
     session_id        VARCHAR(100)  COMMENT '세션 ID',
     result_code       VARCHAR(10)   DEFAULT 'SUCCESS' COMMENT '수행 결과 (SUCCESS/FAIL/DENIED)',

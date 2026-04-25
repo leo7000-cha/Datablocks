@@ -420,7 +420,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- SECTION 5: 수집 경로별 분포 + 처리계 SDK 상위 서비스           -->
+    <!-- SECTION 5: 수집 경로별 분포 + SDK (AOP/Filter) 상위 서비스        -->
     <!-- ============================================================ -->
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
         <div class="content-panel">
@@ -432,7 +432,7 @@
         </div>
         <div class="content-panel">
             <div class="panel-header">
-                <h3 class="panel-title">처리계 SDK 상위 서비스 <span style="font-weight:400; font-size:0.78rem; color:#94a3b8; margin-left:6px;">오늘</span></h3>
+                <h3 class="panel-title">SDK (AOP/Filter) 상위 서비스 <span style="font-weight:400; font-size:0.78rem; color:#94a3b8; margin-left:6px;">오늘</span></h3>
             </div>
             <div class="panel-body" id="topServicesBody" style="padding:14px 18px;">
                 <div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:30px 0;">
@@ -857,8 +857,8 @@ $(function() {
     var COLLECT_LABEL = {
         'DB_AUDIT': 'DB Audit',
         'DB_DAC': 'DB 접근제어',
-        'WAS_AGENT': 'WAS Agent',
-        'WAS_SDK': '처리계 SDK'
+        'WAS_AGENT': 'Java Agent (BCI)',
+        'WAS_SDK': 'SDK (AOP/Filter)'
     };
     var COLLECT_COLOR = {
         'DB_AUDIT': '#0ea5e9',
@@ -886,7 +886,7 @@ $(function() {
     function renderTopServices(data) {
         var $body = $('#topServicesBody');
         if (!data || data.length === 0) {
-            $body.html('<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:30px 0;">처리계 SDK 수집이 없습니다.</div>');
+            $body.html('<div style="text-align:center; color:#94a3b8; font-size:0.85rem; padding:30px 0;">SDK (AOP/Filter) 수집이 없습니다.</div>');
             return;
         }
         var max = Math.max.apply(null, data.map(function(d){ return Number(d.cnt) || 0; }));

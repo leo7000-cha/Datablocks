@@ -9,7 +9,7 @@ import lombok.Data;
 public class AccessLogSourceVO {
     private String sourceId;         // 수집원 ID (UUID)
     private String sourceName;       // 시스템명
-    private String sourceType;       // 수집 방식 (DB_AUDIT, DB_DAC, WAS_AGENT)
+    private String sourceType;       // 수집 방식 (DB_AUDIT, DB_DAC, WAS_AGENT, WAS_SDK)
     private String dbName;           // 연계 DB명
     private String dbType;           // DB 유형
     private String hostname;         // 호스트명

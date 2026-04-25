@@ -627,7 +627,7 @@ WebSocketConfig → /ws/accesslog
 **설계:**
 - actionType에 `PRINT` 유형 추가
 - 브라우저 `window.print()` 호출 시 JavaScript에서 서버로 기록 전송
-- WAS Agent에서도 리포트 출력 이벤트 캡처
+- Java Agent (BCI)에서도 리포트 출력 이벤트 캡처
 
 ### 5.4 GAP-12: AI 기반 이상행위 분석
 

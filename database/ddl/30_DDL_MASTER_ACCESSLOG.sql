@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS COTDL.TBL_ACCESS_LOG_SOURCE;
 CREATE TABLE IF NOT EXISTS COTDL.TBL_ACCESS_LOG_SOURCE (
     source_id         VARCHAR(36)   NOT NULL PRIMARY KEY COMMENT '수집원 ID (UUID)',
     source_name       VARCHAR(100)  NOT NULL COMMENT '시스템명',
-    source_type       VARCHAR(20)   DEFAULT 'DB_AUDIT' COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: 접근제어 연동, WAS_AGENT: WAS Agent)',
+    source_type       VARCHAR(20)   DEFAULT 'DB_AUDIT' COMMENT '수집 방식 (DB_AUDIT: DB Audit, DB_DAC: DB 접근제어, WAS_AGENT: Java Agent (BCI), WAS_SDK: SDK (AOP/Filter))',
     db_name           VARCHAR(50)   COMMENT '연계 DB명 (DLM DB 등록 참조)',
     db_type           VARCHAR(20)   COMMENT 'DB 유형 (ORACLE, MARIADB, MYSQL, MSSQL, TIBERO, DB2)',
     hostname          VARCHAR(200)  COMMENT '호스트명',

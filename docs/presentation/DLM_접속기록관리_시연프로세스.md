@@ -438,4 +438,4 @@ AUDIT POLICY XAUDIT_PII_POLICY;
 > DB_DAC 소스 타입으로 커스텀 SQL 쿼리를 지정하여 기존 솔루션의 로그를 수집 가능.
 
 **Q5: 에이전트 설치가 필요한가?**
-> WAS 에이전트는 Java Agent(BCI) 방식으로 JVM 옵션 추가만으로 설치. 코드 수정 불필요.
+> Java Agent (BCI) 방식은 JVM 옵션 추가만으로 설치. 코드 수정 불필요.

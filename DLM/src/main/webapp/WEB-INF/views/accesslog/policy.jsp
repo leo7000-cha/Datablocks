@@ -80,8 +80,8 @@
                 <th>DB</th>
                 <th>시스템</th>
                 <th>유형</th>
-                <th>DB 접근 감사 대상</th>
-                <th>WAS 접근 감사 대상</th>
+                <th>DB Audit 대상</th>
+                <th>Java Agent (BCI) 대상</th>
                 <th></th>
             </tr>
         </thead>
@@ -115,10 +115,10 @@
 
     <div class="pol-tabs">
         <div class="pol-tab active" id="tabDbAudit" onclick="switchTab('dbaudit')">
-            <i class="fas fa-database"></i> DB 접근 감사 <span class="tab-count" id="tabDbAuditCount">0</span>
+            <i class="fas fa-database"></i> DB Audit <span class="tab-count" id="tabDbAuditCount">0</span>
         </div>
         <div class="pol-tab" id="tabBci" onclick="switchTab('bci')">
-            <i class="fas fa-satellite-dish"></i> WAS 접근 감사 <span class="tab-count" id="tabBciCount">0</span>
+            <i class="fas fa-satellite-dish"></i> Java Agent (BCI) <span class="tab-count" id="tabBciCount">0</span>
         </div>
     </div>
     <div class="pol-tab-content" id="tabContent"></div>
@@ -267,12 +267,12 @@ function switchTab(tab) {
     _currentTab = tab;
     document.querySelectorAll('.pol-tab').forEach(function(el) { el.classList.remove('active'); });
     document.getElementById(tab === 'dbaudit' ? 'tabDbAudit' : 'tabBci').classList.add('active');
-    // 스크립트 다운로드: DB 접근 감사 탭 + Oracle일 때만
+    // 스크립트 다운로드: DB Audit 탭 + Oracle일 때만
     document.querySelector('.btn-script').style.display = (tab === 'dbaudit' && _currentDbType === 'ORACLE') ? '' : 'none';
     if (tab === 'dbaudit') renderDbAuditTab(); else renderBciTab();
 }
 
-// ========== DB 접근 감사 탭 ==========
+// ========== DB Audit 탭 ==========
 function renderDbAuditTab() {
     var tables = _policyData.piiTables || [];
     var left = [], right = [];
@@ -424,7 +424,7 @@ function sortLists(prefix) {
 function savePolicy() {
     if (!_currentDbName) return;
 
-    // DB 접근 감사 저장
+    // DB Audit 저장
     var allAudit = (window._auditLeft||[]).concat(window._auditRight||[]);
     $.ajax({ url:'/accesslog/api/audit-policy/save-batch', type:'POST', contentType:'application/json',
         data: JSON.stringify({ dbName:_currentDbName, tables:allAudit.map(function(t){return{owner:t.owner,tableName:t.tableName};}), auditYn:null }),
@@ -443,14 +443,14 @@ function savePolicy() {
         data: JSON.stringify({ dbName:_currentDbName, tables:bciTables }),
         async:false });
 
-    showToast('DB 접근 ' + (window._auditRight||[]).length + '개, WAS 접근 ' + bciTables.length + '개 감사 대상 저장 완료');
+    showToast('DB Audit ' + (window._auditRight||[]).length + '개, Java Agent (BCI) ' + bciTables.length + '개 감사 대상 저장 완료');
 }
 
-// ========== 스크립트 다운로드 (DB 접근 감사 전용) ==========
+// ========== 스크립트 다운로드 (DB Audit 전용) ==========
 function downloadScript() {
     if (!_currentDbName) return;
     var right = window._auditRight || [];
-    if (right.length === 0) { showToast('DB 접근 감사 대상 테이블이 없습니다.', true); return; }
+    if (right.length === 0) { showToast('DB Audit 대상 테이블이 없습니다.', true); return; }
 
     var scriptTables = right.map(function(t) { return { owner:t.owner, tableName:t.tableName, piiColumns:t.piiColumns }; });
     $.ajax({

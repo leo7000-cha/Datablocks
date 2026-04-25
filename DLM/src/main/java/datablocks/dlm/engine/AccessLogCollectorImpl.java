@@ -57,9 +57,10 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
     public int collect(AccessLogSourceVO source) {
         LogUtil.log("INFO", "AccessLogCollector collect: " + source.getSourceName() + " [" + source.getSourceType() + "]");
 
-        // WAS_AGENT 소스는 Agent가 직접 Push하므로 Scheduler 수집 대상이 아님
-        if ("WAS_AGENT".equalsIgnoreCase(source.getSourceType())) {
-            LogUtil.log("DEBUG", "Skipping WAS_AGENT source (agent-push): " + source.getSourceName());
+        // WAS_AGENT/WAS_SDK 소스는 Agent/SDK 가 직접 Push하므로 Scheduler 수집 대상이 아님
+        String type = source.getSourceType();
+        if ("WAS_AGENT".equalsIgnoreCase(type) || "WAS_SDK".equalsIgnoreCase(type)) {
+            LogUtil.log("DEBUG", "Skipping " + type + " source (push-based): " + source.getSourceName());
             return 0;
         }
 

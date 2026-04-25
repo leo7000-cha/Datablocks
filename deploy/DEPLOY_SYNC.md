@@ -91,7 +91,7 @@ deploy/{사이트}/
 │   ├── deploy.sh                      ← 배포 스크립트
 │   └── install-docker.sh             ← Docker 설치 (imcapital, jbwoori만)
 ├── docker-rpms/                       ← Docker RPM (imcapital, jbwoori만)
-├── dlm-agent/                         ← WAS Agent (imcapital, jbwoori만)
+├── dlm-agent/                         ← Java Agent (BCI) (imcapital, jbwoori만)
 │   ├── dlm-agent-*.jar
 │   ├── dlm-agent.properties
 │   ├── install.sh

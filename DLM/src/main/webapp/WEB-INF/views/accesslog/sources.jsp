@@ -47,6 +47,7 @@
 .src-type-badge.db-audit { background: #dbeafe; color: #1d4ed8; }
 .src-type-badge.bci-agent { background: #ede9fe; color: #7c3aed; }
 .src-type-badge.dac { background: #fef3c7; color: #92400e; }
+.src-type-badge.sdk { background: #cffafe; color: #0e7490; }
 .src-type-badge.dlm-self { background: #f1f5f9; color: #64748b; }
 .src-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; flex-shrink: 0; }
 .src-status-dot.running { background: #10b981; animation: pulse-green 2s infinite; }
@@ -216,9 +217,10 @@
             </select>
             <select id="srcTypeFilter" onchange="applyFilters()">
                 <option value="">방식 전체</option>
-                <option value="DB_AUDIT">DB 접근 감사 (Audit)</option>
+                <option value="DB_AUDIT">DB Audit</option>
                 <option value="DB_DAC">DB 접근제어</option>
-                <option value="WAS_AGENT">WAS 접근 감사</option>
+                <option value="WAS_AGENT">Java Agent (BCI)</option>
+                <option value="WAS_SDK">SDK (AOP/Filter)</option>
             </select>
         </div>
         <div class="action-section">
@@ -239,9 +241,10 @@
                             <div class="src-card-info">
                                 <div class="src-card-top">
                                     <c:choose>
-                                        <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit"><i class="fas fa-database"></i> DB 접근 감사 (Audit)</span></c:when>
+                                        <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit"><i class="fas fa-database"></i> DB Audit</span></c:when>
                                         <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac"><i class="fas fa-shield-alt"></i> DB 접근제어</span></c:when>
-                                        <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent"><i class="fas fa-globe"></i> WAS 접근 감사</span></c:when>
+                                        <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent"><i class="fas fa-globe"></i> Java Agent (BCI)</span></c:when>
+                                        <c:when test="${src.sourceType == 'WAS_SDK'}"><span class="src-type-badge sdk"><i class="fas fa-network-wired"></i> SDK (AOP/Filter)</span></c:when>
                                         <c:otherwise><span class="src-type-badge dlm-self"><i class="fas fa-cog"></i> ${src.sourceType}</span></c:otherwise>
                                     </c:choose>
                                     <div class="src-status-dot ${src.status == 'RUNNING' ? 'running' : src.status == 'ERROR' ? 'error' : 'stopped'}"></div>
@@ -313,9 +316,10 @@
                                 <td><strong>${src.sourceName}</strong></td>
                                 <td>
                                     <c:choose>
-                                        <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit" style="font-size:0.68rem;">DB 접근 감사 (Audit)</span></c:when>
+                                        <c:when test="${src.sourceType == 'DB_AUDIT'}"><span class="src-type-badge db-audit" style="font-size:0.68rem;">DB Audit</span></c:when>
                                         <c:when test="${src.sourceType == 'DB_DAC'}"><span class="src-type-badge dac" style="font-size:0.68rem;">DB 접근제어</span></c:when>
-                                        <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent" style="font-size:0.68rem;">WAS 접근 감사</span></c:when>
+                                        <c:when test="${src.sourceType == 'WAS_AGENT'}"><span class="src-type-badge bci-agent" style="font-size:0.68rem;">Java Agent (BCI)</span></c:when>
+                                        <c:when test="${src.sourceType == 'WAS_SDK'}"><span class="src-type-badge sdk" style="font-size:0.68rem;">SDK (AOP/Filter)</span></c:when>
                                         <c:otherwise>${src.sourceType}</c:otherwise>
                                     </c:choose>
                                 </td>
@@ -360,7 +364,7 @@
                 <div class="method-selector">
                     <div class="method-card selected" data-type="DB_AUDIT" onclick="selectMethod(this)">
                         <i class="fas fa-database"></i>
-                        <div class="method-name">DB 접근 감사 (Audit)</div>
+                        <div class="method-name">DB Audit</div>
                         <div class="method-desc">DB 자체 감사<br>로그 수집</div>
                     </div>
                     <div class="method-card" data-type="DB_DAC" onclick="selectMethod(this)">
@@ -370,8 +374,13 @@
                     </div>
                     <div class="method-card" data-type="WAS_AGENT" onclick="selectMethod(this)">
                         <i class="fas fa-globe"></i>
-                        <div class="method-name">WAS 접근 감사</div>
-                        <div class="method-desc">WAS Agent 기반<br>실시간 수집</div>
+                        <div class="method-name">Java Agent (BCI)</div>
+                        <div class="method-desc">JVM 옵션 부착형<br>바이트코드 가로채기</div>
+                    </div>
+                    <div class="method-card" data-type="WAS_SDK" onclick="selectMethod(this)">
+                        <i class="fas fa-network-wired"></i>
+                        <div class="method-name">SDK (AOP/Filter)</div>
+                        <div class="method-desc">라이브러리 임베드형<br>Spring AOP/Filter</div>
                     </div>
                 </div>
             </div>
@@ -462,8 +471,8 @@
                 <div class="wiz-field">
                     <label>감사 대상 유형</label>
                     <select id="wz_dacAuditType" onchange="onDacAuditTypeChange()" style="width:100%;margin-bottom:8px;">
-                        <option value="DB_AUDIT" selected>DB 접근 감사 (Audit)</option>
-                        <option value="BCI">WAS 접근 감사</option>
+                        <option value="DB_AUDIT" selected>DB Audit</option>
+                        <option value="BCI">Java Agent (BCI)</option>
                     </select>
                     <div id="wz_auditTables_dac" onclick="showAuditTableDetail(document.getElementById('wz_dacAuditType').value === 'BCI' ? 'bci' : 'db')" style="min-height:36px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:0.82rem;color:#6b7280;cursor:pointer;display:flex;align-items:center;gap:8px;">
                         <span style="color:#9ca3af;">위에서 대상 DB를 선택하면 자동 표시됩니다</span>
@@ -509,7 +518,7 @@
                 </div>
             </div>
 
-            <!-- ===== WAS Agent 설정 ===== -->
+            <!-- ===== Java Agent (BCI) 설정 ===== -->
             <div id="section_agent" style="display:none;">
                 <input type="hidden" id="wz_schemaName_agent">
                 <input type="hidden" id="wz_agentId">
@@ -519,7 +528,7 @@
                 <div style="background:linear-gradient(135deg,#ede9fe,#f5f3ff);border:1px solid #c4b5fd;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
                         <i class="fas fa-globe" style="color:#7c3aed;"></i>
-                        <span style="font-size:0.85rem;font-weight:700;color:#5b21b6;">WAS 접근 감사</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#5b21b6;">Java Agent (BCI)</span>
                     </div>
                     <div style="font-size:0.78rem;color:#6b7280;line-height:1.6;">
                         WAS(Tomcat, WebLogic, JEUS 등)에 설치되는 경량 Java Agent가 모든 SQL 실행을 실시간으로 감지하여 XAudit 서버로 전송합니다.<br>
@@ -704,6 +713,104 @@
                         </div>
                     </div>
                     </div><!-- /agentGuideContent -->
+                </div>
+            </div>
+
+            <!-- ===== SDK (AOP/Filter) 설정 ===== -->
+            <div id="section_sdk" style="display:none;">
+
+                <!-- ===== 안내 배너 ===== -->
+                <div style="background:linear-gradient(135deg,#cffafe,#ecfeff);border:1px solid #67e8f9;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                        <i class="fas fa-network-wired" style="color:#0e7490;"></i>
+                        <span style="font-size:0.85rem;font-weight:700;color:#155e75;">SDK (AOP/Filter)</span>
+                    </div>
+                    <div style="font-size:0.78rem;color:#475569;line-height:1.6;">
+                        고객사 처리계 애플리케이션에 <code style="background:#cffafe;padding:1px 5px;border-radius:3px;">dlm-aop-sdk</code> 라이브러리를 임베드하여
+                        Servlet Filter + Spring AOP + MyBatis Interceptor 로 SQL 실행 이벤트를 직접 푸시합니다.<br>
+                        <strong>JVM 옵션 변경 불필요</strong>, <strong>build.gradle 의존성 1줄 추가</strong>로 적용 — 금융권 변경관리 부담 최소.
+                    </div>
+                </div>
+
+                <!-- ===== STEP A: 서비스 식별자 ===== -->
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                        <span style="background:#0e7490;color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;">A</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#334155;">서비스 식별자</span>
+                        <span style="font-size:0.72rem;color:#94a3b8;margin-left:4px;">SDK 가 푸시하는 이벤트의 service_name 으로 사용됩니다</span>
+                    </div>
+                    <div class="wiz-field" style="margin-bottom:10px;">
+                        <label>service_name <span style="font-weight:400;color:#94a3b8;font-size:0.72rem;">— 비워두면 대상 DB의 시스템명으로 자동 설정</span></label>
+                        <input type="text" id="wz_serviceName_sdk" placeholder="예: LOAN_CORE, CARD_APP" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- ===== STEP B: 감사 범위 ===== -->
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                        <span style="background:#0e7490;color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;">B</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#334155;">감사 범위 설정</span>
+                    </div>
+                    <div class="wiz-field" style="margin-bottom:10px;">
+                        <label>제외 계정 <span style="font-weight:400;color:#94a3b8;font-size:0.72rem;">— 이 계정의 SQL 은 수집하지 않습니다</span></label>
+                        <textarea id="wz_excludeAccounts_sdk" rows="2" placeholder="SYS, SYSTEM, COTDL" style="width:100%;" autocomplete="off"></textarea>
+                    </div>
+                    <div class="wiz-field" style="margin-bottom:10px;">
+                        <label>제외 SQL 패턴 <span style="font-weight:400;color:#94a3b8;font-size:0.72rem;">— 헬스체크/모니터링 SQL 제외</span></label>
+                        <div class="field-hint"><a href="javascript:void(0)" onclick="window.open('/accesslog/index#exclude-patterns','_blank');" style="color:#0e7490;font-weight:500;">수집 제외 SQL 관리</a> 메뉴에서 패턴을 등록할 수 있습니다.</div>
+                    </div>
+                </div>
+
+                <!-- ===== STEP C: SDK 통합 가이드 ===== -->
+                <div id="sdkDeployGuide" style="display:none;border-top:2px solid #67e8f9;padding-top:16px;margin-top:8px;">
+                    <button type="button" id="sdkGuideToggle" onclick="$(this).next().slideToggle(200);$(this).find('.fa-chevron-down,.fa-chevron-up').toggleClass('fa-chevron-down fa-chevron-up');" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;margin-bottom:8px;width:100%;">
+                        <span style="background:#059669;color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;"><i class="fas fa-rocket" style="font-size:0.6rem;"></i></span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#334155;">SDK 통합 가이드</span>
+                        <span style="font-size:0.72rem;color:#94a3b8;margin-left:4px;">아래 3단계로 처리계 애플리케이션에 SDK 를 임베드하세요</span>
+                        <i class="fas fa-chevron-down" style="font-size:0.65rem;color:#94a3b8;margin-left:auto;"></i>
+                    </button>
+                    <div id="sdkGuideContent" style="display:none;">
+
+                    <!-- C-1: build.gradle -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="background:#e2e8f0;color:#475569;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;">1</span>
+                                <span style="font-size:0.82rem;font-weight:600;color:#334155;">build.gradle 의존성 추가</span>
+                            </div>
+                            <button class="btn-copy-inline" onclick="copyTextToClipboard(document.getElementById('sdkGradleSnippet').textContent)" style="font-size:0.72rem;"><i class="fas fa-copy"></i> 복사</button>
+                        </div>
+                        <pre id="sdkGradleSnippet" style="background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:6px;font-size:0.72rem;margin:0;overflow-x:auto;line-height:1.5;">dependencies {
+    implementation 'datablocks:dlm-aop-sdk:1.0.0'
+}</pre>
+                    </div>
+
+                    <!-- C-2: application.properties -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="background:#e2e8f0;color:#475569;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;">2</span>
+                                <span style="font-size:0.82rem;font-weight:600;color:#334155;">application.properties 설정</span>
+                            </div>
+                            <button class="btn-copy-inline" onclick="copyTextToClipboard(document.getElementById('sdkPropsSnippet').textContent)" style="font-size:0.72rem;"><i class="fas fa-copy"></i> 복사</button>
+                        </div>
+                        <pre id="sdkPropsSnippet" style="background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:6px;font-size:0.72rem;margin:0;overflow-x:auto;max-height:180px;overflow-y:auto;white-space:pre-wrap;line-height:1.5;"></pre>
+                    </div>
+
+                    <!-- C-3: 적용 확인 -->
+                    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 14px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                            <span style="background:#059669;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;"><i class="fas fa-check" style="font-size:0.55rem;"></i></span>
+                            <span style="font-size:0.82rem;font-weight:600;color:#059669;">적용 확인 방법</span>
+                        </div>
+                        <div style="font-size:0.75rem;color:#475569;line-height:1.7;">
+                            처리계 애플리케이션 재기동 후 아래를 확인하세요:<br>
+                            <strong>1.</strong> 애플리케이션 로그에 <code style="background:#d1fae5;padding:1px 5px;border-radius:3px;">[XAudit-SDK] Auto-configuration loaded.</code> 메시지 출력<br>
+                            <strong>2.</strong> 접속기록 > 대시보드의 <strong>SDK (AOP/Filter) 상위 서비스</strong> 패널에 service_name 노출<br>
+                            <strong>3.</strong> 통합 접속기록에서 <strong>SDK (AOP/Filter)</strong> 필터 칩으로 수집 건수 확인
+                        </div>
+                    </div>
+                    </div><!-- /sdkGuideContent -->
                 </div>
             </div>
         </div>
@@ -954,6 +1061,10 @@ function editSource(sourceId) {
         $('#wz_headerNameWrap').hide();
         $('#wz_sessionAttrWrap').hide();
         $('#wz_sessionAttrWrap').show();
+        // SDK 초기화
+        $('#wz_serviceName_sdk').val('');
+        $('#wz_excludeAccounts_sdk').val('');
+        $('#sdkDeployGuide').hide();
 
         $('#wizardTitle').text('수집 소스 편집');
         $('#btnSubmit').html('<i class="fas fa-check"></i> 수정');
@@ -984,6 +1095,14 @@ function editSource(sourceId) {
                     updateAgentSnippet();
                     $('#agentDeployGuide').show();
                 }, 200);
+            } else if (_selectedMethod === 'WAS_SDK') {
+                $('#wz_serviceName_sdk').val(src.sourceName || '');
+                $('#wz_excludeAccounts_sdk').val(src.excludeAccounts || '');
+                // 편집 시 통합 가이드 즉시 표시
+                setTimeout(function() {
+                    updateSdkSnippet();
+                    $('#sdkDeployGuide').show();
+                }, 200);
             } else if (_selectedMethod === 'DB_DAC') {
                 $('#wz_collectInterval_dac').val(src.collectInterval || 5);
                 $('#wz_excludeAccounts_dac').val(src.excludeAccounts || '');
@@ -1005,6 +1124,7 @@ function saveSource() {
     if (!dbName) { showToast('대상 DB를 선택하세요.', true); return; }
 
     var isAgent = _selectedMethod === 'WAS_AGENT';
+    var isSdk = _selectedMethod === 'WAS_SDK';
     var isDac = _selectedMethod === 'DB_DAC';
     var db = _dbList.find(function(d) { return d.db === dbName; });
 
@@ -1014,8 +1134,11 @@ function saveSource() {
         }
     }
 
+    // SDK: service_name 비어 있으면 시스템명으로 자동 채움
+    var sdkServiceName = isSdk ? ($('#wz_serviceName_sdk').val() || (db ? (db.system || db.db) : dbName)) : null;
+
     var data = {
-        sourceName: db ? (db.system || db.db) : dbName,
+        sourceName: isSdk ? sdkServiceName : (db ? (db.system || db.db) : dbName),
         sourceType: _selectedMethod,
         dbType: $('#wz_dbType').val(),
         dbName: dbName,
@@ -1023,9 +1146,11 @@ function saveSource() {
         port: db ? db.port : '',
         description: $('#wz_description').val(),
         schemaName: isAgent ? $('#wz_schemaName_agent').val() : $('#wz_schemaName_db').val(),
-        excludeAccounts: isDac ? $('#wz_excludeAccounts_dac').val() : (isAgent ? $('#wz_excludeAccounts_agent').val() : $('#wz_excludeAccounts_db').val()),
+        excludeAccounts: isDac ? $('#wz_excludeAccounts_dac').val()
+            : (isAgent ? $('#wz_excludeAccounts_agent').val()
+            : (isSdk ? $('#wz_excludeAccounts_sdk').val() : $('#wz_excludeAccounts_db').val())),
         tableFilter: isDac ? $('#wz_tableFilter_db').val() : (isAgent ? $('#wz_tableFilter_agent').val() : $('#wz_tableFilter_db').val()),
-        collectInterval: isAgent ? 0 : (isDac ? parseInt($('#wz_collectInterval_dac').val()) || 5 : parseInt($('#wz_collectInterval').val()) || 5),
+        collectInterval: (isAgent || isSdk) ? 0 : (isDac ? parseInt($('#wz_collectInterval_dac').val()) || 5 : parseInt($('#wz_collectInterval').val()) || 5),
         agentId: isAgent ? $('#wz_agentId').val() : null,
         // DAC 전용
         dacSelectSql: isDac ? $('#wz_dacSelectSql').val() : null
@@ -1037,7 +1162,7 @@ function saveSource() {
         success: function(res) {
             if (res.success) {
                 if (isAgent && !sourceId) {
-                    // WAS Agent 신규 등록 → 닫지 않고 배포 가이드 표시
+                    // Java Agent (BCI) 신규 등록 → 닫지 않고 배포 가이드 표시
                     showToast('등록 완료! Agent 배포 가이드를 확인하세요.');
                     updateAgentSnippet();
                     $('#agentDeployGuide').show();
@@ -1045,6 +1170,17 @@ function saveSource() {
                     var guideEl = document.getElementById('agentDeployGuide');
                     if (guideEl) guideEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     // 버튼을 "닫기"로 변경
+                    $('#btnSubmit').html('<i class="fas fa-check"></i> 완료').off('click').on('click', function() {
+                        closeWizard();
+                        reloadPage();
+                    });
+                } else if (isSdk && !sourceId) {
+                    // SDK (AOP/Filter) 신규 등록 → 닫지 않고 통합 가이드 표시
+                    showToast('등록 완료! SDK 통합 가이드를 확인하세요.');
+                    updateSdkSnippet();
+                    $('#sdkDeployGuide').show();
+                    var sdkGuideEl = document.getElementById('sdkDeployGuide');
+                    if (sdkGuideEl) sdkGuideEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     $('#btnSubmit').html('<i class="fas fa-check"></i> 완료').off('click').on('click', function() {
                         closeWizard();
                         reloadPage();
@@ -1092,6 +1228,10 @@ function openWizard() {
     $('#wz_headerNameWrap').hide();
     $('#wz_sessionAttrWrap').hide();
     $('#agentDeployGuide').hide();
+    // SDK 초기화
+    $('#wz_serviceName_sdk').val('');
+    $('#wz_excludeAccounts_sdk').val('');
+    $('#sdkDeployGuide').hide();
     $('#wizardTitle').text('수집 소스 등록');
     $('#btnSubmit').html('<i class="fas fa-check"></i> 등록');
     $('.method-card').removeClass('selected');
@@ -1121,8 +1261,11 @@ function updateMethodSections() {
     $('#section_db').hide();
     $('#section_dac').hide();
     $('#section_agent').hide();
+    $('#section_sdk').hide();
     if (_selectedMethod === 'WAS_AGENT') {
         $('#section_agent').show();
+    } else if (_selectedMethod === 'WAS_SDK') {
+        $('#section_sdk').show();
     } else if (_selectedMethod === 'DB_DAC') {
         $('#section_dac').show();
     } else {
@@ -1136,7 +1279,7 @@ function showAuditTableDetail(type) {
     var body = document.getElementById('auditPopupBody');
 
     if (type === 'db') {
-        title.textContent = 'DB 접근 감사 대상 테이블 (Audit)';
+        title.textContent = 'DB Audit 대상 테이블';
         var tables = (_auditPolicyCache || {}).auditTables || [];
         if (tables.length === 0) {
             body.innerHTML = '<p style="color:#9ca3af;padding:20px;text-align:center;">등록된 감사 대상이 없습니다.</p>';
@@ -1152,7 +1295,7 @@ function showAuditTableDetail(type) {
             body.innerHTML = html;
         }
     } else {
-        title.textContent = 'WAS 접근 감사 대상 테이블';
+        title.textContent = 'Java Agent (BCI) 대상 테이블';
         var targets = (_auditPolicyCache || {}).bciTargets || [];
         if (targets.length === 0) {
             body.innerHTML = '<p style="color:#9ca3af;padding:20px;text-align:center;">등록된 감사 대상이 없습니다.</p>';
@@ -1221,6 +1364,29 @@ function updateAgentSnippet() {
 function copyAgentProps() {
     copyTextToClipboard($('#agentPropsSnippet').text());
     showToast('설정 파일이 복사되었습니다.');
+}
+
+function updateSdkSnippet() {
+    var serverUrl = location.protocol + '//' + location.host;
+    var serviceName = $('#wz_serviceName_sdk').val()
+        || ($('#wz_dbName').val() ? ($('#wz_dbName option:selected').text() || $('#wz_dbName').val()) : '');
+    var excludeUsers = $('#wz_excludeAccounts_sdk').val() || '';
+
+    var props = 'xaudit.enabled=true\n' +
+        'xaudit.server-url=' + serverUrl + '\n' +
+        'xaudit.service-name=' + serviceName + '\n\n' +
+        '# 큐 & 전송\n' +
+        'xaudit.queue.capacity=10000\n' +
+        'xaudit.sender.batch-size=500\n' +
+        'xaudit.sender.flush-interval-ms=3000\n\n' +
+        '# 사용자 식별 (선택 — 비워두면 Spring Security 자동 탐지)\n' +
+        '# xaudit.user.session-attr=loginVO\n' +
+        '# xaudit.user.header=X-SSO-USER\n';
+    if (excludeUsers) {
+        props += '\n# 제외 계정\n' +
+            'xaudit.exclude.users=' + excludeUsers.replace(/\s+/g, '') + '\n';
+    }
+    $('#sdkPropsSnippet').text(props);
 }
 
 // ========== DBA 사전 설정 가이드 ==========
@@ -1479,7 +1645,7 @@ function loadAuditPolicyTables(dbName) {
         }
         $('#wz_auditTables_db').html(auditHtml);
         $('#wz_tableFilter_db').val(auditFilter.join(','));
-        // DAC 감사 대상도 자동 표시 (기본: DB 접근 감사)
+        // DAC 감사 대상도 자동 표시 (기본: DB Audit)
         updateDacAuditDisplay();
 
         // 스키마 자동 설정 (감사 대상 테이블의 owner 목록)

@@ -9,10 +9,12 @@ xaudit-sdk-kit/
 │   ├── snippets/   pom / build.gradle / application.yml / application.properties 병합용 조각
 │   ├── scripts/    smoke-test.sh
 │   └── README.md   고객사 적용 가이드
-└── dlm-server/     ← DLM 운영팀 내부 전용
-    ├── database/   COTDL 스키마 DDL
-    └── README.md   DLM 서버 설치 가이드
+└── dlm-server/     ← DLM 운영팀 가이드 (포인터 only)
+    └── README.md   배포 절차 — 실제 DDL 은 ../../../database/xaudit/ 참조
 ```
+
+> **XAUDIT 저장소 스키마는 4가지 수집방식 (DB_AUDIT / DB_DAC / WAS_AGENT / WAS_SDK) 공통**이라
+> SDK 전용이 아닌 공용 위치 [`database/xaudit/`](../../database/xaudit/) 에 있습니다.
 
 > **snippets/ 폴더의 파일들은 모두 "병합용 조각" 입니다.** 단독 실행 불가 — 고객사 기존 파일(pom.xml / build.gradle / application.yml / application.properties) 에 복붙해서 병합합니다. 자세한 사용법은 [`customer/snippets/README.md`](customer/snippets/README.md) 참조.
 
@@ -25,7 +27,8 @@ xaudit-sdk-kit/
 
 ## 배포 순서
 
-1. 먼저 **DLM 서버**에서 `dlm-server/database/XAUDIT_SCHEMA_20260420.sql` 을 COTDL 에 실행
+1. **EXTERNAL 모드 사용 시:** 고객사 별도 DB 에 [`database/xaudit/XAUDIT_SCHEMA_*.sql`](../../database/xaudit/) 실행
+   (COTDL 모드 — 즉 DLM 자체 DB 사용 — 이면 `database/ddl/30_DDL_MASTER_ACCESSLOG.sql` 에 이미 통합됨)
 2. 그 다음 **`customer/` 디렉토리 전체**를 tar/zip 으로 압축해서 고객사에 전달
 3. 고객사 수행: `customer/README.md` Step 1~3
 4. 확인: `customer/scripts/smoke-test.sh` + DLM UI `/xaudit/dashboard`

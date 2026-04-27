@@ -118,7 +118,11 @@ public final class XauditSqlDialect {
         if ("ORACLE".equals(t) || "TIBERO".equals(t) || "DB2".equals(t) || "MSSQL".equals(t)) {
             return " OFFSET " + offset + " ROWS FETCH NEXT " + amount + " ROWS ONLY";
         }
-        // MARIADB / MYSQL / POSTGRESQL
+        if ("POSTGRESQL".equals(t)) {
+            // PostgreSQL 은 콤마 문법 미지원 — 표준 LIMIT/OFFSET 분리 필요
+            return " LIMIT " + amount + " OFFSET " + offset;
+        }
+        // MARIADB / MYSQL
         return " LIMIT " + offset + ", " + amount;
     }
 }

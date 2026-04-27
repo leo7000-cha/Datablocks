@@ -647,7 +647,7 @@ public class XauditApiKeyInterceptor implements HandlerInterceptor {
 ### 8-1. 배포 순서 (처음)
 
 ```
-1. [DLM 운영팀]  dlm-server/database/XAUDIT_SCHEMA_20260420.sql 실행 (1회)
+1. [DLM 운영팀]  database/xaudit/XAUDIT_SCHEMA_MARIADB.sql (또는 _ORACLE.sql) 실행 (1회)
 2. [DLM 운영팀]  DLM 서버 빌드·배포 (이번에 이미 완료)
 3. [DLM 운영팀]  /api/xaudit/events 수신 확인 (smoke-test)
 4. [DLM 운영팀]  customer/ 디렉토리를 고객사 담당에게 전달
@@ -746,7 +746,7 @@ public class XauditApiKeyInterceptor implements HandlerInterceptor {
 | [controller/XauditEventController.java](../../DLM/src/main/java/datablocks/dlm/controller/XauditEventController.java) | `/api/xaudit/events` |
 | [controller/XauditViewController.java](../../DLM/src/main/java/datablocks/dlm/controller/XauditViewController.java) | 조회 UI |
 
-### DB ([deploy/xaudit-sdk-kit/dlm-server/database](../../deploy/xaudit-sdk-kit/dlm-server/database))
+### DB ([database/xaudit](../../database/xaudit))
 | 오브젝트 | 내용 |
 |---------|------|
 | `TBL_XAUDIT_ACCESS_LOG` | HTTP 요청 단위 |

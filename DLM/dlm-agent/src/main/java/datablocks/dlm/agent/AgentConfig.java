@@ -107,6 +107,15 @@ public class AgentConfig {
         return parseCommaSeparated(val);
     }
 
+    /**
+     * PreparedStatement bind 값 캡처 여부 (opt-in).
+     * 기본 false — WAS 메모리/CPU 영향 가능성 때문에 명시적으로 켜야 함.
+     * properties 키: dlm.capture.bind=true/false
+     */
+    public boolean isCaptureBindEnabled() {
+        return Boolean.parseBoolean(props.getProperty("dlm.capture.bind", "false"));
+    }
+
     // ── 폴백 ──
 
     public String getFailoverDir() {

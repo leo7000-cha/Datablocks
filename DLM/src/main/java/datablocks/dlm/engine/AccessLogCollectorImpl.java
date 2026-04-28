@@ -195,6 +195,13 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
             stmt.setFetchSize(1000);
             ResultSet rs = stmt.executeQuery(sql);
 
+            // Vendor 별로 sidecar 컬럼이 있을 수도 없을 수도 있어 ResultSetMetaData 로 가용 여부 판정
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            Set<String> auditCols = new java.util.HashSet<>();
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                auditCols.add(meta.getColumnLabel(i).toLowerCase());
+            }
+
             while (rs.next()) {
                 AccessLogVO log = new AccessLogVO();
                 log.setSourceSystemId(source.getSourceId());
@@ -203,12 +210,18 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                 log.setClientIp(rs.getString("client_ip"));
                 log.setActionType(rs.getString("action_type"));
                 log.setTargetDb(source.getDbName());
-                log.setTargetSchema(rs.getString("target_schema"));
+                if (auditCols.contains("target_schema")) log.setTargetSchema(rs.getString("target_schema"));
                 log.setTargetTable(rs.getString("target_table"));
                 log.setSqlText(rs.getString("sql_text"));
                 log.setCollectType("DB_AUDIT");
                 log.setAccessChannel("DB_DIRECT");
-                log.setResultCode("SUCCESS");
+                // Sidecar 보강 (vendor 가 제공할 때만 — Oracle UNIFIED_AUDIT_TRAIL 에서 SQL_BINDS/RETURN_CODE/OS_USERNAME 등)
+                if (auditCols.contains("bind_params"))   log.setBindParams(rs.getString("bind_params"));
+                if (auditCols.contains("error_message")) log.setErrorMessage(rs.getString("error_message"));
+                if (auditCols.contains("user_agent"))    log.setUserAgent(rs.getString("user_agent"));
+                // result_code 도 vendor 가 주면 사용, 아니면 SUCCESS
+                String errMsg = log.getErrorMessage();
+                log.setResultCode(errMsg != null && !errMsg.isEmpty() ? "FAIL" : "SUCCESS");
                 logs.add(log);
             }
 
@@ -297,6 +310,7 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
     /**
      * Oracle Unified Audit Trail 조회
+     * Phase 3 보강: sidecar 3 필드 (bind_params, error_message, user_agent) 추가 추출
      */
     private String buildOracleAuditQuery(String lastOffset, AccessLogSourceVO source) {
         StringBuilder sql = new StringBuilder();
@@ -306,7 +320,11 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
         sql.append("ACTION_NAME AS action_type, ");
         sql.append("OBJECT_SCHEMA AS target_schema, ");
         sql.append("OBJECT_NAME AS target_table, ");
-        sql.append("SQL_TEXT AS sql_text ");
+        sql.append("SQL_TEXT AS sql_text, ");
+        // Sidecar 보강 (UNIFIED_AUDIT_TRAIL 가 제공하는 컬럼들)
+        sql.append("SQL_BINDS AS bind_params, ");
+        sql.append("CASE WHEN RETURN_CODE <> 0 THEN 'ORA-' || RETURN_CODE END AS error_message, ");
+        sql.append("OS_USERNAME AS user_agent ");
         sql.append("FROM UNIFIED_AUDIT_TRAIL ");
         sql.append("WHERE ACTION_NAME IN ('SELECT','UPDATE','DELETE','INSERT') ");
         // 시스템 계정 제외
@@ -429,11 +447,20 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
 
     /**
      * DB접근제어(DB_DAC) 솔루션 접속기록 조회
-     * - 사용자가 작성한 SELECT문을 직접 실행
-     * - SELECT문은 표준 컬럼 alias를 사용해야 함:
-     *   access_time(필수), user_account, user_name, department, client_ip,
-     *   action_type, target_table, sql_text, result_code
+     * - 사용자가 작성한 SELECT문을 직접 실행 (솔루션별 audit 테이블 구조 무관)
+     * - SELECT 결과의 컬럼 alias 가 아래 표준명과 일치하면 자동 매핑됨
+     *
+     * Master 컬럼 alias (TBL_ACCESS_LOG):
+     *   access_time(★필수), user_account, user_name, department, client_ip,
+     *   action_type, target_table, target_schema, result_code, access_channel
+     *
+     * Sidecar 컬럼 alias (TBL_ACCESS_LOG_DETAIL — alias 1개라도 있으면 자동 분리 INSERT):
+     *   sql_text, bind_params, sql_id, search_condition, target_columns,
+     *   user_agent, error_message
+     *
      * - 증분 수집: #{LAST_OFFSET} 치환자를 통해 마지막 수집 시점 이후만 조회
+     * - 운영자는 솔루션 audit 테이블 컬럼명을 alias 만 맞추면 두 테이블에 자동 적재됨
+     *   예) SELECT log_time AS access_time, sql_bind AS bind_params FROM AUDIT_TBL ...
      */
     private List<AccessLogVO> queryDacLog(Connection conn, String dbType, AccessLogSourceVO source, String lastOffset) {
         List<AccessLogVO> logs = new ArrayList<>();
@@ -499,6 +526,15 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
                 if (colNames.contains("access_channel")) log.setAccessChannel(rs.getString("access_channel"));
                 if (colNames.contains("target_schema")) log.setTargetSchema(rs.getString("target_schema"));
 
+                // Sidecar (TBL_ACCESS_LOG_DETAIL) alias — 1개라도 채워지면 hasDetail()==true 가 되어
+                // XauditJdbcWriter.insertUnified() 가 자동으로 sidecar INSERT 까지 수행
+                if (colNames.contains("bind_params"))      log.setBindParams(rs.getString("bind_params"));
+                if (colNames.contains("sql_id"))           log.setSqlId(rs.getString("sql_id"));
+                if (colNames.contains("search_condition")) log.setSearchCondition(rs.getString("search_condition"));
+                if (colNames.contains("target_columns"))   log.setTargetColumns(rs.getString("target_columns"));
+                if (colNames.contains("user_agent"))       log.setUserAgent(rs.getString("user_agent"));
+                if (colNames.contains("error_message"))    log.setErrorMessage(rs.getString("error_message"));
+
                 logs.add(log);
             }
 
@@ -554,6 +590,131 @@ public class AccessLogCollectorImpl implements AccessLogCollector {
             return config != null && "Y".equals(config.getConfigValue());
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    // ========== DB_DAC SELECT 미리보기 (등록 전 dry-run) ==========
+
+    /** Master alias 표준명 11종. */
+    private static final Set<String> DAC_MASTER_ALIASES = Set.of(
+            "access_time", "user_account", "user_name", "department", "client_ip",
+            "action_type", "target_table", "target_schema", "result_code", "access_channel",
+            "session_id");
+
+    /** Sidecar alias 표준명 7종. */
+    private static final Set<String> DAC_SIDECAR_ALIASES = Set.of(
+            "sql_text", "bind_params", "sql_id",
+            "search_condition", "target_columns",
+            "user_agent", "error_message");
+
+    @Override
+    @SuppressWarnings("deprecation")  // ConnectionProvider.getConnection — 단발성 dry-run 용도라 풀링 불필요
+    public Map<String, Object> previewDacSql(String dbName, String selectSql) {
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        List<String> mappedMaster = new ArrayList<>();
+        List<String> mappedSidecar = new ArrayList<>();
+        List<String> unmapped = new ArrayList<>();
+        List<String> missingRequired = new ArrayList<>();
+        Map<String, Object> sampleRow = new java.util.LinkedHashMap<>();
+
+        result.put("mappedMaster", mappedMaster);
+        result.put("mappedSidecar", mappedSidecar);
+        result.put("unmapped", unmapped);
+        result.put("missingRequired", missingRequired);
+        result.put("sampleRow", sampleRow);
+
+        if (selectSql == null || selectSql.trim().isEmpty()) {
+            result.put("valid", false);
+            result.put("message", "SELECT 문이 비어있습니다.");
+            return result;
+        }
+        if (dbName == null || dbName.trim().isEmpty()) {
+            result.put("valid", false);
+            result.put("message", "대상 DB 가 지정되지 않았습니다.");
+            return result;
+        }
+
+        // 1) DB 메타 조회
+        PiiDatabaseVO dbInfo = databaseService.get(dbName);
+        if (dbInfo == null) {
+            result.put("valid", false);
+            result.put("message", "DB 정보를 찾을 수 없습니다: " + dbName);
+            return result;
+        }
+
+        // 2) #{LAST_OFFSET} → NOW-7d 치환 + LIMIT 1 강제
+        String previewSql = selectSql.trim();
+        // trailing semicolon 제거
+        while (previewSql.endsWith(";")) {
+            previewSql = previewSql.substring(0, previewSql.length() - 1).trim();
+        }
+        String fakeOffset = LocalDateTime.now().minusDays(7)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        previewSql = previewSql.replace("#{LAST_OFFSET}", "'" + fakeOffset + "'");
+        // LIMIT 강제 (Oracle/Tibero 는 ROWNUM 대신 그냥 시도 — 실패하면 에러로 안내)
+        String upperTail = previewSql.toUpperCase();
+        if (!upperTail.contains(" LIMIT ") && !upperTail.contains("ROWNUM")) {
+            previewSql = previewSql + " LIMIT 1";
+        }
+
+        // 3) 시험 실행
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            AES256Util aes = new AES256Util();
+            String pwd = aes.decrypt(dbInfo.getPwd());
+            conn = ConnectionProvider.getConnection(
+                    dbInfo.getDbtype(), dbInfo.getHostname(), dbInfo.getPort(),
+                    dbInfo.getId_type(), dbInfo.getId(), dbInfo.getDb(),
+                    dbInfo.getDbuser(), pwd);
+            stmt = conn.createStatement();
+            stmt.setMaxRows(1);
+            stmt.setQueryTimeout(10);
+            rs = stmt.executeQuery(previewSql);
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            int colCnt = meta.getColumnCount();
+            for (int i = 1; i <= colCnt; i++) {
+                String label = meta.getColumnLabel(i).toLowerCase();
+                if (DAC_MASTER_ALIASES.contains(label)) {
+                    mappedMaster.add(label);
+                } else if (DAC_SIDECAR_ALIASES.contains(label)) {
+                    mappedSidecar.add(label);
+                } else {
+                    unmapped.add(label);
+                }
+            }
+            if (!mappedMaster.contains("access_time")) {
+                missingRequired.add("access_time");
+            }
+            if (rs.next()) {
+                for (int i = 1; i <= colCnt; i++) {
+                    String label = meta.getColumnLabel(i);
+                    Object v = rs.getObject(i);
+                    sampleRow.put(label, v == null ? null : v.toString());
+                }
+            }
+
+            boolean valid = missingRequired.isEmpty();
+            result.put("valid", valid);
+            result.put("message", valid
+                    ? ("미리보기 성공 — Master " + mappedMaster.size()
+                       + " / Sidecar " + mappedSidecar.size()
+                       + " / 미매핑 " + unmapped.size())
+                    : "필수 alias 누락: " + missingRequired);
+            result.put("previewSql", previewSql);
+            return result;
+
+        } catch (Exception e) {
+            logger.warn("DAC preview failed: {}", e.getMessage());
+            result.put("valid", false);
+            result.put("message", "SELECT 실행 실패: " + e.getMessage());
+            result.put("previewSql", previewSql);
+            return result;
+        } finally {
+            try { if (rs != null) rs.close(); } catch (Exception ignored) {}
+            try { if (stmt != null) stmt.close(); } catch (Exception ignored) {}
+            try { if (conn != null) conn.close(); } catch (Exception ignored) {}
         }
     }
 

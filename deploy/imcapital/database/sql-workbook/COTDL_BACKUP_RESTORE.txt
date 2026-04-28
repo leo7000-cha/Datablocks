@@ -266,8 +266,8 @@ mysqldump -h localhost -P 3306 -u root -p'!Dlm1234' \
 ls -lh /home/dlm/backup/cotdl_pre_patch_*.sql.gz
 
 # 패치 적용 (예: 2026-04-14 패치)
-mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < DLM_DDL_MASTER_ACCESSLOG.sql
-mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < DLM_DDL_MASTER_DISCOVERY.sql
+mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < 30_DDL_MASTER_ACCESSLOG.sql
+mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < 20_DDL_MASTER_DISCOVERY.sql
 mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < patches/IMCAPITAL_PATCH_20260414.sql
 mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < patches/IMCAPITAL_INDEX_PATCH_20260414.sql
 

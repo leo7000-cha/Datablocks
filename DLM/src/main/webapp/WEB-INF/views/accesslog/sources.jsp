@@ -491,12 +491,83 @@
                     <div class="field-hint"><a href="javascript:void(0)" onclick="window.open('/accesslog/index#exclude-patterns','_blank');" style="color:#7c3aed;">수집 제외 SQL 관리</a> 메뉴에서 수집 유형별로 설정합니다.</div>
                 </div>
 
+                <!-- 표준 alias 가이드 표 -->
+                <div style="margin-top:4px;margin-bottom:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;">
+                    <div style="font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:8px;">
+                        <i class="fas fa-table" style="color:#475569;"></i> 표준 alias 매핑표
+                        <span style="font-weight:400;color:#64748b;font-size:0.72rem;">— SELECT 결과 컬럼명을 아래 alias 와 맞추면 자동 적재됩니다</span>
+                    </div>
+                    <table style="width:100%;font-size:0.72rem;border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#e2e8f0;color:#334155;">
+                                <th style="padding:4px 8px;text-align:left;width:38%;">alias</th>
+                                <th style="padding:4px 8px;text-align:left;width:14%;">위치</th>
+                                <th style="padding:4px 8px;text-align:left;width:10%;">필수</th>
+                                <th style="padding:4px 8px;text-align:left;">설명</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:3px 8px;"><code style="color:#dc2626;">access_time</code></td>
+                                <td style="padding:3px 8px;color:#3b82f6;">Master</td>
+                                <td style="padding:3px 8px;color:#dc2626;font-weight:700;">★ 필수</td>
+                                <td style="padding:3px 8px;color:#475569;">접속 일시 (DATETIME)</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:3px 8px;"><code>user_account</code> / <code>user_name</code> / <code>department</code></td>
+                                <td style="padding:3px 8px;color:#3b82f6;">Master</td>
+                                <td style="padding:3px 8px;color:#64748b;">권장</td>
+                                <td style="padding:3px 8px;color:#475569;">누가 (ID / 이름 / 소속)</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:3px 8px;"><code>client_ip</code> / <code>session_id</code></td>
+                                <td style="padding:3px 8px;color:#3b82f6;">Master</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">어디서</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:3px 8px;"><code>action_type</code> / <code>target_table</code> / <code>target_schema</code></td>
+                                <td style="padding:3px 8px;color:#3b82f6;">Master</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">무엇을 (SELECT/UPDATE/...)</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:3px 8px;"><code>result_code</code> / <code>access_channel</code></td>
+                                <td style="padding:3px 8px;color:#3b82f6;">Master</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">결과 (SUCCESS/FAIL/DENIED)</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;background:#fff7ed;">
+                                <td style="padding:3px 8px;"><code>sql_text</code> / <code>bind_params</code> / <code>sql_id</code></td>
+                                <td style="padding:3px 8px;color:#ea580c;">Sidecar</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">SQL 원문 / 바인드 / 식별자</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;background:#fff7ed;">
+                                <td style="padding:3px 8px;"><code>search_condition</code> / <code>target_columns</code></td>
+                                <td style="padding:3px 8px;color:#ea580c;">Sidecar</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">WHERE 조건 / 접근 컬럼</td>
+                            </tr>
+                            <tr style="background:#fff7ed;">
+                                <td style="padding:3px 8px;"><code>user_agent</code> / <code>error_message</code></td>
+                                <td style="padding:3px 8px;color:#ea580c;">Sidecar</td>
+                                <td style="padding:3px 8px;color:#94a3b8;">선택</td>
+                                <td style="padding:3px 8px;color:#475569;">클라이언트 / 실패 사유</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="font-size:0.7rem;color:#64748b;margin-top:6px;line-height:1.5;">
+                        <strong>Sidecar</strong> alias 가 한 개라도 있으면 <code>TBL_ACCESS_LOG_DETAIL</code> 에 자동 분리 적재됩니다.
+                        솔루션 audit 테이블 컬럼명은 환경에 맞게, alias 만 위 표준명으로.
+                    </div>
+                </div>
+
                 <div class="wiz-field">
                     <label>조회 SQL<span class="required">*</span></label>
                     <textarea id="wz_dacSelectSql" rows="14" style="width:100%;font-family:'Consolas','Monaco','Courier New',monospace;font-size:0.8rem;line-height:1.5;background:#f9fafb;"></textarea>
                     <div class="field-hint">
                         <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px;font-size:0.72rem;">&#35;{LAST_OFFSET}</code>은 마지막 수집 시점(DATETIME, 예: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px;font-size:0.72rem;">'2026-04-14 09:00:00'</code>)으로 자동 치환됩니다.
-                        SELECT 결과의 컬럼 alias를 표준명(access_time, user_account 등)에 맞추면 자동 매핑됩니다.
                     </div>
                     <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 10px;margin-top:6px;font-size:0.72rem;color:#991b1b;">
                         <i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i>
@@ -505,16 +576,26 @@
                     </div>
                 </div>
 
+                <!-- 미리보기 버튼 + 결과 패널 -->
+                <div style="margin-top:6px;">
+                    <button type="button" class="btn-outline" style="padding:6px 14px;font-size:0.78rem;" onclick="previewDacSql()">
+                        <i class="fas fa-flask"></i> SQL 미리보기 (dry-run)
+                    </button>
+                    <span class="field-hint" style="margin-left:8px;">등록 전에 실제로 실행해서 매핑 결과를 확인합니다.</span>
+                    <div id="wz_dacPreviewResult" style="display:none;margin-top:10px;border:1px solid #cbd5e1;border-radius:8px;padding:12px;background:#fff;font-size:0.75rem;line-height:1.6;"></div>
+                </div>
+
                 <!-- 프리셋 버튼 -->
-                <div style="margin-top:4px;padding-top:12px;border-top:1px solid #e5e7eb;">
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb;">
                     <div style="font-size:0.78rem;font-weight:600;color:#64748b;margin-bottom:8px;"><i class="fas fa-magic"></i> SQL 템플릿</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button type="button" class="btn-outline" style="padding:5px 12px;font-size:0.72rem;background:#ecfdf5;border-color:#10b981;color:#065f46;" onclick="applyDacPreset('generic')"><i class="fas fa-star"></i> Generic (솔루션 무관)</button>
                         <button type="button" class="btn-outline" style="padding:5px 12px;font-size:0.72rem;" onclick="applyDacPreset('chakra')">차크라맥스</button>
                         <button type="button" class="btn-outline" style="padding:5px 12px;font-size:0.72rem;" onclick="applyDacPreset('petra')">페트라</button>
                         <button type="button" class="btn-outline" style="padding:5px 12px;font-size:0.72rem;" onclick="applyDacPreset('dbsafer')">DBSafer</button>
                         <button type="button" class="btn-outline" style="padding:5px 12px;font-size:0.72rem;" onclick="applyDacPreset('queryone')">QueryOne</button>
                     </div>
-                    <div class="field-hint" style="margin-top:6px;">템플릿 선택 시 해당 솔루션의 기본 SQL이 입력됩니다. 환경에 맞게 수정하세요.</div>
+                    <div class="field-hint" style="margin-top:6px;"><strong>Generic</strong> 은 솔루션 무관 — 빈칸 (&lt;시각컬럼&gt; 등) 만 환경에 맞게 채우면 됩니다.</div>
                 </div>
             </div>
 
@@ -1513,6 +1594,33 @@ function updateDacAuditDisplay() {
 
 // ========== DB_DAC SQL Templates ==========
 var _dacTemplates = {
+    generic: {
+        name: 'Generic (솔루션 무관)',
+        sql: "-- ★ < > 부분만 환경에 맞게 채우면 됩니다.\n" +
+             "-- ★ alias 만 표준명에 맞추면 두 테이블에 자동 적재됩니다.\n" +
+             "SELECT\n" +
+             "    <시각컬럼>      AS access_time,        -- ★ 필수 (DATETIME)\n" +
+             "    <사용자ID컬럼>  AS user_account,\n" +
+             "    <사용자명컬럼>  AS user_name,\n" +
+             "    <부서컬럼>      AS department,\n" +
+             "    <IP컬럼>        AS client_ip,\n" +
+             "    <명령유형컬럼>  AS action_type,        -- SELECT/INSERT/UPDATE/DELETE 등\n" +
+             "    <대상테이블>    AS target_table,\n" +
+             "    <대상스키마>    AS target_schema,\n" +
+             "    <결과코드컬럼>  AS result_code,        -- SUCCESS/FAIL/DENIED\n" +
+             "    -- ↓ Sidecar (TBL_ACCESS_LOG_DETAIL) — 있으면 자동 분리 적재\n" +
+             "    LEFT(<SQL원문>, 2000)    AS sql_text,\n" +
+             "    <바인드값컬럼>           AS bind_params,\n" +
+             "    <SQL식별자컬럼>          AS sql_id,\n" +
+             "    <WHERE절컬럼>            AS search_condition,\n" +
+             "    <접근컬럼목록>           AS target_columns,\n" +
+             "    <UA컬럼>                 AS user_agent,\n" +
+             "    <에러메시지컬럼>         AS error_message\n" +
+             "  FROM <접근통제솔루션의_AUDIT_테이블>\n" +
+             " WHERE <시각컬럼> > #" + "{LAST_OFFSET}\n" +
+             " ORDER BY <시각컬럼>\n" +
+             " LIMIT 1000"
+    },
     chakra: {
         name: '차크라맥스',
         sql: "SELECT ACCESS_DATE   AS access_time,\n" +
@@ -1584,6 +1692,82 @@ function applyDacPreset(key) {
     if (!t) return;
     $('#wz_dacSelectSql').val(t.sql);
     showToast(t.name + ' SQL 템플릿이 적용되었습니다. 환경에 맞게 수정하세요.');
+}
+
+// ========== DB_DAC SELECT 미리보기 (dry-run) ==========
+function previewDacSql() {
+    var dbName = $('#wz_dbName').val();
+    var sql = $('#wz_dacSelectSql').val();
+    var $panel = $('#wz_dacPreviewResult');
+
+    if (!dbName) { showToast('대상 DB 를 먼저 선택하세요.'); return; }
+    if (!sql || !sql.trim()) { showToast('조회 SQL 을 입력하세요.'); return; }
+
+    $panel.show().html('<i class="fas fa-spinner fa-spin"></i> 실행 중...');
+
+    $.ajax({
+        url: '/accesslog/api/source/validate-dac-sql',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ dbName: dbName, selectSql: sql }),
+        success: function(res) { renderDacPreview(res); },
+        error: function(xhr) {
+            $panel.html('<div style="color:#dc2626;">미리보기 호출 실패: HTTP ' + xhr.status + '</div>');
+        }
+    });
+}
+
+function renderDacPreview(res) {
+    var $panel = $('#wz_dacPreviewResult');
+    var html = '';
+    var bg = res.valid ? '#ecfdf5' : '#fef2f2';
+    var color = res.valid ? '#065f46' : '#991b1b';
+    var icon = res.valid ? 'fa-check-circle' : 'fa-times-circle';
+    html += '<div style="background:' + bg + ';color:' + color + ';padding:8px 10px;border-radius:6px;margin-bottom:10px;">';
+    html += '<i class="fas ' + icon + '"></i> <strong>' + (res.message || '') + '</strong>';
+    html += '</div>';
+
+    if (res.missingRequired && res.missingRequired.length > 0) {
+        html += '<div style="background:#fee2e2;border:1px solid #fca5a5;padding:6px 10px;border-radius:4px;margin-bottom:8px;color:#991b1b;">';
+        html += '<i class="fas fa-exclamation-triangle"></i> 필수 alias 누락: <code>' + res.missingRequired.join('</code>, <code>') + '</code>';
+        html += '</div>';
+    }
+
+    function chips(arr, color, bg) {
+        if (!arr || arr.length === 0) return '<span style="color:#94a3b8;">없음</span>';
+        return arr.map(function(a) {
+            return '<span style="display:inline-block;background:' + bg + ';color:' + color + ';padding:2px 8px;border-radius:10px;margin:2px 3px;font-family:monospace;font-size:0.7rem;">' + a + '</span>';
+        }).join('');
+    }
+
+    html += '<div style="margin-bottom:6px;"><strong style="color:#3b82f6;">✓ Master 매핑 (' + (res.mappedMaster||[]).length + '):</strong> ' + chips(res.mappedMaster, '#1e40af', '#dbeafe') + '</div>';
+    html += '<div style="margin-bottom:6px;"><strong style="color:#ea580c;">✓ Sidecar 매핑 (' + (res.mappedSidecar||[]).length + '):</strong> ' + chips(res.mappedSidecar, '#9a3412', '#ffedd5') + '</div>';
+    if (res.unmapped && res.unmapped.length > 0) {
+        html += '<div style="margin-bottom:6px;"><strong style="color:#92400e;">⚠ 미매핑 컬럼 (적재 안 됨):</strong> ' + chips(res.unmapped, '#78350f', '#fef3c7') + '</div>';
+        html += '<div style="font-size:0.7rem;color:#92400e;margin-bottom:6px;">→ alias 를 표준명에 맞추거나, 수집 불필요한 컬럼이면 SELECT 에서 제거하세요.</div>';
+    }
+
+    if (res.sampleRow && Object.keys(res.sampleRow).length > 0) {
+        html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #cbd5e1;">';
+        html += '<strong>샘플 행 1건:</strong>';
+        html += '<table style="width:100%;font-size:0.7rem;margin-top:4px;border-collapse:collapse;">';
+        html += '<thead><tr style="background:#f1f5f9;"><th style="padding:3px 6px;text-align:left;">컬럼</th><th style="padding:3px 6px;text-align:left;">값</th></tr></thead><tbody>';
+        Object.keys(res.sampleRow).forEach(function(k) {
+            var v = res.sampleRow[k];
+            if (v === null) v = '<span style="color:#94a3b8;">NULL</span>';
+            else { v = String(v); if (v.length > 200) v = v.substring(0,200) + '…'; v = $('<div>').text(v).html(); }
+            html += '<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:3px 6px;font-family:monospace;color:#334155;">' + k + '</td><td style="padding:3px 6px;">' + v + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        html += '</div>';
+    }
+
+    if (res.previewSql) {
+        html += '<details style="margin-top:8px;"><summary style="cursor:pointer;color:#64748b;font-size:0.7rem;">실행된 SQL 보기</summary>';
+        html += '<pre style="background:#0f172a;color:#e2e8f0;padding:8px;border-radius:4px;font-size:0.7rem;overflow:auto;margin-top:4px;">' + $('<div>').text(res.previewSql).html() + '</pre></details>';
+    }
+
+    $panel.html(html);
 }
 
 // ========== Helpers ==========

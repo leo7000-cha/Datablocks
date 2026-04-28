@@ -54,6 +54,17 @@ else
     [ "$CONTINUE" != "y" ] && exit 1
 fi
 
+# --- 8443 포트 충돌 확인 (기존 Tomcat 등) ---
+if ss -tlnp 2>/dev/null | grep -q ':8443 ' || netstat -tlnp 2>/dev/null | grep -q ':8443 '; then
+    warn "포트 8443 이 이미 사용 중입니다. (기존 Tomcat 등)"
+    warn "  기존 서비스 중지 필요:"
+    warn "    sudo systemctl stop tomcat   (또는 해당 서비스명)"
+    warn "    또는 .env.jbwoori 의 DLM_PORT_HTTPS 를 다른 포트로 변경"
+    echo ""
+    read -p "  계속 진행하시겠습니까? (y/N): " CONTINUE
+    [ "$CONTINUE" != "y" ] && exit 1
+fi
+
 # --- MariaDB bind-address 확인 ---
 BIND_CHECK=$(mysql -u root -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null \
     || mysql -u root -p'!Dlm1234' -e "SHOW VARIABLES LIKE 'bind_address';" 2>/dev/null \
@@ -105,6 +116,19 @@ log "=== STEP 2/3: 설정 파일 배치 ==="
 mkdir -p "$INSTALL_DIR"
 cp "$DEPLOY_ROOT/$COMPOSE_FILE" "$INSTALL_DIR/"
 cp "$DEPLOY_ROOT/$ENV_FILE" "$INSTALL_DIR/"
+
+# --- HTTPS 인증서 복사 (./certs 상대경로 마운트 → 같은 디렉토리에 위치 필요) ---
+mkdir -p "$INSTALL_DIR/certs"
+if [ -f "$DEPLOY_ROOT/certs/dlm-keystore.p12" ]; then
+    cp "$DEPLOY_ROOT/certs/dlm-keystore.p12" "$INSTALL_DIR/certs/"
+    chmod 600 "$INSTALL_DIR/certs/dlm-keystore.p12"
+    log "HTTPS 인증서 복사 완료: $INSTALL_DIR/certs/dlm-keystore.p12"
+else
+    err "HTTPS 인증서 없음: certs/dlm-keystore.p12"
+    err "  배포 패키지에 인증서가 누락되었습니다. 패키지 재수령 필요."
+    exit 1
+fi
+
 log "파일 복사 완료: $INSTALL_DIR"
 
 TARGET_ENV="$INSTALL_DIR/$ENV_FILE"
@@ -112,7 +136,7 @@ TARGET_ENV="$INSTALL_DIR/$ENV_FILE"
 echo ""
 echo "  현재 설정:"
 echo "    DB Host: host.docker.internal (= 이 서버의 MariaDB)"
-echo "    DLM 포트: $(grep '^DLM_PORT=' "$TARGET_ENV" | cut -d= -f2)"
+echo "    DLM 포트: HTTPS $(grep '^DLM_PORT_HTTPS=' "$TARGET_ENV" | cut -d= -f2) (메인) + HTTP $(grep '^DLM_PORT=' "$TARGET_ENV" | cut -d= -f2) (리다이렉트)"
 echo "    AI 포트: $(grep '^AI_PORT=' "$TARGET_ENV" | cut -d= -f2)"
 echo ""
 
@@ -131,11 +155,18 @@ if [ -n "$DB_PASS" ]; then
     log "DB 비밀번호 변경됨"
 fi
 
-# --- DLM 포트 변경 ---
-read -p "  DLM 포트 [Enter=8080 유지]: " DLM_PORT_INPUT
+# --- DLM HTTP 포트 변경 (리다이렉트용) ---
+read -p "  DLM HTTP 포트 [Enter=8080 유지]: " DLM_PORT_INPUT
 if [ -n "$DLM_PORT_INPUT" ]; then
     sed -i "s|^DLM_PORT=.*|DLM_PORT=${DLM_PORT_INPUT}|g" "$TARGET_ENV"
-    log "DLM 포트 → ${DLM_PORT_INPUT}"
+    log "DLM HTTP 포트 → ${DLM_PORT_INPUT}"
+fi
+
+# --- DLM HTTPS 포트 변경 (메인) ---
+read -p "  DLM HTTPS 포트 [Enter=8443 유지]: " DLM_HTTPS_INPUT
+if [ -n "$DLM_HTTPS_INPUT" ]; then
+    sed -i "s|^DLM_PORT_HTTPS=.*|DLM_PORT_HTTPS=${DLM_HTTPS_INPUT}|g" "$TARGET_ENV"
+    log "DLM HTTPS 포트 → ${DLM_HTTPS_INPUT}"
 fi
 
 # --- AI 포트 변경 ---
@@ -174,7 +205,7 @@ fi
 echo ""
 log "애플리케이션 시작 대기... (최대 120초)"
 for i in $(seq 1 24); do
-    if docker exec dlm-app wget -qO- --timeout=3 http://localhost:8080/ &>/dev/null; then
+    if docker exec dlm-app wget -qO- --timeout=3 --no-check-certificate https://localhost:8443/ &>/dev/null; then
         echo ""
         log "DLM 정상 시작!"
         break
@@ -188,7 +219,8 @@ echo ""
 DLM_STATUS=$(docker inspect -f '{{.State.Status}}' dlm-app 2>/dev/null || echo "not found")
 AI_STATUS=$(docker inspect -f '{{.State.Status}}' dlm-privacy-ai 2>/dev/null || echo "not found")
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "서버IP")
-FINAL_PORT=$(grep '^DLM_PORT=' "$TARGET_ENV" | cut -d= -f2)
+FINAL_HTTP_PORT=$(grep '^DLM_PORT=' "$TARGET_ENV" | cut -d= -f2)
+FINAL_HTTPS_PORT=$(grep '^DLM_PORT_HTTPS=' "$TARGET_ENV" | cut -d= -f2)
 
 echo ""
 echo "=============================================="
@@ -198,8 +230,13 @@ echo ""
 [ "$DLM_STATUS" = "running" ] && echo -e "  DLM:        ${GREEN}Running${NC}" || echo -e "  DLM:        ${RED}${DLM_STATUS}${NC}"
 [ "$AI_STATUS" = "running" ] && echo -e "  Privacy-AI: ${GREEN}Running${NC}" || echo -e "  Privacy-AI: ${RED}${AI_STATUS}${NC}"
 echo ""
-echo "  접속: http://${SERVER_IP}:${FINAL_PORT:-8080}"
+echo "  접속: https://${SERVER_IP}:${FINAL_HTTPS_PORT:-8443}"
+echo "         (http://${SERVER_IP}:${FINAL_HTTP_PORT:-8080} → 자동 리다이렉트)"
 echo "  계정: admin / admin1234"
+echo ""
+echo "  ★ 자체 서명 인증서 안내:"
+echo "    브라우저 첫 접속 시 '안전하지 않음' 경고 → '고급 → 진행' 으로 통과"
+echo "    운영 인증서 교체: certs/dlm-keystore.p12 교체 후 dlm 컨테이너 재시작"
 echo ""
 echo "  ★ tbl_piidatabase 설정:"
 echo "    hostname = host.docker.internal"

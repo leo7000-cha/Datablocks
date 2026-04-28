@@ -32,9 +32,12 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.ArrayList;
@@ -343,6 +346,99 @@ public class JobScheduler {
         }
     }
 
+    /**
+     * Fix 8 (2026-04-28): stuck step 자동 복구.
+     * status='Running' 상태로 BATCH_STEP_STUCK_TIMEOUT_HOURS (default 6h) 이상 머무르는 step 을
+     * 'Ended not OK' 로 강제 전환하여 후속 order 의 dispatch 차단을 해제한다.
+     *
+     * - 정상 long-running 작업의 false-positive 방지를 위해 default 6h (운영 환경별로 환경변수 조정).
+     * - 미완료 inner table 만 'Ended not OK' 로 마킹한 후 step/order updateend 를 호출하여
+     *   집계 SQL 이 자동으로 step status 결정 (모두 OK 면 'Ended OK', 일부 not OK 면 'Ended not OK').
+     * - awaitTermination 대기 중 worker 의 finally 와 동시 실행되어도 mapper updateend 가 idempotent 하므로 안전.
+     */
+    private final java.util.concurrent.atomic.AtomicBoolean recoverStuckRunning =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    @Async
+    @Scheduled(fixedRate = 600000, initialDelay = 60000)   // 10분 주기, 1분 후 시작
+    public void recoverStuckSteps() {
+        if (!recoverStuckRunning.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            String runflag = EnvConfig.getConfig("DLM_RUN_FLAG");
+            if (!"Y".equalsIgnoreCase(runflag)) return;
+
+            int timeoutHours = 6;
+            String configTimeout = EnvConfig.getConfig("BATCH_STEP_STUCK_TIMEOUT_HOURS");
+            if (configTimeout != null && !configTimeout.isEmpty()) {
+                try {
+                    timeoutHours = Integer.parseInt(configTimeout);
+                } catch (NumberFormatException ignored) {
+                    // 파싱 실패 시 default 6h
+                }
+            }
+            if (timeoutHours <= 0) return;   // 0 이하면 비활성화
+
+            List<PiiOrderStepVO> stuckSteps = orderStepMapper.findStuckRunningSteps(timeoutHours);
+            if (stuckSteps == null || stuckSteps.isEmpty()) return;
+
+            LogUtil.log("WARN", "recoverStuckSteps detected " + stuckSteps.size()
+                    + " stuck step(s) running > " + timeoutHours + "h");
+
+            for (PiiOrderStepVO step : stuckSteps) {
+                int orderid = step.getOrderid();
+                String stepid = step.getStepid();
+                String jobid = step.getJobid();
+                String version = step.getVersion();
+                try {
+                    // 1) 미완료 inner table → 'Ended not OK' (Fix 9: deadlock retry)
+                    List<PiiOrderStepTableVO> remain = orderStepTableMapper.getStepTableListasc(orderid, stepid);
+                    int markedCnt = 0;
+                    final int _timeoutHours = timeoutHours;
+                    for (PiiOrderStepTableVO t : remain) {
+                        String tStatus = t.getStatus();
+                        if (!"Ended OK".equals(tStatus) && !"Ended not OK".equals(tStatus)) {
+                            final PiiOrderStepTableVO _t = t;
+                            BatchStepWorker.runWithDeadlockRetry("recoverStuckSteps.tableUpdateend",
+                                    () -> orderStepTableMapper.updateend(
+                                            _t.getOrderid(), _t.getJobid(), _t.getVersion(), _t.getStepid(),
+                                            _t.getSeq1(), _t.getSeq2(), _t.getSeq3(),
+                                            "Ended not OK", 0,
+                                            "Auto recovery: stuck running > " + _timeoutHours + "h"));
+                            markedCnt++;
+                        }
+                    }
+                    // 2) step / order 집계 재실행 (Fix 9: deadlock retry)
+                    final int _orderid = orderid;
+                    final String _jobid = jobid, _version = version, _stepid = stepid;
+                    BatchStepWorker.runWithDeadlockRetry("recoverStuckSteps.stepUpdateend",
+                            () -> orderStepMapper.updateend(_orderid, _jobid, _version, _stepid));
+                    BatchStepWorker.runWithDeadlockRetry("recoverStuckSteps.orderUpdateend",
+                            () -> orderMapper.updateend(_orderid));
+                    // 3) thread queue 정리
+                    BatchStepWorker.runWithDeadlockRetry("recoverStuckSteps.threadDelete",
+                            () -> orderThreadMapper.delete(_orderid));
+
+                    LogUtil.log("WARN", "Auto-recovered stuck step: orderid=" + orderid
+                            + " stepid=" + stepid + " markedTables=" + markedCnt
+                            + " realstarttime=" + step.getRealstarttime());
+                } catch (Exception e) {
+                    LogUtil.log("ERROR", "Failed to auto-recover stuck step: orderid=" + orderid
+                            + " stepid=" + stepid + " - " + e.getMessage());
+                    logger.error("recoverStuckSteps mapper call failed: orderid={} stepid={}",
+                            orderid, stepid, e);
+                }
+            }
+        } catch (Throwable t) {
+            // 자동 복구 실패가 다음 tick 차단으로 이어지지 않게
+            LogUtil.log("ERROR", "recoverStuckSteps failed: " + t.getMessage());
+            logger.error("recoverStuckSteps failed", t);
+        } finally {
+            recoverStuckRunning.set(false);
+        }
+    }
+
     private void doRunOrder() throws Exception {
         LocalDate now = LocalDate.now();
         String steptableorderby = "DESC";
@@ -451,13 +547,17 @@ public class JobScheduler {
 
             List<PiiOrderStepTableVO> ordersteptablelist;
             //logger.debug("info$ "+"3===== runOrder() ====start!!! ordersteptablelist=");
-            orderMapper.updatebefore(orderid);
+            // Fix 9: deadlock retry
+            final int _orderidA = orderid;
+            BatchStepWorker.runWithDeadlockRetry("orderMapper.updatebefore",
+                    () -> orderMapper.updatebefore(_orderidA));
             //logger.debug("info$ "+"4===== runOrder() ====start!!! updatebefore(orderid)=");
             List<PiiOrderStepVO> ordersteplist = orderStepMapper.getRunnableOrderStepList(orderid);
             //logger.debug("info$ "+"5===== runOrder() ====start!!! ordersteplist.size()= "+ordersteplist.size());
             /* 20230609 예외 상황으로 모든 스텝과 테이블이 Ended OK 이면서 order 상태가 Ended OK가 아닌경우는 바로 업데이트 하고 다음 order로 계속진행 */
             if(ordersteplist.size() == 0){
-                orderMapper.updateend(orderid);
+                BatchStepWorker.runWithDeadlockRetry("orderMapper.updateend(shortcut)",
+                        () -> orderMapper.updateend(_orderidA));
                 continue;
             }
 
@@ -467,11 +567,14 @@ public class JobScheduler {
                 //logger.debug("info$ "+orderid + "  ordersteptableMapper  " + orderStepTableMapper.getStepTableList(orderid, piiorderstep.getStepid()) + "   ");
                 if (piiorderstep.getStatus().equals("Running")) break;
 
-                orderStepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(), piiorderstep.getVersion(), piiorderstep.getStepid());
+                final PiiOrderStepVO _stepA = piiorderstep;
+                BatchStepWorker.runWithDeadlockRetry("orderStepMapper.updateend(sanity)",
+                        () -> orderStepMapper.updateend(_stepA.getOrderid(), _stepA.getJobid(), _stepA.getVersion(), _stepA.getStepid()));
                 if (orderThreadMapper.getListCnt(orderid, piiorder.getJobid(), piiorder.getVersion()) > 0) continue;
                 if (piiorderstep.getStatus().equals("Ended OK")) continue;
                 if (piiorderstep.getStatus().equals("Hold")) {
-                    orderMapper.updatestatus(orderid, "Hold");
+                    BatchStepWorker.runWithDeadlockRetry("orderMapper.updatestatus(Hold)",
+                            () -> orderMapper.updatestatus(_orderidA, "Hold"));
                     //LogUtil.log("INFO", orderid+ " " +piiorderstep.getStepid() + "   Hold");
                     break;
                 }
@@ -514,7 +617,9 @@ public class JobScheduler {
                 }
 
 
-                orderStepMapper.updatebefore(piiorderstep.getOrderid(), piiorderstep.getJobid(), piiorderstep.getVersion(), piiorderstep.getStepid());
+                final PiiOrderStepVO _stepB = piiorderstep;
+                BatchStepWorker.runWithDeadlockRetry("orderStepMapper.updatebefore",
+                        () -> orderStepMapper.updatebefore(_stepB.getOrderid(), _stepB.getJobid(), _stepB.getVersion(), _stepB.getStepid()));
 
                 /**===================================================================================
                  * BatchStepWorker 방식 (모든 step type 통합)
@@ -526,29 +631,41 @@ public class JobScheduler {
                             + " steptype=" + steptype + " tables=" + ordersteptablelist.size()
                             + " threads=" + threadcnt);
 
-                    LogUtil.log("INFO", "Initializing AES/DataSourceCache: orderid=" + orderid + " stepid=" + stepid);
-                    AES256Util aes = new AES256Util();
-                    DataSourceCache dsCache = new DataSourceCache(databaseMapper, aes, threadcnt);
-                    LogUtil.log("INFO", "AES/DataSourceCache initialized OK: orderid=" + orderid + " stepid=" + stepid);
-
-                    // 복원/아카이브 step: 커넥션 풀 워밍업 (TARGET + DLMARC)
-                    if ("EXE_RESTORE".equals(steptype) || "EXE_RECOVERY".equals(steptype)) {
-                        try {
-                            PiiDatabaseVO coreDb = databaseMapper.readBySystem("CORE");
-                            if (coreDb != null && coreDb.getDb() != null) {
-                                LogUtil.log("INFO", "Pool warm-up starting: steptype=" + steptype
-                                        + " dbKeys=[DLMARC, " + coreDb.getDb() + "]"
-                                        + " poolSize=" + threadcnt);
-                                dsCache.warmUp("DLMARC", coreDb.getDb());
-                            } else {
-                                LogUtil.log("WARN", "Pool warm-up skipped: CORE production DB not found");
-                            }
-                        } catch (SQLException e) {
-                            LogUtil.log("WARN", "Pool warm-up failed (will retry lazily): " + e.getMessage());
-                        }
-                    }
-
+                    /**
+                     * Bug A/F/H 보강 (2026-04-28):
+                     * - AES256Util/DataSourceCache 생성을 try 블록 안으로 이동 → 예외 시 step 'Running' 영구 고착 차단
+                     * - warmUp 의 catch 범위를 SQLException → Exception 으로 확대 (HikariCP NPE 등 포괄)
+                     * - executorService.submit() 의 Future 보관 후 결과 관찰 → worker 미캐치 예외 노출
+                     * - catch 를 Throwable 까지 확대 (OOM 등 Error 포함)
+                     * - stepInitFailed 시 step table → 'Ended not OK' 마킹 후 step/order updateend
+                     */
+                    DataSourceCache dsCache = null;
+                    boolean stepInitFailed = false;
+                    String stepFailMsg = null;
                     try {
+                        LogUtil.log("INFO", "Initializing AES/DataSourceCache: orderid=" + orderid + " stepid=" + stepid);
+                        AES256Util aes = new AES256Util();
+                        dsCache = new DataSourceCache(databaseMapper, aes, threadcnt);
+                        LogUtil.log("INFO", "AES/DataSourceCache initialized OK: orderid=" + orderid + " stepid=" + stepid);
+
+                        // 복원/아카이브 step: 커넥션 풀 워밍업 (TARGET + DLMARC)
+                        if ("EXE_RESTORE".equals(steptype) || "EXE_RECOVERY".equals(steptype)) {
+                            try {
+                                PiiDatabaseVO coreDb = databaseMapper.readBySystem("CORE");
+                                if (coreDb != null && coreDb.getDb() != null) {
+                                    LogUtil.log("INFO", "Pool warm-up starting: steptype=" + steptype
+                                            + " dbKeys=[DLMARC, " + coreDb.getDb() + "]"
+                                            + " poolSize=" + threadcnt);
+                                    dsCache.warmUp("DLMARC", coreDb.getDb());
+                                } else {
+                                    LogUtil.log("WARN", "Pool warm-up skipped: CORE production DB not found");
+                                }
+                            } catch (Exception e) {
+                                // SQLException 외 RuntimeException(NPE, HikariCP init 실패 등) 도 포괄
+                                LogUtil.log("WARN", "Pool warm-up failed (will retry lazily): " + e.getMessage());
+                            }
+                        }
+
                         // EXE_RECOVERY/RECOVERY_U 사전 필터링
                         List<PiiOrderStepTableVO> filteredList = preFilterRecoveryTables(
                                 stepid, piiorderstep, ordersteptablelist);
@@ -563,6 +680,7 @@ public class JobScheduler {
                                 + " stepid=" + stepid + " threadcnt=" + threadcnt
                                 + " tableQueue=" + tableQueue.size());
                         ExecutorService executorService = Executors.newFixedThreadPool(threadcnt);
+                        List<Future<?>> workerFutures = new ArrayList<>(threadcnt);
                         for (int i = 0; i < threadcnt; i++) {
                             BatchStepWorker worker = new BatchStepWorker(
                                     tableQueue, dsCache, piiorderstep, steptableorderby,
@@ -571,7 +689,7 @@ public class JobScheduler {
                                     databaseMapper, tableMapper, orderMapper,
                                     orderThreadMapper, orderStepTableUpdateMapper,
                                     configMapper, metaTableMapper, lkPiiScrTypeMapper);
-                            executorService.submit(worker);
+                            workerFutures.add(executorService.submit(worker));
                         }
 
                         executorService.shutdown();
@@ -596,15 +714,74 @@ public class JobScheduler {
                                 LogUtil.log("ERROR", "BatchStepWorker ExecutorService exceeded timeout and was forcefully shut down.");
                             }
                         }
+
+                        // Bug F: worker 의 미캐치 예외를 ERROR 로그로 노출
+                        for (int wi = 0; wi < workerFutures.size(); wi++) {
+                            Future<?> f = workerFutures.get(wi);
+                            try {
+                                f.get(0, TimeUnit.SECONDS);
+                            } catch (TimeoutException ignored) {
+                                // shutdownNow 후에도 종료 안 된 worker — 로그만
+                                LogUtil.log("WARN", "BatchStepWorker[" + wi + "] not terminated after shutdownNow");
+                            } catch (ExecutionException ee) {
+                                Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
+                                LogUtil.log("ERROR", "BatchStepWorker[" + wi + "] uncaught: "
+                                        + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                                logger.error("BatchStepWorker[{}] uncaught", wi, cause);
+                            } catch (Exception ignored) {
+                                // CancellationException 등은 timeout/cleanup 정상 흐름
+                            }
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
+                        stepInitFailed = true;
+                        stepFailMsg = "Interrupted: " + e.getMessage();
                         LogUtil.log("ERROR", "BatchStepWorker ExecutorService waiting interrupted: " + e.getMessage());
-                    } catch (Exception e) {
-                        LogUtil.log("ERROR", "BatchStepWorker failed: " + e.getMessage());
+                    } catch (Throwable t) {
+                        // Bug A/H: AES/DataSourceCache 생성 실패, OOM/Error 모두 캐치
+                        stepInitFailed = true;
+                        stepFailMsg = t.getClass().getSimpleName() + ": " + t.getMessage();
+                        LogUtil.log("ERROR", "BatchStepWorker init/exec failed: orderid=" + orderid
+                                + " stepid=" + stepid + " cause=" + stepFailMsg);
+                        logger.error("BatchStepWorker init/exec failed", t);
                     } finally {
-                        dsCache.close();
+                        if (dsCache != null) {
+                            try { dsCache.close(); } catch (Exception ignored) {}
+                        }
                         LogUtil.log("INFO", "BatchStepWorker completed, DataSources closed: orderid=" + orderid
                                 + " steptype=" + steptype);
+                    }
+
+                    // Bug A 의 핵심 복구: stepInitFailed 시 step 'Running' 영구 고착 차단 (Fix 9: deadlock retry)
+                    if (stepInitFailed) {
+                        try {
+                            List<PiiOrderStepTableVO> remain = orderStepTableMapper.getStepTableListasc(orderid, stepid);
+                            final String _failMsg = stepFailMsg;
+                            for (PiiOrderStepTableVO t : remain) {
+                                String tStatus = t.getStatus();
+                                if (!"Ended OK".equals(tStatus) && !"Ended not OK".equals(tStatus)) {
+                                    final PiiOrderStepTableVO _t = t;
+                                    BatchStepWorker.runWithDeadlockRetry("stepInitFailed.tableUpdateend",
+                                            () -> orderStepTableMapper.updateend(
+                                                    _t.getOrderid(), _t.getJobid(), _t.getVersion(), _t.getStepid(),
+                                                    _t.getSeq1(), _t.getSeq2(), _t.getSeq3(),
+                                                    "Ended not OK", 0,
+                                                    "BatchStepWorker init failed: " + _failMsg));
+                                }
+                            }
+                            final int _orderidC = orderid;
+                            final String _jobidC = piiorderstep.getJobid(), _versionC = piiorderstep.getVersion(), _stepidC = stepid;
+                            BatchStepWorker.runWithDeadlockRetry("stepInitFailed.stepUpdateend",
+                                    () -> orderStepMapper.updateend(_orderidC, _jobidC, _versionC, _stepidC));
+                            BatchStepWorker.runWithDeadlockRetry("stepInitFailed.orderUpdateend",
+                                    () -> orderMapper.updateend(_orderidC));
+                            BatchStepWorker.runWithDeadlockRetry("stepInitFailed.threadDelete",
+                                    () -> orderThreadMapper.delete(_orderidC));
+                            LogUtil.log("INFO", "Step recovery completed: orderid=" + orderid + " stepid=" + stepid);
+                        } catch (Exception e) {
+                            LogUtil.log("ERROR", "Step recovery failed: orderid=" + orderid
+                                    + " stepid=" + stepid + " - " + e.getMessage());
+                        }
                     }
 
                 // 이 지점에 도달한다는 것은 STEP 내 모든 테이블 작업이 끝났음을 의미합니다.
@@ -635,12 +812,18 @@ public class JobScheduler {
                                 recoveryVO.getOld_orderid(), "EXE_UPDATE",
                                 table.getSeq1(), table.getSeq2(), table.getSeq3());
                         if (origTable == null || !"Ended OK".equalsIgnoreCase(origTable.getStatus())) {
-                            orderStepTableMapper.updateend(table.getOrderid(), table.getJobid(), table.getVersion(),
-                                    table.getStepid(), table.getSeq1(), table.getSeq2(), table.getSeq3(),
-                                    "Ended OK", 0, null);
-                            orderStepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                                    piiorderstep.getVersion(), piiorderstep.getStepid());
-                            orderMapper.updateend(table.getOrderid());
+                            // Fix 9: deadlock retry
+                            final PiiOrderStepTableVO _table = table;
+                            final PiiOrderStepVO _stepU = piiorderstep;
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecoveryU.tableUpdateend",
+                                    () -> orderStepTableMapper.updateend(_table.getOrderid(), _table.getJobid(), _table.getVersion(),
+                                            _table.getStepid(), _table.getSeq1(), _table.getSeq2(), _table.getSeq3(),
+                                            "Ended OK", 0, null));
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecoveryU.stepUpdateend",
+                                    () -> orderStepMapper.updateend(_stepU.getOrderid(), _stepU.getJobid(),
+                                            _stepU.getVersion(), _stepU.getStepid()));
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecoveryU.orderUpdateend",
+                                    () -> orderMapper.updateend(_table.getOrderid()));
                             continue;
                         }
                     }
@@ -653,12 +836,18 @@ public class JobScheduler {
                                 recoveryVO.getOld_orderid(), "EXE_DELETE",
                                 table.getSeq1(), table.getSeq2(), table.getSeq3());
                         if (origTable == null || !"Ended OK".equalsIgnoreCase(origTable.getStatus())) {
-                            orderStepTableMapper.updateend(table.getOrderid(), table.getJobid(), table.getVersion(),
-                                    table.getStepid(), table.getSeq1(), table.getSeq2(), table.getSeq3(),
-                                    "Ended OK", 0, null);
-                            orderStepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                                    piiorderstep.getVersion(), piiorderstep.getStepid());
-                            orderMapper.updateend(table.getOrderid());
+                            // Fix 9: deadlock retry
+                            final PiiOrderStepTableVO _table = table;
+                            final PiiOrderStepVO _stepR = piiorderstep;
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecovery.tableUpdateend",
+                                    () -> orderStepTableMapper.updateend(_table.getOrderid(), _table.getJobid(), _table.getVersion(),
+                                            _table.getStepid(), _table.getSeq1(), _table.getSeq2(), _table.getSeq3(),
+                                            "Ended OK", 0, null));
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecovery.stepUpdateend",
+                                    () -> orderStepMapper.updateend(_stepR.getOrderid(), _stepR.getJobid(),
+                                            _stepR.getVersion(), _stepR.getStepid()));
+                            BatchStepWorker.runWithDeadlockRetry("preFilterRecovery.orderUpdateend",
+                                    () -> orderMapper.updateend(_table.getOrderid()));
                             continue;
                         }
                     }

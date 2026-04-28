@@ -1,7 +1,7 @@
 # DLM 배포 가이드 — iM캐피탈
 
 > CentOS 7 / MariaDB 호스트 OS 직접 설치 / Docker 미설치
-> 작성일: 2026-04-08 | 갱신: 2026-04-22
+> 작성일: 2026-04-08 | 갱신: 2026-04-28 (복원 step 'Running' 고착 차단 + 자동 timeout 복구 + MariaDB deadlock 자동 retry)
 
 ---
 

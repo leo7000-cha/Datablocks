@@ -457,6 +457,29 @@ public class AccessLogController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * DB_DAC 등록용 SELECT 미리보기 (등록 전 dry-run).
+     * <p>입력 : { "dbName":"...", "selectSql":"..." }
+     * <p>응답 : { valid, message, mappedMaster[], mappedSidecar[],
+     *           unmapped[], missingRequired[], sampleRow{}, previewSql }
+     */
+    @PostMapping("/api/source/validate-dac-sql")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> validateDacSql(@RequestBody Map<String, String> body) {
+        String dbName = body.get("dbName");
+        String selectSql = body.get("selectSql");
+        try {
+            Map<String, Object> result = accessLogCollector.previewDacSql(dbName, selectSql);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("validate-dac-sql failed", e);
+            Map<String, Object> err = new HashMap<>();
+            err.put("valid", false);
+            err.put("message", "미리보기 처리 오류: " + e.getMessage());
+            return ResponseEntity.ok(err);
+        }
+    }
+
     // --- Collection Control ---
     @PostMapping("/api/collection/{sourceId}/start")
     @ResponseBody

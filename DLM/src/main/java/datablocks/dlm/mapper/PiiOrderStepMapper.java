@@ -15,6 +15,8 @@ public interface PiiOrderStepMapper {
 	public List<PiiOrderStepVO> getOrderStepList(@Param("orderid") int orderid);
 	public List<PiiOrderStepVO> getRunnableOrderStepList(@Param("orderid") int orderid);
 	public List<PiiOrderStepRunStatusVO> getRunStatusList(@Param("orderid") int orderid);
+	// Fix 8 (2026-04-28): 자동 stuck step 복구용 — 'Running' 상태이면서 realstarttime 이 timeoutHours 이전인 step 검출
+	public List<PiiOrderStepVO> findStuckRunningSteps(@Param("timeoutHours") int timeoutHours);
 	
 	public List<PiiOrderStepVO> getListWithPaging(Criteria cri);
 

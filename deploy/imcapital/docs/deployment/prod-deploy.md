@@ -194,9 +194,8 @@ MARIADB_ROOT_PASSWORD=P@ssw0rd_Str0ng_R00t_2024!
 # --- Spring Datasource ---
 SPRING_DATASOURCE_URL=jdbc:mariadb://dlm-mariadb:3306/cotdl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true
 
-# --- DB 접속 계정 (v1.0.0 부터 평문 env, Jasypt 제거됨) ---
-SPRING_DATASOURCE_USERNAME=cotdl
-SPRING_DATASOURCE_PASSWORD=<고객사 실암호>    # ★ 반드시 교체
+# --- Jasypt 암호화 키 (application.properties의 ENC() 복호화 키) ---
+JASYPT_ENCRYPTOR_PASSWORD=datablocks
 
 # --- DLM-Privacy-AI 설정 ---
 PRIVACY_AI_DB_HOST=dlm-mariadb
@@ -525,7 +524,7 @@ sudo certbot --nginx -d dlm.example.com
 server.ssl.enabled=true
 server.ssl.key-store=/app/keystore.p12
 server.ssl.key-store-type=PKCS12
-server.ssl.key-store-password=${SERVER_SSL_KEY_STORE_PASSWORD}   # env 로 주입 (평문 금지)
+server.ssl.key-store-password=ENC(암호화된_패스워드)
 server.port=8443
 ```
 

@@ -61,14 +61,14 @@ if ! $MYSQL -e "SELECT 1" >/dev/null 2>&1; then
 fi
 
 # DDL 파일 경로
-DDL_FILE="$SCRIPT_DIR/DLM_DDL_MASTER_CORE.sql"
+DDL_FILE="$SCRIPT_DIR/10_DDL_MASTER_CORE.sql"
 DIFF_SQL="$SCRIPT_DIR/SCHEMA_DIFF.sql"
-[ ! -f "$DDL_FILE" ] && DDL_FILE="/tmp/ddl/DLM_DDL_MASTER_CORE.sql"
+[ ! -f "$DDL_FILE" ] && DDL_FILE="/tmp/ddl/10_DDL_MASTER_CORE.sql"
 [ ! -f "$DIFF_SQL" ] && DIFF_SQL="/tmp/ddl/SCHEMA_DIFF.sql"
-[ ! -f "$DDL_FILE" ] && DDL_FILE="/tmp/DLM_DDL_MASTER_CORE.sql"
+[ ! -f "$DDL_FILE" ] && DDL_FILE="/tmp/10_DDL_MASTER_CORE.sql"
 [ ! -f "$DIFF_SQL" ] && DIFF_SQL="/tmp/SCHEMA_DIFF.sql"
 
-if [ ! -f "$DDL_FILE" ]; then echo "[ERROR] DLM_DDL_MASTER_CORE.sql 을 찾을 수 없습니다."; exit 1; fi
+if [ ! -f "$DDL_FILE" ]; then echo "[ERROR] 10_DDL_MASTER_CORE.sql 을 찾을 수 없습니다."; exit 1; fi
 if [ ! -f "$DIFF_SQL" ]; then echo "[ERROR] SCHEMA_DIFF.sql 을 찾을 수 없습니다."; exit 1; fi
 
 echo "=============================================="

@@ -110,6 +110,72 @@ public class BatchStepWorker implements Runnable {
 
     @Override
     public void run() {
+        // Bug I 보강 (2026-04-28): run() 전체를 Throwable catch 로 감싸 OOM/Error 도 누락 없이 잡고
+        // stopFlag 로 동료 worker graceful 종료 유도 → executor.awaitTermination 영구 hang 차단
+        try {
+            runInternal();
+        } catch (Throwable t) {
+            logger.error("BatchStepWorker[{}] terminated abnormally: {}",
+                    workerIndex, t.getMessage(), t);
+            try {
+                stopFlag.set(true);
+            } catch (Throwable ignored) {
+                // 절대로 run() 바깥으로 예외 propagate 안되게
+            }
+        }
+    }
+
+    /**
+     * Fix 9 (2026-04-28): mapper write 호출의 deadlock 자동 retry.
+     * - DeadlockLoserDataAccessException 또는 SQLTransactionRollbackException 메시지 매칭 시 retry
+     * - max 3회, jittered backoff (50~200ms)
+     * - 다른 예외는 즉시 throw (caller catch 가 처리)
+     * - 모든 step type (RESTORE/RECOVERY/ARCHIVE/DELETE/UPDATE/SCRAMBLE/MIGRATE/SYNC/ILM/FINISH/KEYMAP) 공통 적용.
+     * - JobScheduler 등 외부 호출자도 사용 가능하도록 static 으로 노출.
+     */
+    public static void runWithDeadlockRetry(String label, Runnable mapperCall) {
+        int maxAttempts = 3;
+        Throwable last = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                mapperCall.run();
+                if (attempt > 1) {
+                    logger.warn("{} succeeded on retry {}", label, attempt);
+                }
+                return;
+            } catch (Throwable t) {
+                if (!isDeadlock(t)) {
+                    if (t instanceof RuntimeException) throw (RuntimeException) t;
+                    if (t instanceof Error) throw (Error) t;
+                    throw new RuntimeException(t);
+                }
+                last = t;
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(50L + (long) (Math.random() * 150L));
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        logger.error("{} failed after {} deadlock retries", label, maxAttempts, last);
+    }
+
+    public static boolean isDeadlock(Throwable t) {
+        Throwable c = t;
+        while (c != null) {
+            if (c instanceof org.springframework.dao.DeadlockLoserDataAccessException) return true;
+            if (c instanceof java.sql.SQLTransactionRollbackException) return true;
+            String msg = c.getMessage();
+            if (msg != null && msg.contains("Deadlock found when trying to get lock")) return true;
+            c = c.getCause();
+        }
+        return false;
+    }
+
+    private void runInternal() {
         String steptype = piiorderstep.getSteptype();
 
         // Oracle latch 경합 방지: Worker별 시차 시작 (200ms 간격)
@@ -293,10 +359,15 @@ public class BatchStepWorker implements Runnable {
                     piiordersteptable.getSeq1(), piiordersteptable.getSeq2(),
                     piiordersteptable.getSeq3());
             if ("Ended OK".equals(current.getStatus())) {
-                orderstepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                        piiorderstep.getVersion(), piiorderstep.getStepid());
-                orderMapper.updateend(piiordersteptable.getOrderid());
-                orderthreadMapper.delete(piiordersteptable.getOrderid());
+                // Fix 9: deadlock retry
+                final PiiOrderStepTableVO _t = piiordersteptable;
+                runWithDeadlockRetry("orderstepMapper.updateend(skip)",
+                        () -> orderstepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
+                                piiorderstep.getVersion(), piiorderstep.getStepid()));
+                runWithDeadlockRetry("orderMapper.updateend(skip)",
+                        () -> orderMapper.updateend(_t.getOrderid()));
+                runWithDeadlockRetry("orderthreadMapper.delete(skip)",
+                        () -> orderthreadMapper.delete(_t.getOrderid()));
                 return;
             }
         } catch (Exception e) {
@@ -309,10 +380,13 @@ public class BatchStepWorker implements Runnable {
                     + piiordersteptable.getTable_name() + " orderid=" + piiordersteptable.getOrderid()
                     + " seq=" + piiordersteptable.getSeq1() + "-" + piiordersteptable.getSeq2()
                     + "-" + piiordersteptable.getSeq3());
-            ordersteptableMapper.updateend(piiordersteptable.getOrderid(), piiordersteptable.getJobid(),
-                    piiordersteptable.getVersion(), piiordersteptable.getStepid(),
-                    piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(),
-                    "Ended not OK", 0, "Skipped: prerequisite table failed");
+            // Fix 9: deadlock retry
+            final PiiOrderStepTableVO _tPrereq = piiordersteptable;
+            runWithDeadlockRetry("ordersteptableMapper.updateend(prereq-fail)",
+                    () -> ordersteptableMapper.updateend(_tPrereq.getOrderid(), _tPrereq.getJobid(),
+                            _tPrereq.getVersion(), _tPrereq.getStepid(),
+                            _tPrereq.getSeq1(), _tPrereq.getSeq2(), _tPrereq.getSeq3(),
+                            "Ended not OK", 0, "Skipped: prerequisite table failed"));
             return;
         }
 
@@ -345,10 +419,13 @@ public class BatchStepWorker implements Runnable {
                 } else {
                     LogUtil.log("WARN", "BatchStepWorker FK dependency not resolved: table="
                             + piiordersteptable.getTable_name() + " attempts=" + attempts);
-                    ordersteptableMapper.updateend(piiordersteptable.getOrderid(), piiordersteptable.getJobid(),
-                            piiordersteptable.getVersion(), piiordersteptable.getStepid(),
-                            piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(),
-                            "Ended not OK", 0, "FK dependency not resolved after max attempts");
+                    // Fix 9: deadlock retry
+                    final PiiOrderStepTableVO _tFk = piiordersteptable;
+                    runWithDeadlockRetry("ordersteptableMapper.updateend(fk-fail)",
+                            () -> ordersteptableMapper.updateend(_tFk.getOrderid(), _tFk.getJobid(),
+                                    _tFk.getVersion(), _tFk.getStepid(),
+                                    _tFk.getSeq1(), _tFk.getSeq2(), _tFk.getSeq3(),
+                                    "Ended not OK", 0, "FK dependency not resolved after max attempts"));
                     return;
                 }
             }
@@ -584,33 +661,41 @@ public class BatchStepWorker implements Runnable {
                         piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(), resultcnt);
             }
 
-            // --- 성공 처리 ---
+            // --- 성공 처리 (Fix 9: deadlock retry) ---
+            final long _resultcnt = resultcnt;
+            final PiiOrderStepVO _stepexeOk = orderstepexe;
+            final boolean _arcExeOk = arc_exe_flag;
+            final PiiOrderStepTableVO _tOk = piiordersteptable;
             if (resultcnt < 0) {
                 JdbcUtil.rollback(connTarget);
                 JdbcUtil.rollback(connIsolation);
                 JdbcUtil.rollback(connSource);
                 JdbcUtil.rollback(connHome);
-                ordersteptableMapper.updateend(piiordersteptable.getOrderid(), piiordersteptable.getJobid(),
-                        piiordersteptable.getVersion(), piiordersteptable.getStepid(),
-                        piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(),
-                        "Ended not OK", 0, "Table execute fail");
+                runWithDeadlockRetry("ordersteptableMapper.updateend(fail)",
+                        () -> ordersteptableMapper.updateend(_tOk.getOrderid(), _tOk.getJobid(),
+                                _tOk.getVersion(), _tOk.getStepid(),
+                                _tOk.getSeq1(), _tOk.getSeq2(), _tOk.getSeq3(),
+                                "Ended not OK", 0, "Table execute fail"));
             } else {
                 LogUtil.log("INFO", steptype + " run() - ordersteptableMapper.updateend: resultcnt=>" + resultcnt);
                 connTarget.commit();
                 JdbcUtil.commit(connSource);
                 JdbcUtil.commit(connIsolation);
                 JdbcUtil.commit(connHome);
-                ordersteptableMapper.updateend(piiordersteptable.getOrderid(), piiordersteptable.getJobid(),
-                        piiordersteptable.getVersion(), piiordersteptable.getStepid(),
-                        piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(),
-                        "Ended OK", resultcnt, null);
-                if (arc_exe_flag && orderstepexe != null) {
-                    ordersteptableMapper.updateend(piiordersteptable.getOrderid(), piiordersteptable.getJobid(),
-                            piiordersteptable.getVersion(), orderstepexe.getStepid(),
-                            piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(),
-                            "Ended OK", resultcnt, null);
-                    ordersteptableMapper.updatecnt(piiordersteptable.getOrderid(), orderstepexe.getStepid(),
-                            piiordersteptable.getSeq1(), piiordersteptable.getSeq2(), piiordersteptable.getSeq3(), resultcnt);
+                runWithDeadlockRetry("ordersteptableMapper.updateend(ok)",
+                        () -> ordersteptableMapper.updateend(_tOk.getOrderid(), _tOk.getJobid(),
+                                _tOk.getVersion(), _tOk.getStepid(),
+                                _tOk.getSeq1(), _tOk.getSeq2(), _tOk.getSeq3(),
+                                "Ended OK", _resultcnt, null));
+                if (_arcExeOk && _stepexeOk != null) {
+                    runWithDeadlockRetry("ordersteptableMapper.updateend(arc_exe-ok)",
+                            () -> ordersteptableMapper.updateend(_tOk.getOrderid(), _tOk.getJobid(),
+                                    _tOk.getVersion(), _stepexeOk.getStepid(),
+                                    _tOk.getSeq1(), _tOk.getSeq2(), _tOk.getSeq3(),
+                                    "Ended OK", _resultcnt, null));
+                    runWithDeadlockRetry("ordersteptableMapper.updatecnt(arc_exe)",
+                            () -> ordersteptableMapper.updatecnt(_tOk.getOrderid(), _stepexeOk.getStepid(),
+                                    _tOk.getSeq1(), _tOk.getSeq2(), _tOk.getSeq3(), _resultcnt));
                 }
             }
 
@@ -641,21 +726,38 @@ public class BatchStepWorker implements Runnable {
 
         } finally {
             // 커넥션은 close하지 않음 (다음 테이블에서 재사용)
-            // Step/Order 상태 업데이트
-            orderstepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                    piiorderstep.getVersion(), piiorderstep.getStepid());
+            // Step/Order 상태 업데이트 — Bug J + Fix 9 보강 (2026-04-28):
+            // 단일 mapper SQL 예외가 다음 mapper 호출을 차단하지 않도록 개별 격리 +
+            // MariaDB deadlock 시 자동 retry (max 3회, jittered backoff).
+            final PiiOrderStepVO _step = piiorderstep;
+            final PiiOrderStepVO _stepexe = orderstepexe;
+            final boolean _arcExeFlag = arc_exe_flag;
+            final PiiOrderStepTableVO _table = piiordersteptable;
 
-            if (arc_exe_flag && orderstepexe != null) {
-                orderstepMapper.updateend(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                        piiorderstep.getVersion(), orderstepexe.getStepid());
+            runWithDeadlockRetry("orderstepMapper.updateend",
+                    () -> orderstepMapper.updateend(_step.getOrderid(), _step.getJobid(),
+                            _step.getVersion(), _step.getStepid()));
+
+            if (_arcExeFlag && _stepexe != null) {
+                runWithDeadlockRetry("orderstepMapper.updateend(arc_exe)",
+                        () -> orderstepMapper.updateend(_step.getOrderid(), _step.getJobid(),
+                                _step.getVersion(), _stepexe.getStepid()));
             }
 
-            orderMapper.updateend(piiordersteptable.getOrderid());
+            runWithDeadlockRetry("orderMapper.updateend",
+                    () -> orderMapper.updateend(_table.getOrderid()));
 
-            String stepstatus = orderstepMapper.read(piiorderstep.getOrderid(), piiorderstep.getJobid(),
-                    piiorderstep.getVersion(), piiorderstep.getStepid()).getStatus();
-            if ("Ended OK".equals(stepstatus) || "Ended not OK".equals(stepstatus)) {
-                orderthreadMapper.delete(piiordersteptable.getOrderid());
+            try {
+                PiiOrderStepVO stepRead = orderstepMapper.read(_step.getOrderid(), _step.getJobid(),
+                        _step.getVersion(), _step.getStepid());
+                String stepstatus = stepRead != null ? stepRead.getStatus() : null;
+                if ("Ended OK".equals(stepstatus) || "Ended not OK".equals(stepstatus)) {
+                    runWithDeadlockRetry("orderthreadMapper.delete",
+                            () -> orderthreadMapper.delete(_table.getOrderid()));
+                }
+            } catch (Exception ex) {
+                logger.error("orderthread cleanup check failed: orderid={}",
+                        _table.getOrderid(), ex);
             }
         }
     }

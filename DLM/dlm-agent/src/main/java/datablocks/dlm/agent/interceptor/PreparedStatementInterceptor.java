@@ -32,6 +32,37 @@ public class PreparedStatementInterceptor {
     static final Map<Object, String> SQL_REGISTRY =
             Collections.synchronizedMap(new WeakHashMap<>(256));
 
+    // PreparedStatement 인스턴스 → bind 값 누적 (idx → 직렬화된 값)
+    // dlm.capture.bind=true 일 때만 채워짐. WeakHashMap 으로 GC 친화.
+    static final Map<Object, java.util.SortedMap<Integer, String>> BIND_REGISTRY =
+            Collections.synchronizedMap(new WeakHashMap<>(256));
+
+    /** bind 값 1개를 안전하게 직렬화 — null/긴 문자열/바이너리 모두 처리. */
+    private static String stringifyBind(Object value) {
+        if (value == null) return "null";
+        if (value instanceof byte[]) return "<binary " + ((byte[]) value).length + "B>";
+        String s = String.valueOf(value);
+        if (s.length() > 200) s = s.substring(0, 200) + "…";
+        return s;
+    }
+
+    /** PS 인스턴스의 누적 bind 를 JSON-ish 문자열로 변환 + REGISTRY 정리. */
+    static String drainBinds(Object ps) {
+        java.util.SortedMap<Integer, String> binds = BIND_REGISTRY.remove(ps);
+        if (binds == null || binds.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<Integer, String> e : binds.entrySet()) {
+            if (!first) sb.append(",");
+            sb.append("\"").append(e.getKey()).append("\":\"")
+              .append(e.getValue().replace("\\", "\\\\").replace("\"", "\\\""))
+              .append("\"");
+            first = false;
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
     /**
      * Connection.prepareStatement() 가로채기 — SQL 등록
      */
@@ -52,7 +83,8 @@ public class PreparedStatementInterceptor {
     }
 
     /**
-     * PreparedStatement.execute*() 가로채기 — 로그 생성
+     * PreparedStatement.execute*() 가로채기 — 로그 생성.
+     * 추가로 setObject/setString/setInt/... 가로채기 — bind 값 누적 (opt-in).
      */
     public static class Transformer implements AgentBuilder.Transformer {
         @Override
@@ -61,7 +93,7 @@ public class PreparedStatementInterceptor {
                                                  ClassLoader classLoader,
                                                  JavaModule module,
                                                  ProtectionDomain protectionDomain) {
-            return builder.visit(
+            DynamicType.Builder<?> b = builder.visit(
                     Advice.to(ExecuteAdvice.class)
                             .on(ElementMatchers.named("execute")
                                     .and(ElementMatchers.takesNoArguments()))
@@ -74,6 +106,43 @@ public class PreparedStatementInterceptor {
                             .on(ElementMatchers.named("executeUpdate")
                                     .and(ElementMatchers.takesNoArguments()))
             );
+            // setXxx(int, Object) 류 가로채기 — 첫 인자가 int (parameterIndex), 두번째가 값
+            b = b.visit(
+                    Advice.to(SetBindAdvice.class)
+                            .on(ElementMatchers.nameStartsWith("set")
+                                    .and(ElementMatchers.takesArguments(2))
+                                    .and(ElementMatchers.takesArgument(0, int.class))
+                                    .and(ElementMatchers.isPublic()))
+            );
+            return b;
+        }
+    }
+
+    /**
+     * PreparedStatement.setXxx(int idx, Object val) 진입 시점 — bind 값 누적.
+     * dlm.capture.bind=true 일 때만 활성. 미활성 시 즉시 return.
+     */
+    public static class SetBindAdvice {
+        @Advice.OnMethodEnter
+        public static void onEnter(
+                @Advice.This Object self,
+                @Advice.Argument(0) int parameterIndex,
+                @Advice.Argument(1) Object value) {
+            try {
+                AgentConfig cfg = AgentConfig.getInstance();
+                if (cfg == null || !cfg.isCaptureBindEnabled()) return;
+
+                java.util.SortedMap<Integer, String> binds = BIND_REGISTRY.get(self);
+                if (binds == null) {
+                    binds = Collections.synchronizedSortedMap(new java.util.TreeMap<Integer, String>());
+                    BIND_REGISTRY.put(self, binds);
+                }
+                String s;
+                if (value == null) s = "null";
+                else if (value instanceof byte[]) s = "<binary " + ((byte[]) value).length + "B>";
+                else { s = String.valueOf(value); if (s.length() > 200) s = s.substring(0, 200) + "…"; }
+                binds.put(parameterIndex, s);
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -152,6 +221,10 @@ public class PreparedStatementInterceptor {
                 entry.setTimestamp(System.currentTimeMillis());
                 entry.setSuccess(thrown == null);
                 entry.setActionType(SqlAnalyzer.detectActionType(sql));
+
+                // bind 값 회수 (dlm.capture.bind=true 일 때만 채워져 있음) — 누적된 binds 를 JSON 으로 직렬화
+                String binds = drainBinds(self);
+                if (binds != null) entry.setBindParams(binds);
 
                 // PII 분석 (이미 추출한 tableColumns 활용)
                 SqlAnalyzer.enrichPiiInfoFromParsed(entry, tableColumns);

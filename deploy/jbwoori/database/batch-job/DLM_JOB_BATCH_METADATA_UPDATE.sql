@@ -155,7 +155,8 @@ SELECT
     m.VAL1,
     m.VAL2,
     m.VAL3,
-    m.VAL4
+    m.VAL4,
+    COALESCE(m.AUDIT_YN, ''N'') AS AUDIT_YN
 FROM COTDL.TBL_PIITABLE p
 LEFT OUTER JOIN COTDL.TBL_METATABLE_OLD m
     ON  p.DB          = m.DB

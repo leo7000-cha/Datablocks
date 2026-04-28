@@ -89,35 +89,39 @@ public class SpringAsyncConfig {
         }
 
         private <T> Callable<T> createCallable(final Callable<T> task) {
+            final String taskName = task.getClass().getName();
             return new Callable<T>() {
                 @Override
                 public T call() throws Exception {
                     try {
                         return task.call();
-                    } catch (Exception ex) {
-                        handle(ex);
-                        throw ex;
+                    } catch (Throwable t) {
+                        handle(taskName, t);
+                        if (t instanceof Exception) throw (Exception) t;
+                        throw new RuntimeException(t);
                     }
                 }
             };
         }
 
         private Runnable createWrappedRunnable(final Runnable task) {
+            final String taskName = task.getClass().getName();
             return new Runnable() {
                 @Override
                 public void run() {
                     try {
                         task.run();
-                    } catch (Exception ex) {
-                        handle(ex);
+                    } catch (Throwable t) {
+                        // Bug G 보강 (2026-04-28): Exception → Throwable 로 확대 (OOM 등 Error 도 캐치)
+                        handle(taskName, t);
                     }
                 }
             };
         }
 
-        private void handle(Exception ex) {
-            errorLogger.info("Failed to execute task. : {}", ex.getMessage());
-            errorLogger.error("Failed to execute task. ",ex);
+        private void handle(String taskName, Throwable t) {
+            // Bug G: INFO → ERROR 통일 + task 식별자 포함
+            errorLogger.error("Async task failed: task={}, cause={}", taskName, t.getMessage(), t);
         }
 
         public void destroy() {

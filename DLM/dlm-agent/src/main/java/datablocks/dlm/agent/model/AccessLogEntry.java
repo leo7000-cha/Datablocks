@@ -21,7 +21,13 @@ public class AccessLogEntry {
     // Agent 식별
     private String agentId;
 
+    // Sidecar — PreparedStatement bind 값 (opt-in, dlm.capture.bind=true 일 때만)
+    private String bindParams;
+
     public AccessLogEntry() {}
+
+    public String getBindParams() { return bindParams; }
+    public void setBindParams(String bindParams) { this.bindParams = bindParams; }
 
     public String getSql() { return sql; }
     public void setSql(String sql) { this.sql = sql; }

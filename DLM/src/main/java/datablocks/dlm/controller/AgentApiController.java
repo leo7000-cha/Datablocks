@@ -274,6 +274,11 @@ public class AgentApiController {
         log.setPiiTypeCodes(entry.piiTypeCodes);
         log.setPiiGrade(entry.piiGrade);
 
+        // Phase 4: bind 값 (sidecar) — Agent opt-in 이라 채워져 있을 수도 NULL 일 수도
+        if (entry.bindParams != null && !entry.bindParams.isEmpty()) {
+            log.setBindParams(entry.bindParams);
+        }
+
         return log;
     }
 
@@ -323,5 +328,7 @@ public class AgentApiController {
         public String piiTypeCodes;
         public String piiGrade;
         public String agentId;
+        // Phase 4: PreparedStatement bind 값 (Agent 측 dlm.capture.bind=true 일 때만 채워짐)
+        public String bindParams;
     }
 }

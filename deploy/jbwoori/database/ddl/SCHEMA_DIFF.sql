@@ -8,7 +8,7 @@
 --   [STEP 1] 기준 스키마를 임시 DB에 로드
 --     실행: SCHEMA_DIFF_SETUP.sh  (또는 아래 수동 명령)
 --       mysql> CREATE DATABASE IF NOT EXISTS COTDL_REF;
---       $ sed 's/`COTDL`/`COTDL_REF`/g' DLM_DDL_MASTER_CORE.sql | mysql -u root -p COTDL_REF
+--       $ sed 's/`COTDL`/`COTDL_REF`/g' 10_DDL_MASTER_CORE.sql | mysql -u root -p COTDL_REF
 --
 --   [STEP 2] 이 파일 실행 → 결과가 패치 SQL
 --       $ mysql -u root -p -N < SCHEMA_DIFF.sql
@@ -30,7 +30,7 @@
 
 -- --------------------------------------------------------------
 -- [1] 누락 테이블: COTDL_REF에는 있지만 COTDL에 없는 테이블
---     → DLM_DDL_MASTER_CORE.sql 에서 해당 CREATE TABLE 찾아서 실행
+--     → 10_DDL_MASTER_CORE.sql 에서 해당 CREATE TABLE 찾아서 실행
 -- --------------------------------------------------------------
 SELECT CONCAT('-- ★ [신규 테이블] ', ref.TABLE_NAME, ' — COTDL에 없음. DDL에서 CREATE TABLE 실행 필요') AS patch_sql
 FROM INFORMATION_SCHEMA.TABLES ref

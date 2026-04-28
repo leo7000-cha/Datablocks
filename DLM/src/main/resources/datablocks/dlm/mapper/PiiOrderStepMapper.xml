@@ -49,6 +49,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		    order by orderid, jobid, version, stepseq
 		]]>
 	</select>
+	<!-- Fix 8 (2026-04-28): 자동 stuck step 복구용. status='Running' AND realstarttime 이 timeoutHours 이전 -->
+	<select id="findStuckRunningSteps" resultType="datablocks.dlm.domain.PiiOrderStepVO">
+		<![CDATA[
+		select orderid, status, confirmflag, holdflag, forceokflag, killflag, DATE_FORMAT(basedate,'%Y/%m/%d') as basedate, threadcnt, commitcnt, runcnt, jobid, version, stepid, stepname, steptype, stepseq, db, totaltabcnt, successtabcnt, runningtime, DATE_FORMAT(realstarttime,'%Y/%m/%d %H:%i:%s') as realstarttime, DATE_FORMAT(realendtime,'%Y/%m/%d %H:%i:%s') as realendtime, orderuserid
+				  , data_handling_method, processing_method, fk_disable_flag, index_unusual_flag, val1, val2, val3, val4, val5
+		  from cotdl.tbl_piiorderstep
+		 where status = 'Running'
+		   and realstarttime is not null
+		   and realstarttime < (NOW() - INTERVAL #{timeoutHours} HOUR)
+		 order by realstarttime
+		]]>
+	</select>
 	<select id="getRunStatusList" resultType="datablocks.dlm.domain.PiiOrderStepRunStatusVO">
 		<![CDATA[
 		select orderid, jobid, version, stepid, stepname, stepseq
@@ -122,13 +134,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 							                    when notok > 0 then 'Ended not OK'
 							                    when running > 0 then 'Running'
 							                    when wait > 0 then 'Running'
+							                    else 'Running'  <!-- Fix 9-D: self-SELECT 제거 → lock 면적 축소 (deadlock 완화) -->
 							               end)
 						   from (
-								select 
+								select
 									  COALESCE(sum(case when status != 'Ended OK' then 1 end),0) as ok
-									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok 
-									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running 
-									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait 
+									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok
+									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running
+									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait
 								from cotdl.tbl_piiordersteptable
 								where orderid= #{orderid} and jobid= #{jobid, jdbcType=VARCHAR} and version= #{version, jdbcType=VARCHAR} and stepid= #{stepid, jdbcType=VARCHAR}
 								) tmp

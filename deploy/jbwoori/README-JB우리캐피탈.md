@@ -1,7 +1,7 @@
 # DLM 배포 가이드 — JB우리캐피탈
 
 > 폐쇄망 Rocky Linux 9 / MariaDB 호스트 OS 직접 설치 / Docker 미설치
-> 작성일: 2026-04-08 | 갱신: 2026-04-22
+> 작성일: 2026-04-08 | 갱신: 2026-04-28 (BatchStepWorker stuck 자동 복구 + 예외 처리 강화 + MariaDB deadlock 자동 retry)
 
 ---
 
@@ -25,7 +25,8 @@ deploy/jbwoori/ 폴더
                                        v
                                    +-------+    +-----------+
                                    |  DLM  |    | Privacy-AI|
-                                   | :8080 |    |   :8000   |
+                                   | :8443 |    |   :8000   |
+                                   | (HTTPS)|    |           |
                                    +---+---+    +-----+-----+
                                        |              |
                                        +--------------+
@@ -51,7 +52,7 @@ deploy/jbwoori/ 폴더
 2. DB 초기화:    MariaDB 설정 확인 + SQL 수동 실행
 3. DLM 배포:     bash scripts/deploy.sh
 4. DB 설정:      tbl_piidatabase.hostname = 'host.docker.internal'
-5. 브라우저:     http://서버IP:8080
+5. 브라우저:     https://서버IP:8443  (HTTP 8080 입력 시 자동 리다이렉트)
 ```
 
 ---
@@ -105,7 +106,7 @@ sudo bash scripts/install-docker.sh
 | 1 | 기존 Docker/Podman 제거 |
 | 2 | RPM 패키지 설치 (containerd, docker-ce, docker-compose-plugin) |
 | 3 | Docker 서비스 시작 + 자동시작 등록 |
-| 4 | 방화벽 포트 오픈 (8080, 8000) |
+| 4 | 방화벽 포트 오픈 (8080, 8443, 8000) |
 
 ### 설치 확인
 
@@ -263,9 +264,18 @@ bash scripts/deploy.sh
 ```
   MariaDB 포트 [Enter=3306 유지]:        ← 기본이면 Enter
   DB 비밀번호 [Enter=기본값 유지]:        ← 변경했으면 입력
-  DLM 포트 [Enter=8080 유지]:            ← 충돌 시 변경
+  DLM HTTP 포트 [Enter=8080 유지]:       ← HTTP→HTTPS 리다이렉트 포트
+  DLM HTTPS 포트 [Enter=8443 유지]:      ← 메인 서비스 포트 (★ 기존 Tomcat 중지 필수)
   Privacy-AI 포트 [Enter=8000 유지]:     ← 충돌 시 변경
 ```
+
+> **★ 사전 작업 — 기존 Tomcat HTTPS 8443 서비스 중지**
+> ```bash
+> sudo systemctl stop tomcat            # 또는 해당 서비스명
+> sudo systemctl disable tomcat         # 부팅 시 자동시작 방지
+> sudo ss -tlnp | grep 8443             # 점유 해제 확인
+> ```
+> 8443 점유가 풀려야 deploy.sh 가 정상 진행됩니다 (점유 시 경고 후 중단).
 
 ---
 
@@ -310,8 +320,13 @@ SPRING_DATASOURCE_URL=jdbc:mariadb://host.docker.internal:3306/cotdl?...
 PRIVACY_AI_DB_HOST=host.docker.internal
 
 # ★ 포트 — 기존 서비스와 충돌 시 변경
+# 기본: HTTPS 8443 (메인) + HTTP 8080 (자동 리다이렉트)
 DLM_PORT=8080
+DLM_PORT_HTTPS=8443
 AI_PORT=8000
+
+# ★ HTTPS 기본 활성 (자체 서명 인증서 포함 — certs/dlm-keystore.p12)
+SPRING_PROFILES_ACTIVE=local,ssl
 
 # ★ DB 비밀번호 — DLM_DATABASE_INIT.sql의 #{DLM_PW} 값과 일치해야 함
 PRIVACY_AI_DB_PASSWORD=[DLM_PW와 동일한 비밀번호]
@@ -332,12 +347,15 @@ docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
 docker ps
 
 # 정상이면:
-#  dlm-app          Up 3 minutes   0.0.0.0:8080->8080/tcp
+#  dlm-app          Up 3 minutes   0.0.0.0:8080->8080/tcp, 0.0.0.0:8443->8443/tcp
 #  dlm-privacy-ai   Up 2 minutes   0.0.0.0:8000->8000/tcp
 ```
 
-브라우저 접속: `http://서버IP:8080`
+브라우저 접속: **`https://서버IP:8443`**
+- HTTP 8080 입력 시 → 자동 HTTPS 8443 리다이렉트
 - 기본 계정: `admin` / `admin1234`
+- **자체 서명 인증서 안내**: 첫 접속 시 브라우저 "안전하지 않음" 경고 → "고급 → 진행" 으로 통과
+  - 운영 인증서 교체 절차는 아래 §11 (HTTPS 인증서 교체) 참조
 
 ---
 
@@ -580,9 +598,9 @@ DB 설정
 
 ---
 
-## 🔐 HTTPS / SSL 운영 모드 (옵션)
+## 🔐 HTTPS / SSL (기본 활성)
 
-JB우리캐피탈 실운영 환경이 Tomcat HTTPS 기반으로 동작하는 경우, 아래 절차로 SSL 을 활성화할 수 있습니다. **기본값은 HTTP 8080 이며, 아래 설정 없이는 평소대로 동작**합니다.
+JB우리캐피탈은 **HTTPS 8443 이 기본 동작**입니다. 패키지에 자체 서명 인증서가 포함되어 있어 별도 설정 없이 즉시 사용 가능하며, 추후 운영 인증서로 교체할 수 있습니다.
 
 ### 동작 개요
 
@@ -591,103 +609,123 @@ JB우리캐피탈 실운영 환경이 Tomcat HTTPS 기반으로 동작하는 경
 | `8443` | HTTPS 메인 서비스 |
 | `8080` | HTTP 접속 시 `https://...:8443` 으로 **자동 302 리다이렉트** (Tomcat native) |
 
-Spring Profile `ssl` 이 활성화될 때만 작동하며, 다른 배포(hanson/imcapital/로컬 개발)에는 영향이 없습니다.
+### 패키지 포함 인증서
 
-### 활성화 4단계
+| 항목 | 값 |
+|------|-----|
+| 파일 | `deploy/jbwoori/certs/dlm-keystore.p12` |
+| 형식 | PKCS12 |
+| Alias | `dlm-keystore` |
+| 비밀번호 | `dlmssl` (`.env.jbwoori` 의 SERVER_SSL_KEY_STORE_PASSWORD) |
+| 유효기간 | 10년 (배포일로부터 3650일) |
+| CN | `dlm.jbwoori.local` (SAN: localhost, 127.0.0.1) |
 
-#### 1단계: 인증서 배치
+> ⚠️ 자체 서명이라 브라우저 첫 접속 시 "안전하지 않음" 경고 발생 — "고급 → 진행" 으로 통과합니다. 운영 인증서 받으면 아래 절차로 교체하세요.
 
-`deploy/jbwoori/certs/dlm-keystore.p12` 파일을 배치합니다.
-
-테스트용 자체 서명 인증서 생성 (운영용은 고객사 실 인증서로 교체):
-
-```bash
-cd deploy/jbwoori/certs
-keytool -genkeypair \
-  -alias dlm-keystore \
-  -storetype PKCS12 \
-  -keyalg RSA -keysize 2048 \
-  -validity 3650 \
-  -keystore dlm-keystore.p12 \
-  -storepass dlmssl \
-  -dname "CN=localhost,OU=DLM,O=Datablocks,L=Seoul,S=Seoul,C=KR"
-```
-
-자세한 내용: [certs/README.md](certs/README.md)
-
-#### 2단계: `.env.jbwoori` 수정
-
-- line 10: SPRING_PROFILES_ACTIVE=local → SPRING_PROFILES_ACTIVE=local,ssl
-- line 54~62: SERVER_* / DLM_PORT_HTTPS / LOGGING_CONFIG 블록 주석(#) 전부 해제
-- 실 인증서의 키스토어 비밀번호/alias를 바꿨다면 SERVER_SSL_KEY_STORE_PASSWORD, SERVER_SSL_KEY_PASSWORD, SERVER_SSL_KEY_ALIAS 값 같이 수정.
+### 사전 작업 — 기존 Tomcat 8443 중지 (★ 필수)
 
 ```bash
-SPRING_PROFILES_ACTIVE=local,ssl
-
-SERVER_PORT=8443
-SERVER_SSL_ENABLED=true
-SERVER_SSL_KEY_STORE=file:/etc/ssl/dlm-keystore.p12
-SERVER_SSL_KEY_STORE_TYPE=PKCS12
-SERVER_SSL_KEY_STORE_PASSWORD=dlmssl
-SERVER_SSL_KEY_ALIAS=dlm-keystore
-SERVER_SSL_KEY_PASSWORD=dlmssl
-DLM_PORT_HTTPS=8443
-LOGGING_CONFIG=classpath:logback-local.xml
+sudo systemctl stop tomcat            # 또는 해당 서비스명
+sudo systemctl disable tomcat         # 부팅 시 자동시작 방지
+sudo ss -tlnp | grep 8443             # 점유 해제 확인 (출력 없어야 정상)
 ```
 
-> ⚠️ `LOGGING_CONFIG` 는 필수입니다. `application.properties` 가 `logback-${spring.profiles.active}.xml` 규칙으로 로그 설정 파일을 찾기 때문에, `local,ssl` 조합에서는 존재하지 않는 `logback-local,ssl.xml` 을 찾아 기동이 실패합니다. 이 환경변수로 사용할 logback 파일을 명시적으로 지정합니다.
+8443 점유가 풀려야 `deploy.sh` 가 정상 진행됩니다 (점유 시 경고 후 중단).
 
-> ⚠️ 현재 구현은 컨테이너 내부 HTTP 커넥터 `8080` + HTTPS 리다이렉트 대상 포트 `8443` 이 Java 코드에 **하드코딩**되어 있습니다. `DLM_PORT_HTTPS` 와 `SERVER_PORT` 는 기본값(8443)으로 유지해야 자동 리다이렉트가 정상 동작합니다.
+### 운영 인증서로 교체 (무중단, ~30~60초 DLM 만 잠깐 멈춤)
 
-#### 3단계: `docker-compose.jbwoori.yml` 수정
-line 31·36 두 줄 주석 해제:
-`dlm` 서비스의 HTTPS 포트 매핑과 인증서 볼륨 마운트 라인 주석 해제:
+CA 서명 인증서 배치 후 **DLM 컨테이너만 재시작**하면 됩니다 — WAR 재빌드 불필요, Privacy-AI 영향 없음.
 
-```yaml
-    ports:
-      - "${DLM_PORT:-8080}:8080"
-      - "${DLM_PORT_HTTPS:-8443}:8443"   # ← 주석 해제
-    volumes:
-      - dlm_logs:/app/logs
-      - dlm_upload:/app/upload
-      - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro   # ← 주석 해제
-```
+#### 사전 이해 — 왜 파일 교체만으로는 부족하고 재시작이 필요한가
 
-#### 4단계: 기동 & 확인
+- `docker-compose.jbwoori.yml:34` 의 마운트 라인이 파일명을 **하드코딩**:
+  ```yaml
+  - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro
+  ```
+  → 호스트 파일명은 반드시 `dlm-keystore.p12` 여야 함. 다른 이름 쓰려면 compose.yml 도 같이 수정.
+- Bind mount 는 "복사"가 아닌 "라이브 링크" → 호스트에서 파일 덮어쓰면 컨테이너 안에서도 즉시 새 파일이 보임.
+- 그러나 Spring Boot 가 SSL keystore 를 **JVM 메모리에 한 번만 로드**하므로, 호스트 파일이 바뀌어도 메모리의 옛 인증서가 계속 사용됨.
+- → `restart dlm` 으로 JVM 을 재기동해야 새 인증서가 메모리에 다시 로드됨.
+
+#### 절차
 
 ```bash
-cd /app/Datablocks/deploy/jbwoori
-docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml down
-docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
+# 1) 운영 인증서 PKCS12 변환 (PEM crt + key 받았을 경우)
+openssl pkcs12 -export \
+  -in server.crt -inkey server.key -certfile ca-bundle.crt \
+  -name dlm-keystore \
+  -out /tmp/new-keystore.p12 \
+  -passout pass:<운영비밀번호>
 
-# 기동 대기 후
+# 2) 호스트 마운트 경로에 동일한 파일명으로 덮어쓰기 (★ 파일명 변경 금지)
+sudo cp /tmp/new-keystore.p12 /app/Datablocks/certs/dlm-keystore.p12
+sudo chmod 600 /app/Datablocks/certs/dlm-keystore.p12
+
+# 3) (비밀번호/alias 가 자체서명 기본값과 다르면) .env.jbwoori 수정
+sudo vi /app/Datablocks/.env.jbwoori
+#   SERVER_SSL_KEY_STORE_PASSWORD=<운영비밀번호>
+#   SERVER_SSL_KEY_PASSWORD=<운영비밀번호>
+#   SERVER_SSL_KEY_ALIAS=dlm-keystore   ← 변환 시 -name 옵션과 동일해야 함
+# (비밀번호/alias 가 같으면 이 단계 생략)
+
+# 4) DLM 컨테이너만 재시작 (Privacy-AI는 그대로 유지)
+cd /app/Datablocks
+docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml restart dlm
+
+# 5) 새 인증서 적용 확인
+echo | openssl s_client -connect 서버IP:8443 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+# → subject 와 issuer 가 운영 인증서 정보로 표시되면 성공
+```
+
+> ⚠️ `docker compose ... restart` (서비스명 생략) 도 동작하지만 Privacy-AI까지 같이 재시작되어 다운타임이 늘어납니다. **`restart dlm` 권장**.
+
+### 동작 확인 (배포/교체 직후 공통)
+
+```bash
+# 1) 컨테이너 상태
+docker ps | grep dlm-app
+# → Up X seconds, 0.0.0.0:8080->8080/tcp, 0.0.0.0:8443->8443/tcp
+
+# 2) Tomcat SSL 시작 로그
+docker logs dlm-app 2>&1 | grep -i "ssl\|https\|8443" | tail -10
+
+# 3) HTTPS 직접 접속 (인증서 검증 무시 -k)
 curl -kv https://서버IP:8443/
 # → HTTP/1.1 302, Location: https://서버IP:8443/customLogin
 
+# 4) HTTP → HTTPS 자동 리다이렉트
 curl -v http://서버IP:8080/
 # → HTTP/1.1 302, Location: https://서버IP:8443/
-브라우저에서 http://서버IP:8080 입력하면 자동으로 https://서버IP:8443 으로 이동하면 성공.이동되어야 합니다.
 
-### 실 인증서 교체 (무중단)
-
-CA 서명 인증서 배치 후 컨테이너만 재시작하면 됩니다 — WAR 재빌드 불필요.
-
-```bash
-cp 새인증서.p12 deploy/jbwoori/certs/dlm-keystore.p12
-docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml restart dlm
+# 5) 브라우저: http://서버IP:8080 입력 → https://서버IP:8443 으로 자동 이동되면 성공
 ```
 
 ### 트러블슈팅
 
 | 증상 | 원인 | 조치 |
 |------|------|------|
-| `IOException: keystore password was incorrect` | `.env` 의 `SERVER_SSL_KEY_STORE_PASSWORD` 불일치 | `keytool -list -keystore dlm-keystore.p12` 로 비밀번호 재확인 |
-| `Alias name [xxx] does not identify a key entry` | `SERVER_SSL_KEY_ALIAS` 값이 keystore 내부와 불일치 | `keytool -list -keystore dlm-keystore.p12` 로 실제 alias 확인 후 `.env` 수정 |
-| 8443 포트 충돌 | 기존 서비스 사용 중 | `DLM_PORT_HTTPS=9443` 등 다른 포트로 변경 + `SERVER_PORT` 도 동일하게 수정 |
-| 브라우저 "연결이 비공개로 설정되지 않음" 경고 | 자체 서명 인증서 | 운영 시 고객사 실 CA 인증서로 교체 |
-| Privacy-AI → DLM 내부 호출 루프 | `http://dlm:8080` 이 302 리턴 | `PRIVACY_AI_DLM_API_URL=https://dlm:8443` 로 교체하고 Privacy-AI 에서 `verify=False` 적용 |
-| HEALTHCHECK unhealthy | `wget http://localhost:8080/` 가 302 를 받아 비정상 종료 | `docker inspect dlm-app` 로 HEALTHCHECK 로그 확인, 필요 시 HTTPS 엔드포인트로 전환 |
+| 8443 포트 충돌로 기동 실패 | 기존 Tomcat 등이 점유 중 | `sudo systemctl stop tomcat` 후 재배포 |
+| `IOException: keystore password was incorrect` | `.env` 의 `SERVER_SSL_KEY_STORE_PASSWORD` 불일치 | `keytool -list -keystore /app/Datablocks/certs/dlm-keystore.p12` 로 비밀번호 재확인 |
+| `Alias name [xxx] does not identify a key entry` | `SERVER_SSL_KEY_ALIAS` 값이 keystore 내부와 불일치 | 위 명령으로 실제 alias 확인 후 `.env` 수정 |
+| 브라우저 "연결이 비공개로 설정되지 않음" 경고 | 자체 서명 인증서 (정상 동작) | 운영 인증서로 교체 또는 "고급 → 진행" 클릭 |
+| Privacy-AI → DLM 내부 호출 루프 | `http://dlm:8080` 이 302 리턴 | `.env.jbwoori` 의 `PRIVACY_AI_DLM_API_URL` 을 `https://dlm:8443` 로 수정하고 `verify=False` 적용 |
+| HEALTHCHECK unhealthy | `wget http://localhost:8080/` 가 302 를 받아 비정상 종료 | `docker inspect dlm-app` 로 로그 확인, 필요 시 HTTPS 엔드포인트로 전환 |
 
-### SSL 비활성화로 복귀
+> ⚠️ 컨테이너 내부 HTTP 커넥터 `8080` + HTTPS 리다이렉트 대상 포트 `8443` 이 Java 코드에 **하드코딩**되어 있습니다. `DLM_PORT_HTTPS` 와 `SERVER_PORT` 는 기본값(8443)으로 유지해야 자동 리다이렉트가 정상 동작합니다.
 
-`.env.jbwoori` 의 `SPRING_PROFILES_ACTIVE` 를 `local` 로 되돌리고 나머지 `SERVER_*` 라인과 compose 의 8443 블록을 다시 주석 처리 후 `docker compose restart dlm`.
+> ⚠️ `LOGGING_CONFIG=classpath:logback-local.xml` 은 필수입니다. `application.properties` 가 `logback-${spring.profiles.active}.xml` 규칙으로 로그 설정 파일을 찾기 때문에, `local,ssl` 조합에서는 존재하지 않는 `logback-local,ssl.xml` 을 찾아 기동이 실패합니다.
+
+### HTTPS 비활성화 (HTTP 8080 단일 모드로 복귀)
+
+```bash
+# .env.jbwoori 수정
+SPRING_PROFILES_ACTIVE=local      # 'local,ssl' → 'local'
+# SERVER_PORT, SERVER_SSL_*, LOGGING_CONFIG 라인 주석 처리
+
+# docker-compose.jbwoori.yml 수정
+# - "${DLM_PORT_HTTPS:-8443}:8443" 라인 주석 처리
+# - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro 라인 주석 처리
+
+cd /app/Datablocks
+docker compose --env-file .env.jbwoori -f docker-compose.jbwoori.yml up -d
+```

@@ -263,17 +263,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 							               when notok > 0 then 'Ended not OK'
 							               when running > 0 then 'Running'
 							               when wait > 0 then 'Running'
+							               else 'Running'  <!-- Fix 9-D: self-SELECT 제거 → lock 면적 축소 (deadlock 완화) -->
 						        	  end)
 						   from (
-								select 
+								select
 									  COALESCE(sum(case when status != 'Ended OK' then 1 end),0) as ok
-									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok 
-									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running 
-									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait 
+									, COALESCE(sum(case when status = 'Ended not OK' then 1 end),0) as notok
+									, COALESCE(sum(case when status = 'Running' then 1 end),0) as running
+									, COALESCE(sum(case when status = 'Wait condition' then 1 end),0) as wait
 								from cotdl.tbl_piiorderstep
-								where orderid= #{orderid} 
+								where orderid= #{orderid}
 								) tmp
-		 				),				
+		 				),
 				runningtime= TIME_FORMAT(TIMEDIFF(now(),realstarttime),'%H : %i : %s'),
 				realendtime= (select case when ok = 0 then NOW()
 						             when notok > 0 then NOW()

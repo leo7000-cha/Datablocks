@@ -4,7 +4,7 @@
 -- 기준: DEV 개발환경 → CLIENT(iMCapital) 적용
 -- ================================================================
 -- 비교 방법: 고객사 information_schema vs DEV MariaDB 실제 스키마
--- 참조: DLM_DDL_MASTER_CORE.sql + database/ddl/patches/* 전체
+-- 참조: 10_DDL_MASTER_CORE.sql + database/ddl/patches/* 전체
 -- ================================================================
 --
 -- 구성:
@@ -12,7 +12,7 @@
 --   PART 2: 기존 테이블 컬럼 타입 변경 (MODIFY COLUMN)
 --   PART 3: 신규 테이블 생성 (CREATE TABLE)
 --
--- 적용 순서: DLM_DDL_MASTER_ACCESSLOG.sql → DLM_DDL_MASTER_DISCOVERY.sql → 이 파일
+-- 적용 순서: 30_DDL_MASTER_ACCESSLOG.sql → 20_DDL_MASTER_DISCOVERY.sql → 이 파일
 -- ================================================================
 
 
@@ -20,7 +20,7 @@
 -- PART 1: 기존 테이블에 컬럼 추가 (25건)
 -- ================================================================
 -- 출처: MEMBER_PATCH_20260411, LKPIISCRTYPE_PATCH_20260412,
---       DLM_DDL_MASTER_CORE.sql (testdata, metatable)
+--       10_DDL_MASTER_CORE.sql (testdata, metatable)
 
 -- -------------------------------------------------------
 -- 1-1. tbl_member: 소명 워크플로우 + 연락처 컬럼 5건
@@ -72,7 +72,7 @@ ALTER TABLE tbl_metatable ADD COLUMN IF NOT EXISTS `AUDIT_YN` varchar(1) DEFAULT
 
 -- -------------------------------------------------------
 -- 1-7. tbl_testdata: 파기 관련 컬럼 3건
--- 출처: DLM_DDL_MASTER_CORE.sql
+-- 출처: 10_DDL_MASTER_CORE.sql
 -- -------------------------------------------------------
 ALTER TABLE tbl_testdata ADD COLUMN IF NOT EXISTS `DISPOSAL_STATUS` varchar(30) NULL COMMENT '파기 상태';
 ALTER TABLE tbl_testdata ADD COLUMN IF NOT EXISTS `DISPOSAL_SCHE_DATE` datetime NULL COMMENT '파기 예정일';
@@ -145,14 +145,14 @@ ALTER TABLE tbl_metatable_old MODIFY COLUMN `DATA_LENGTH` bigint NULL;
 
 -- -------------------------------------------------------
 -- 3-1. 접속기록관리 (AccessLog)
--- → DLM_DDL_MASTER_ACCESSLOG.sql 실행으로 대체 (9개 테이블)
+-- → 30_DDL_MASTER_ACCESSLOG.sql 실행으로 대체 (9개 테이블)
 --    tbl_access_log, tbl_access_log_source, tbl_access_log_config,
 --    tbl_access_log_collect_status, tbl_access_log_alert_rule,
 --    tbl_access_log_alert, tbl_access_log_hash_verify,
 --    tbl_access_log_download, tbl_access_log_archive_history
 -- -------------------------------------------------------
 
--- AccessLog 추가 테이블 (DLM_DDL_MASTER_ACCESSLOG에 미포함)
+-- AccessLog 추가 테이블 (30_DDL_MASTER_ACCESSLOG에 미포함)
 
 CREATE TABLE IF NOT EXISTS `tbl_access_log_alert_suppression` (
   `suppression_id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -255,7 +255,7 @@ CREATE TABLE IF NOT EXISTS `tbl_archive_naming_config` (
 
 -- -------------------------------------------------------
 -- 3-3. PII Discovery (탐지)
--- → DLM_DDL_MASTER_DISCOVERY.sql 실행으로 대체 (8개 테이블)
+-- → 20_DDL_MASTER_DISCOVERY.sql 실행으로 대체 (8개 테이블)
 --    tbl_discovery_pii_type, tbl_discovery_rule,
 --    tbl_discovery_scan_job_v2, tbl_discovery_scan_execution,
 --    tbl_discovery_scan_result, tbl_discovery_config,

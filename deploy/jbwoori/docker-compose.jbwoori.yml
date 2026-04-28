@@ -27,13 +27,11 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "${DLM_PORT:-8080}:8080"
-      # HTTPS 활성 시 주석 해제 (.env.jbwoori 참조):
-      # - "${DLM_PORT_HTTPS:-8443}:8443"
+      - "${DLM_PORT_HTTPS:-8443}:8443"
     volumes:
       - dlm_logs:/app/logs
       - dlm_upload:/app/upload
-      # HTTPS 활성 시 주석 해제 (certs/dlm-keystore.p12 먼저 배치):
-      # - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro
+      - ./certs/dlm-keystore.p12:/etc/ssl/dlm-keystore.p12:ro
     networks:
       - dlm-network
     deploy:

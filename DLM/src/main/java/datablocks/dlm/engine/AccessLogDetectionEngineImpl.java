@@ -102,6 +102,9 @@ public class AccessLogDetectionEngineImpl implements AccessLogDetectionEngine {
             case "INACTIVE":
                 alertCount = detectInactive(rule, threshold);
                 break;
+            case "HOLIDAY":
+                alertCount = detectHoliday(rule);
+                break;
             default:
                 logger.warn("Unknown condition type: {}", rule.getConditionType());
         }
@@ -253,6 +256,32 @@ public class AccessLogDetectionEngineImpl implements AccessLogDetectionEngine {
                     "장기미사용 계정 접근: " + userAccount,
                     inactiveDays + "일간 접속 이력이 없던 계정의 접속 감지",
                     logId);
+            insertAlertAndNotify(alert, rule);
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * 2026-04-28: HOLIDAY condition type 구현 — 영업일 달력(TBL_PIIBIZDAY)의 HLDY_YN='Y' 기준.
+     * SQL detectHolidayAccess (AccessLogMapper.xml) 가 휴일 접속 사용자별 집계를 반환하면
+     * 사용자별 1건 알림 생성. 누락 시 운영 로그에 "Unknown condition type: HOLIDAY" WARN 반복 발생.
+     */
+    private int detectHoliday(AccessLogAlertRuleVO rule) {
+        List<Map<String, Object>> results = mapper.detectHolidayAccess();
+        int count = 0;
+        for (Map<String, Object> row : results) {
+            String userAccount = (String) row.get("userAccount");
+            String userName = (String) row.get("userName");
+            Object accessCountObj = row.get("accessCount");
+            long accessCount = accessCountObj instanceof Number ? ((Number) accessCountObj).longValue() : 0;
+            String logIds = row.get("logIds") != null ? row.get("logIds").toString() : "";
+
+            AccessLogAlertVO alert = buildAlert(rule,
+                    userAccount, userName,
+                    "휴일/주말 접속: " + userAccount,
+                    "영업일 달력 기준 휴일 접속 " + accessCount + "건 감지 (최근 24시간)",
+                    logIds);
             insertAlertAndNotify(alert, rule);
             count++;
         }

@@ -258,6 +258,9 @@ public interface AccessLogMapper {
 
     List<Map<String, Object>> detectInactiveAccount(@Param("inactiveDays") int inactiveDays);
 
+    // 휴일/주말 접속 탐지 (TBL_PIIBIZDAY 의 HLDY_YN='Y' 일자 기준)
+    List<Map<String, Object>> detectHolidayAccess();
+
     // ========== Alert Suppression (알림 예외 규칙) ==========
     void insertSuppression(AlertSuppressionVO suppression);
 

@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags" %>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -110,6 +111,212 @@
             position: relative;
             z-index: 1;
         }
+
+        /* ===== Top Bar (minimal — 우측 사용자 메뉴만) ===== */
+        .hub-topbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            height: 56px;
+            padding: 14px 24px;
+            background: transparent;
+            border: none;
+            pointer-events: none;
+        }
+        .hub-topbar .actions {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* ===== User Menu ===== */
+        .hub-user-menu { position: relative; }
+        .hub-user-menu__toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            color: var(--text);
+            font-size: .88rem;
+            cursor: pointer;
+            transition: background .2s ease;
+        }
+        .hub-user-menu__toggle:hover {
+            background: rgba(255, 255, 255, .06);
+        }
+        .hub-user-menu__toggle i.fa-user-circle {
+            font-size: 1.1rem;
+            color: var(--accent-2);
+        }
+        .hub-user-menu__name { font-weight: 600; }
+
+        .hub-user-menu__panel {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            min-width: 260px;
+            background: rgba(17, 24, 39, .92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-brd);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+            padding: 8px 0;
+            z-index: 20;
+            animation: fadeInUp .18s ease-out;
+        }
+        .hub-user-menu.open .hub-user-menu__panel { display: block; }
+
+        .hub-user-menu__header {
+            padding: 12px 16px;
+        }
+        .hub-user-menu__name-lg {
+            font-size: .95rem;
+            font-weight: 700;
+            color: var(--text-strong);
+            margin-bottom: 2px;
+        }
+        .hub-user-menu__role {
+            font-size: .72rem;
+            color: var(--muted);
+            letter-spacing: .3px;
+            word-break: break-all;
+        }
+        .hub-user-menu__divider {
+            height: 1px;
+            background: rgba(255, 255, 255, .08);
+            margin: 6px 0;
+        }
+        .hub-user-menu__section-label {
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            color: var(--muted);
+            text-transform: uppercase;
+            padding: 6px 16px 4px;
+        }
+        .hub-user-menu__item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            color: var(--text);
+            font-size: .85rem;
+            text-decoration: none;
+            transition: background .15s ease;
+        }
+        .hub-user-menu__item:hover {
+            background: rgba(255, 255, 255, .06);
+            color: var(--text-strong);
+            text-decoration: none;
+        }
+        .hub-user-menu__item i {
+            width: 16px;
+            font-size: .85rem;
+            color: var(--muted);
+        }
+        .hub-user-menu__item--danger { color: #fca5a5; }
+        .hub-user-menu__item--danger:hover { color: #fecaca; background: rgba(239, 68, 68, .08); }
+        .hub-user-menu__item--danger i { color: #fca5a5; }
+
+        /* ===== Logout Modal (light theme — copied from index.jsp) ===== */
+        #logoutModal .modal-content {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        #logoutModal .logout-modal-header {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #logoutModal .logout-modal-header h4 {
+            margin: 0;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #logoutModal .logout-modal-header h4 i { font-size: 1.2rem; opacity: .9; }
+        #logoutModal .logout-modal-header .close {
+            background: rgba(255,255,255,.15);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 1.3rem;
+            line-height: 1;
+            opacity: 1;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        #logoutModal .logout-modal-header .close:hover { background: rgba(255,255,255,.25); }
+        #logoutModal .logout-modal-body { padding: 28px 24px; text-align: center; }
+        #logoutModal .logout-icon-wrapper {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        #logoutModal .logout-icon-wrapper i { font-size: 1.8rem; color: #64748b; }
+        #logoutModal .logout-message { font-size: .95rem; color: #475569; line-height: 1.6; }
+        #logoutModal .logout-modal-footer {
+            padding: 16px 24px 24px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            border-top: none;
+        }
+        #logoutModal .btn-logout-cancel {
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            transition: all .2s;
+        }
+        #logoutModal .btn-logout-cancel:hover { background: #e2e8f0; color: #475569; }
+        #logoutModal .btn-logout-confirm {
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: #fff;
+            border: none;
+            transition: all .2s;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, .3);
+        }
+        #logoutModal .btn-logout-confirm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(100, 116, 139, .4);
+        }
+        #logoutModal .btn-logout-confirm i { margin-right: 6px; }
 
         /* ===== Header / Brand ===== */
         .hub-header {
@@ -383,6 +590,17 @@
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
             .hub-card { width: 100%; max-width: 360px; }
+            .hub-topbar { padding: 0 16px; }
+            .hub-user-menu__name {
+                max-width: 90px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .hub-user-menu__panel {
+                min-width: 240px;
+                right: -8px;
+            }
         }
         @media (min-width: 769px) and (max-width: 1100px) {
             .hub-card { width: 280px; }
@@ -402,6 +620,59 @@
         <div class="orb orb--3"></div>
     </div>
     <div class="grid-lines"></div>
+
+    <!-- Top Bar -->
+    <header class="hub-topbar">
+        <div class="actions">
+            <div class="hub-user-menu" id="hubUserMenu">
+                <button type="button" class="hub-user-menu__toggle" onclick="toggleHubUserMenu(event)">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="hub-user-menu__name">
+                        <sec:authentication property="principal.member.userName"/>
+                    </span>
+                    <i class="fas fa-chevron-down" style="font-size:.7rem; opacity:.6;"></i>
+                </button>
+                <div class="hub-user-menu__panel">
+                    <div class="hub-user-menu__header">
+                        <div class="hub-user-menu__name-lg">
+                            <sec:authentication property="principal.member.userName"/>
+                        </div>
+                        <div class="hub-user-menu__role">
+                            <sec:authentication property="principal.authorities"/>
+                        </div>
+                    </div>
+
+                    <sec:authorize access="hasRole('ROLE_ADMIN')">
+                        <div class="hub-user-menu__divider"></div>
+                        <div class="hub-user-menu__section-label">Administration</div>
+                        <a href="/piimember/list" class="hub-user-menu__item">
+                            <i class="fas fa-user-plus"></i>
+                            <spring:message code="memu.user_management" text="사용자 관리"/>
+                        </a>
+                        <a href="/piiauth/list" class="hub-user-menu__item">
+                            <i class="fas fa-user-lock"></i>
+                            <spring:message code="memu.auth_management" text="권한 관리"/>
+                        </a>
+                        <a href="/piiconftable/list" class="hub-user-menu__item">
+                            <i class="fas fa-database"></i>
+                            <spring:message code="memu.systemmgmt" text="시스템 관리"/>
+                        </a>
+                        <a href="/piiconfkeymap/list" class="hub-user-menu__item">
+                            <i class="fas fa-key"></i>
+                            <spring:message code="memu.keymap_management" text="키 매핑 관리"/>
+                        </a>
+                    </sec:authorize>
+
+                    <div class="hub-user-menu__divider"></div>
+                    <a href="#" data-toggle="modal" data-target="#logoutModal"
+                       class="hub-user-menu__item hub-user-menu__item--danger">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <div class="hub-page">
         <!-- Header -->
@@ -464,5 +735,57 @@
         </div>
 
     </div>
+
+    <!-- Logout Modal -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel" style="z-index: 1061;">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="logout-modal-header">
+                    <h4 id="logoutModalLabel"><i class="fas fa-sign-out-alt"></i> Logout</h4>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <form style="margin: 0; padding: 0;" action="/customLogout" method="post">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    <div class="logout-modal-body">
+                        <div class="logout-icon-wrapper">
+                            <i class="fas fa-door-open"></i>
+                        </div>
+                        <p class="logout-message">
+                            <spring:message code="msg.logout" text="Select &quot;Logout&quot; below if you are ready to end your current session"/>.
+                        </p>
+                    </div>
+                    <div class="logout-modal-footer">
+                        <button class="btn btn-logout-cancel" type="button" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-logout-confirm" type="submit"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery + Bootstrap (modal & dropdown support) -->
+    <script src="/resources/vendor/jquery/jquery.min.js"></script>
+    <script src="/resources/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function toggleHubUserMenu(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('hubUserMenu').classList.toggle('open');
+        }
+        document.addEventListener('click', function(e) {
+            var menu = document.getElementById('hubUserMenu');
+            if (menu && !menu.contains(e.target)) {
+                menu.classList.remove('open');
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var menu = document.getElementById('hubUserMenu');
+                if (menu) menu.classList.remove('open');
+            }
+        });
+    </script>
 </body>
 </html>

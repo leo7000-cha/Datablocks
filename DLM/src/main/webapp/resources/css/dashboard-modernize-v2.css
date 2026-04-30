@@ -1,0 +1,322 @@
+/* ===== Dashboard Modernize v2 (add-only — root-class gated) =====
+ *
+ * .dashboard-modernize-v2 가 dashboard-container 에 추가될 때만 활성화.
+ * 기존 .section-card / .section-header / .heatmap-table 등의 단독 셀렉터는
+ * 일절 변경하지 않으며, JS 셀렉터·차트 canvas id·onclick·data binding 보존.
+ * 이 파일을 unlink 하거나 v2 클래스를 빼면 즉시 기존 디자인으로 복귀.
+ */
+
+/* ----- Section Card 컨테이너 모더나이즈 ----- */
+.dashboard-modernize-v2 .section-card {
+    position: relative;
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 4px 16px rgba(15, 23, 42, .04);
+    overflow: hidden;
+    transition: box-shadow .25s ease, transform .25s ease;
+}
+.dashboard-modernize-v2 .section-card:hover {
+    box-shadow: 0 4px 8px rgba(15, 23, 42, .06), 0 12px 32px rgba(79, 70, 229, .08);
+    transform: translateY(-2px);
+}
+
+/* 좌측 컬러 액센트 바 (섹션별 색감) */
+.dashboard-modernize-v2 .section-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%);
+    opacity: 0;
+    transition: opacity .25s ease;
+}
+.dashboard-modernize-v2 .section-card:hover::before { opacity: 1; }
+
+/* 섹션별 액센트 변형 */
+.dashboard-modernize-v2 .section-action .section-card::before {
+    background: linear-gradient(180deg, #f59e0b 0%, #ef4444 100%);
+}
+.dashboard-modernize-v2 .section-job .section-card::before {
+    background: linear-gradient(180deg, #06b6d4 0%, #6366f1 100%);
+}
+.dashboard-modernize-v2 .heatmap-section .section-card::before {
+    background: linear-gradient(180deg, #10b981 0%, #06b6d4 100%);
+}
+.dashboard-modernize-v2 .chart-section .section-card::before {
+    background: linear-gradient(180deg, #8b5cf6 0%, #ec4899 100%);
+}
+
+/* ----- Section Header 강화 ----- */
+.dashboard-modernize-v2 .section-header {
+    padding: 16px 20px 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+.dashboard-modernize-v2 .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.dashboard-modernize-v2 .section-title i {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #4f46e5;
+    background: rgba(99, 102, 241, 0.1);
+}
+.dashboard-modernize-v2 .section-action .section-title i {
+    color: #d97706;
+    background: rgba(245, 158, 11, 0.12);
+}
+.dashboard-modernize-v2 .section-job .section-title i {
+    color: #0891b2;
+    background: rgba(6, 182, 212, 0.12);
+}
+.dashboard-modernize-v2 .heatmap-section .section-title i {
+    color: #059669;
+    background: rgba(16, 185, 129, 0.12);
+}
+.dashboard-modernize-v2 .chart-section .section-title i {
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.12);
+}
+.dashboard-modernize-v2 .section-title h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.2px;
+}
+
+/* ----- Action items 강화 ----- */
+.dashboard-modernize-v2 .action-item {
+    border-radius: 10px;
+    transition: background .2s ease, transform .2s ease;
+}
+.dashboard-modernize-v2 .action-item:hover {
+    transform: translateX(2px);
+}
+.dashboard-modernize-v2 .action-value {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- Job stats: 큰 숫자 강조 ----- */
+.dashboard-modernize-v2 .job-stat-value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.3px;
+}
+.dashboard-modernize-v2 .job-alert-value {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- Heatmap 테이블 행 호버 강화 ----- */
+.dashboard-modernize-v2 .heatmap-table tbody tr {
+    transition: background .15s ease;
+}
+.dashboard-modernize-v2 .heatmap-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%);
+}
+.dashboard-modernize-v2 .heatmap-table tbody td {
+    font-variant-numeric: tabular-nums;
+}
+.dashboard-modernize-v2 .rate-badge {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+/* ----- Chart card 컨테이너 ----- */
+.dashboard-modernize-v2 .chart-section .section-body {
+    padding-top: 8px;
+}
+.dashboard-modernize-v2 .chart-container-md {
+    position: relative;
+}
+.dashboard-modernize-v2 .chart-container-md::before {
+    content: '';
+    position: absolute;
+    top: -8px; left: 50%;
+    transform: translateX(-50%);
+    width: 80%; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.18) 50%, transparent 100%);
+    pointer-events: none;
+}
+
+/* ----- 섹션 간격 보강 ----- */
+.dashboard-modernize-v2 .dashboard-row,
+.dashboard-modernize-v2 .heatmap-section,
+.dashboard-modernize-v2 .charts-grid-3,
+.dashboard-modernize-v2 .charts-grid-2 {
+    margin-top: 20px;
+}
+
+/* ----- 차트 영역 부드러운 액센트 (섹션 간 시각 흐름) ----- */
+.dashboard-modernize-v2 .charts-grid-3 .section-card,
+.dashboard-modernize-v2 .charts-grid-2 .section-card {
+    background:
+        linear-gradient(180deg, #ffffff 0%, #ffffff 100%),
+        linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(6, 182, 212, 0.04) 100%);
+    background-clip: padding-box, border-box;
+}
+
+/* ====================================================================
+ * Flow Pipeline 강화 — 기존 .flow-* 클래스는 보존, v2 하위에서만 override
+ * ==================================================================== */
+
+/* 컨테이너 — 좌우 미세 그리드 패턴으로 빈 라인 영역 채움 */
+.dashboard-modernize-v2 .flow-pipeline {
+    padding: 32px 28px;
+    background:
+        linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+}
+.dashboard-modernize-v2 .flow-pipeline::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 노드 — 패딩 ↑, 상단 액센트 바, 더 강한 보더 */
+.dashboard-modernize-v2 .flow-node {
+    padding: 22px 28px;
+    min-width: 140px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.dashboard-modernize-v2 .flow-node::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 16%; right: 16%;
+    height: 2px;
+    border-radius: 2px;
+    opacity: 0.7;
+    transition: opacity .25s ease;
+}
+.dashboard-modernize-v2 .flow-node:hover::before { opacity: 1; }
+.dashboard-modernize-v2 .flow-node-total::before {
+    background: linear-gradient(90deg, transparent, #818cf8, transparent);
+}
+.dashboard-modernize-v2 .flow-node-confirmed::before {
+    background: linear-gradient(90deg, transparent, #60a5fa, transparent);
+}
+.dashboard-modernize-v2 .flow-node-pii::before {
+    background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+}
+.dashboard-modernize-v2 .flow-node-registered::before {
+    background: linear-gradient(90deg, transparent, #34d399, transparent);
+}
+
+/* 아이콘 약간 크게 + 더 또렷한 글로우 */
+.dashboard-modernize-v2 .flow-node-icon {
+    width: 46px;
+    height: 46px;
+    font-size: 1.05rem;
+}
+
+/* 라벨 — 약간 더 또렷 */
+.dashboard-modernize-v2 .flow-node-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+
+/* 핵심 숫자 — 폰트 ↑, tabular-nums, 그라디언트 텍스트 (노드별 색감) */
+.dashboard-modernize-v2 .flow-node-value {
+    font-size: 2.1rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.12);
+}
+.dashboard-modernize-v2 .flow-node-total .flow-node-value {
+    background-image: linear-gradient(180deg, #ffffff 0%, #c7d2fe 100%);
+}
+.dashboard-modernize-v2 .flow-node-confirmed .flow-node-value {
+    background-image: linear-gradient(180deg, #ffffff 0%, #bfdbfe 100%);
+}
+.dashboard-modernize-v2 .flow-node-pii .flow-node-value {
+    background-image: linear-gradient(180deg, #ffffff 0%, #fde68a 100%);
+}
+.dashboard-modernize-v2 .flow-node-registered .flow-node-value {
+    background-image: linear-gradient(180deg, #ffffff 0%, #a7f3d0 100%);
+}
+
+/* 라인 트랙 — 0% 일 때도 시각 정보감을 주기 위한 점선 underlay */
+.dashboard-modernize-v2 .flow-link-track {
+    height: 6px;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.10) 0 6px,
+            transparent 6px 12px
+        ),
+        rgba(255, 255, 255, 0.04);
+    border-radius: 3px;
+}
+.dashboard-modernize-v2 .flow-link-fill {
+    border-radius: 3px;
+}
+
+/* 비율 칩 — 각 라인 색감에 맞춘 배지 */
+.dashboard-modernize-v2 .flow-link-rate {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    padding: 4px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-variant-numeric: tabular-nums;
+}
+.dashboard-modernize-v2 .flow-link-1 .flow-link-rate {
+    color: #bfdbfe;
+    background: rgba(59, 130, 246, 0.16);
+    border-color: rgba(59, 130, 246, 0.32);
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.15);
+}
+.dashboard-modernize-v2 .flow-link-2 .flow-link-rate {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.32);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+}
+.dashboard-modernize-v2 .flow-link-3 .flow-link-rate {
+    color: #a7f3d0;
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(16, 185, 129, 0.32);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+/* 노드 hover 시 라인 글로우 살짝 강화 */
+.dashboard-modernize-v2 .flow-node:hover ~ .flow-link .flow-link-track,
+.dashboard-modernize-v2 .flow-link:hover .flow-link-track {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.18);
+}
+
+@media (max-width: 1100px) {
+    .dashboard-modernize-v2 .flow-pipeline { padding: 24px 18px; }
+    .dashboard-modernize-v2 .flow-node-value { font-size: 1.8rem; }
+}

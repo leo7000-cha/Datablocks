@@ -8,20 +8,88 @@
 
 <!-- Dashboard CSS -->
 <link rel="stylesheet" href="/resources/css/dashboard-refactor.css">
+<link rel="stylesheet" href="/resources/css/dashboard-hero-v2.css">
+<link rel="stylesheet" href="/resources/css/dashboard-modernize-v2.css">
 
 <!-- Main Dashboard Container -->
-<div class="dashboard-container" id="piidashboardlist">
+<div class="dashboard-container dashboard-modernize-v2" id="piidashboardlist">
     <div class="dashboard-scroll">
 
         <!-- ========== HEADER SECTION ========== -->
-        <div class="dashboard-header">
+        <div class="dashboard-header dashboard-hero-v2">
             <div class="header-title">
-                <h4><i class="fas fa-cubes"></i> All Data. One Platform.</h4>
-                <p class="header-subtitle"><spring:message code="dashboard.subtitle" text="개인정보 파기부터 안전한 데이터 이관, 테스트데이터 공급까지 엔터프라이즈 데이터 통합 관리 플랫폼"/></p>
+                <h4><i class="fas fa-shield-alt"></i> <spring:message code="dashboard.purgeTitle" text="X-Purge — 개인정보 파기 통합 관리"/></h4>
+                <p class="header-subtitle"><spring:message code="dashboard.subtitle" text="파기 정책·작업 실행·복원과 감사 증적까지, 한 화면에서 통합 관리합니다"/></p>
             </div>
             <div class="header-date">
                 <i class="far fa-calendar-alt"></i>
                 <span id="currentDate"></span>
+            </div>
+            <div class="dashboard-hero-illustration" aria-hidden="true">
+                <svg viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="heroShield" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6366f1"/>
+                            <stop offset="100%" stop-color="#8b5cf6"/>
+                        </linearGradient>
+                        <linearGradient id="heroFlowL" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#06b6d4" stop-opacity="0"/>
+                            <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.75"/>
+                            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+                        </linearGradient>
+                        <linearGradient id="heroFlowR" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#10b981" stop-opacity="0"/>
+                            <stop offset="50%" stop-color="#10b981" stop-opacity="0.75"/>
+                            <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Background data nodes (DB cylinders) -->
+                    <g opacity="0.5">
+                        <ellipse cx="34" cy="34" rx="15" ry="4" fill="#6366f1"/>
+                        <path d="M19 34 Q19 42 34 42 Q49 42 49 34" fill="none" stroke="#6366f1" stroke-width="1.5"/>
+                        <line x1="19" y1="34" x2="19" y2="40" stroke="#6366f1" stroke-width="1.5"/>
+                        <line x1="49" y1="34" x2="49" y2="40" stroke="#6366f1" stroke-width="1.5"/>
+
+                        <ellipse cx="206" cy="118" rx="13" ry="3.5" fill="#8b5cf6"/>
+                        <path d="M193 118 Q193 125 206 125 Q219 125 219 118" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <line x1="193" y1="118" x2="193" y2="123" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <line x1="219" y1="118" x2="219" y2="123" stroke="#8b5cf6" stroke-width="1.5"/>
+                    </g>
+
+                    <!-- Flow lines (animated dashes) -->
+                    <path d="M48 40 Q88 65 118 75" fill="none" stroke="url(#heroFlowL)" stroke-width="1.6" stroke-dasharray="4 4">
+                        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="2s" repeatCount="indefinite"/>
+                    </path>
+                    <path d="M196 116 Q150 95 122 85" fill="none" stroke="url(#heroFlowR)" stroke-width="1.6" stroke-dasharray="4 4">
+                        <animate attributeName="stroke-dashoffset" from="0" to="16" dur="2.4s" repeatCount="indefinite"/>
+                    </path>
+
+                    <!-- Central shield -->
+                    <g transform="translate(120, 75)">
+                        <path d="M0 -42 L28 -31 L28 5 Q28 26 0 42 Q-28 26 -28 5 L-28 -31 Z"
+                              fill="url(#heroShield)" opacity="0.96"/>
+                        <path d="M0 -35 L22 -25 L22 3 Q22 21 0 33 Q-22 21 -22 3 L-22 -25 Z"
+                              fill="white" opacity="0.94"/>
+                        <!-- lock icon -->
+                        <rect x="-9" y="-2" width="18" height="15" rx="2.5" fill="#4f46e5"/>
+                        <path d="M-6 -2 V -9 Q-6 -16 0 -16 Q6 -16 6 -9 V -2"
+                              fill="none" stroke="#4f46e5" stroke-width="2.2" stroke-linecap="round"/>
+                        <circle cx="0" cy="5" r="2" fill="white"/>
+                        <line x1="0" y1="5" x2="0" y2="10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- Sparkle accents -->
+                    <circle cx="72" cy="22" r="2" fill="#f59e0b">
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="2.5s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="176" cy="44" r="1.8" fill="#10b981">
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="56" cy="124" r="1.8" fill="#06b6d4">
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="2.8s" begin="1s" repeatCount="indefinite"/>
+                    </circle>
+                </svg>
             </div>
         </div>
 

@@ -1,0 +1,129 @@
+/* ===== Dashboard Hero v2 (add-only — 기존 .dashboard-header 보존) =====
+ *
+ * 기존 클래스 셀렉터를 단독으로 변경하지 않고, .dashboard-hero-v2 가
+ * 함께 붙어있는 .dashboard-header 에 한해서만 시각 강화합니다.
+ * 이 파일을 unlink 하면 즉시 기존 디자인으로 복귀.
+ */
+
+/* Hero container override (only when .dashboard-hero-v2 is present) */
+.dashboard-header.dashboard-hero-v2 {
+    position: relative;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 50%, #ecfeff 100%);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 16px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.18);
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+}
+
+/* Decorative ambient orbs */
+.dashboard-header.dashboard-hero-v2::before {
+    content: '';
+    position: absolute;
+    top: -90px; right: -110px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.14) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.dashboard-header.dashboard-hero-v2::after {
+    content: '';
+    position: absolute;
+    bottom: -130px; left: 25%;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.10) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* SVG illustration container (positioned over orbs, behind text) */
+.dashboard-hero-illustration {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 240px;
+    height: 150px;
+    pointer-events: none;
+    opacity: 0.92;
+    z-index: 1;
+}
+
+/* Title block — sit above illustration, give space for SVG on right */
+.dashboard-header.dashboard-hero-v2 .header-title {
+    position: relative;
+    z-index: 2;
+    max-width: calc(100% - 280px);
+}
+
+/* Title text — gradient, larger, bolder */
+.dashboard-header.dashboard-hero-v2 .header-title h4 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+    background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 45%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* The icon inside h4 must keep its own color (text-fill: transparent eats it) */
+.dashboard-header.dashboard-hero-v2 .header-title h4 i {
+    -webkit-text-fill-color: #4f46e5;
+    color: #4f46e5;
+    font-size: 1.35rem;
+    margin-right: 4px;
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+}
+
+.dashboard-header.dashboard-hero-v2 .header-subtitle {
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.55;
+    margin: 0;
+    max-width: 700px;
+}
+
+/* Date chip — float on hero, keep above SVG */
+.dashboard-header.dashboard-hero-v2 .header-date {
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.10);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+/* Subtle entrance */
+@keyframes heroFadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.dashboard-header.dashboard-hero-v2 .header-title,
+.dashboard-header.dashboard-hero-v2 .header-date,
+.dashboard-hero-illustration {
+    animation: heroFadeUp 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .dashboard-header.dashboard-hero-v2 { padding: 22px 24px; }
+    .dashboard-header.dashboard-hero-v2 .header-title h4 { font-size: 1.4rem; }
+    .dashboard-hero-illustration { width: 180px; height: 120px; right: 16px; }
+    .dashboard-header.dashboard-hero-v2 .header-title { max-width: calc(100% - 220px); }
+}
+@media (max-width: 768px) {
+    .dashboard-hero-illustration { display: none; }
+    .dashboard-header.dashboard-hero-v2 .header-title { max-width: 100%; }
+    .dashboard-header.dashboard-hero-v2 .header-title h4 { font-size: 1.25rem; }
+    .dashboard-header.dashboard-hero-v2 { padding: 18px 18px; }
+}

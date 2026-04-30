@@ -48,13 +48,16 @@ DLM-Privacy-AI/venv/
 mariadb/data/
 
 # --- DB backup dumps (운영 데이터 + repo bloat 방지) ---
-database/backup/
-deploy/*/database/backup/
-# 단, 백업 가이드/README 같은 텍스트 문서는 git 추적
-!database/backup/*.txt
-!database/backup/*.md
-!deploy/*/database/backup/*.txt
-!deploy/*/database/backup/*.md
+# 디렉터리 자체는 추적 — 그 안의 dump 파일 패턴만 무시
+# (디렉터리를 ignore 하면 negation 이 안 되므로 dump 확장자만 명시)
+database/backup/*.sql
+database/backup/*.sql.gz
+database/backup/*.sql.bz2
+database/backup/*.tar.gz
+deploy/*/database/backup/*.sql
+deploy/*/database/backup/*.sql.gz
+deploy/*/database/backup/*.sql.bz2
+deploy/*/database/backup/*.tar.gz
 
 # --- Logs ---
 *.log

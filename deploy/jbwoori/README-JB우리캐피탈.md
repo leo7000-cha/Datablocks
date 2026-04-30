@@ -659,7 +659,7 @@ openssl pkcs12 -export \
 
 # 2) 호스트 마운트 경로에 동일한 파일명으로 덮어쓰기 (★ 파일명 변경 금지)
 sudo cp /tmp/new-keystore.p12 /app/Datablocks/certs/dlm-keystore.p12
-sudo chmod 600 /app/Datablocks/certs/dlm-keystore.p12
+sudo chmod 644 /app/Datablocks/certs/dlm-keystore.p12   # 컨테이너 내부 Java 가 non-root 유저라 644 필요 (keystore 는 비번으로 보호됨)
 
 # 3) (비밀번호/alias 가 자체서명 기본값과 다르면) .env.jbwoori 수정
 sudo vi /app/Datablocks/.env.jbwoori

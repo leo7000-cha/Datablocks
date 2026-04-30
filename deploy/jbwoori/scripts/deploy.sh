@@ -121,7 +121,8 @@ cp "$DEPLOY_ROOT/$ENV_FILE" "$INSTALL_DIR/"
 mkdir -p "$INSTALL_DIR/certs"
 if [ -f "$DEPLOY_ROOT/certs/dlm-keystore.p12" ]; then
     cp "$DEPLOY_ROOT/certs/dlm-keystore.p12" "$INSTALL_DIR/certs/"
-    chmod 600 "$INSTALL_DIR/certs/dlm-keystore.p12"
+    # 644: 컨테이너 내부 Java 가 non-root 유저로 실행되어 600 이면 Permission denied (FileNotFoundException). keystore 는 비번으로 보호됨.
+    chmod 644 "$INSTALL_DIR/certs/dlm-keystore.p12"
     log "HTTPS 인증서 복사 완료: $INSTALL_DIR/certs/dlm-keystore.p12"
 else
     err "HTTPS 인증서 없음: certs/dlm-keystore.p12"

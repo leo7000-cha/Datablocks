@@ -47,6 +47,10 @@ DLM-Privacy-AI/venv/
 # --- Docker volumes / data ---
 mariadb/data/
 
+# --- DB backup dumps (운영 데이터 + repo bloat 방지) ---
+database/backup/
+deploy/*/database/backup/
+
 # --- Logs ---
 *.log
 *.log.*

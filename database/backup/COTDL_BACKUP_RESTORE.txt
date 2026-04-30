@@ -6,9 +6,14 @@
  접속 정보:
    호스트: localhost / 포트: 3306
    사용자: root / 비밀번호: !Dlm1234
+   컨테이너명: dlm-mariadb (Docker Compose 환경)
+ 본 가이드 위치:
+   /app/Datablocks/database/backup/COTDL_BACKUP_RESTORE.txt
+   (백업 dump 파일과 동일 폴더 — `.gitignore` 예외로 git 추적됨)
 ============================================================
  ★ 비밀번호에 ! 특수문자 포함 → 작은따옴표로 감싸거나
    MYSQL_PWD 환경변수 사용 (아래 참고)
+ ★ Docker 환경에서는 § 4-2 (docker exec) 권장
 ============================================================
 
 
@@ -115,20 +120,54 @@ mysqldump -h localhost -P 3306 -u root -p'!Dlm1234' \
 
 
 ------------------------------------------------------------
-4. gz 압축 백업/복원 (대용량 DB — 디스크 절약)
+4. gz 압축 백업/복원 (대용량 DB — 디스크 절약, ★ 권장)
 ------------------------------------------------------------
 
-# ── 압축 백업 ──
+# ── 압축 백업 (full-fidelity 옵션 적용) ──
 mysqldump -h localhost -P 3306 -u root -p'!Dlm1234' \
   --single-transaction \
   --routines \
   --triggers \
+  --events \
+  --hex-blob \
   --default-character-set=utf8mb4 \
-  cotdl | gzip > /home/dlm/backup/cotdl_$(date +%Y%m%d_%H%M%S).sql.gz
+  --add-drop-database --databases cotdl \
+  | gzip > /home/dlm/backup/cotdl_backup_$(date +%Y%m%d_%H%M%S).sql.gz
 
 # ── 압축 복원 ──
-gunzip < /home/dlm/backup/cotdl_20260415_120000.sql.gz \
-  | mysql -h localhost -P 3306 -u root -p'!Dlm1234' --default-character-set=utf8mb4 cotdl
+# (--add-drop-database --databases 옵션으로 dump 했으면 DB 자동 생성/덮어쓰기)
+gunzip < /home/dlm/backup/cotdl_backup_20260415_120000.sql.gz \
+  | mysql -h localhost -P 3306 -u root -p'!Dlm1234' --default-character-set=utf8mb4
+
+
+------------------------------------------------------------
+4-2. Docker 환경 압축 백업 (★ 본 repo 표준 — dlm-mariadb 컨테이너)
+------------------------------------------------------------
+
+# 호스트에서 컨테이너 mysqldump 를 실행하고 호스트 파일로 출력 받기
+# (! 특수문자 처리: docker exec -e MYSQL_PWD='...' 환경변수 전달)
+
+TS=$(date +%Y%m%d_%H%M%S)
+OUT=/app/Datablocks/database/backup/cotdl_backup_${TS}.sql.gz
+
+docker exec -e MYSQL_PWD='!Dlm1234' dlm-mariadb \
+  mysqldump -u root \
+    --single-transaction --routines --triggers --events \
+    --hex-blob --default-character-set=utf8mb4 \
+    --add-drop-database --databases cotdl \
+  | gzip > "$OUT"
+
+# ── 검증 ──
+gunzip -t "$OUT" && echo "✓ gzip OK"
+ls -lh "$OUT"
+gunzip -c "$OUT" | head -10               # 서버 버전 / DB 헤더 확인
+gunzip -c "$OUT" | grep -c '^CREATE TABLE'  # 테이블 수
+gunzip -c "$OUT" | grep -c '^INSERT INTO'   # INSERT 문 수
+
+# ── 복원 (Docker 환경) ──
+gunzip -c /app/Datablocks/database/backup/cotdl_backup_<YYYYMMDD_HHMMSS>.sql.gz \
+  | docker exec -i -e MYSQL_PWD='!Dlm1234' dlm-mariadb \
+      mysql -u root --default-character-set=utf8mb4
 
 
 ------------------------------------------------------------
@@ -254,16 +293,28 @@ chmod +x /home/dlm/backup/auto_backup.sh
 # DDL 패치 적용 전에 반드시 실행!
 # 패치 실패 시 이 백업으로 복원 가능
 
-# 전체 백업
+# 전체 백업 (full-fidelity)
 mysqldump -h localhost -P 3306 -u root -p'!Dlm1234' \
   --single-transaction \
   --routines \
   --triggers \
+  --events \
+  --hex-blob \
   --default-character-set=utf8mb4 \
-  cotdl | gzip > /home/dlm/backup/cotdl_pre_patch_$(date +%Y%m%d_%H%M%S).sql.gz
+  --add-drop-database --databases cotdl \
+  | gzip > /home/dlm/backup/cotdl_pre_patch_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Docker 환경:
+TS=$(date +%Y%m%d_%H%M%S)
+docker exec -e MYSQL_PWD='!Dlm1234' dlm-mariadb \
+  mysqldump -u root \
+    --single-transaction --routines --triggers --events \
+    --hex-blob --default-character-set=utf8mb4 \
+    --add-drop-database --databases cotdl \
+  | gzip > /app/Datablocks/database/backup/cotdl_pre_patch_${TS}.sql.gz
 
 # 백업 확인
-ls -lh /home/dlm/backup/cotdl_pre_patch_*.sql.gz
+ls -lh /app/Datablocks/database/backup/cotdl_pre_patch_*.sql.gz
 
 # 패치 적용 (예: 2026-04-14 패치)
 mysql -h localhost -P 3306 -u cotdl -p'!Dlm1234' cotdl < 30_DDL_MASTER_ACCESSLOG.sql
@@ -283,8 +334,16 @@ gunzip < /home/dlm/backup/cotdl_pre_patch_20260415_120000.sql.gz \
   --single-transaction  : InnoDB 테이블을 락 없이 일관된 스냅샷 백업
   --routines            : 스토어드 프로시저/함수 포함
   --triggers            : 트리거 포함
+  --events              : 이벤트 스케줄러 (event scheduler) 정의 포함
+  --hex-blob            : BLOB/BINARY 컬럼을 16진수로 dump → 문자셋·라인엔딩
+                          이슈 없이 바이너리 안전 복원
+  --add-drop-database   : 복원 시 기존 DB 를 자동 DROP 후 재생성 (덮어쓰기)
+  --databases <DB>      : USE/CREATE DATABASE 문 dump 에 포함 → 복원 시
+                          mysql 명령에서 별도로 DB 지정 안 해도 됨
   --no-data             : 구조(DDL)만 백업, 데이터 제외
   --default-character-set=utf8mb4 : 한글/이모지 깨짐 방지
   -p'비밀번호'          : 비밀번호 직접 지정 (특수문자는 작은따옴표)
+  -e MYSQL_PWD='...'    : docker exec 시 환경변수로 비밀번호 안전 전달
+                          (! 특수문자 history expansion 회피)
 
 ============================================================

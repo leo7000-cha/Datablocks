@@ -653,14 +653,6 @@
                             <i class="fas fa-user-lock"></i>
                             <spring:message code="memu.auth_management" text="권한 관리"/>
                         </a>
-                        <a href="/piiconftable/list" class="hub-user-menu__item">
-                            <i class="fas fa-database"></i>
-                            <spring:message code="memu.systemmgmt" text="시스템 관리"/>
-                        </a>
-                        <a href="/piiconfkeymap/list" class="hub-user-menu__item">
-                            <i class="fas fa-key"></i>
-                            <spring:message code="memu.keymap_management" text="키 매핑 관리"/>
-                        </a>
                     </sec:authorize>
 
                     <div class="hub-user-menu__divider"></div>

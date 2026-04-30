@@ -45,8 +45,6 @@ public class StaticMenuResolver implements MenuResolver {
         put("/piidetect/",        "PII_DETECT",         "memu.detect_management",           "PII_DETECT",    "MEDIUM");
         put("/piiextract/",       "PII_EXTRACT",        "menu.pii_extract",                 "PII_EXTRACT",   "HIGH");
         put("/piidashboard/",     "PII_DASHBOARD",      "memu.dashboard",                   "PII_DASHBOARD", "LOW");
-        put("/piiconftable/",     "PII_CONF_TABLE",     "memu.table",                       "PII_CONFIG",    "MEDIUM");
-        put("/piiconfkeymap/",    "PII_KEYMAP",         "memu.keymap",                      "PII_CONFIG",    "HIGH");
         put("/piiconfig/",        "PII_CONFIG",         "memu.env_configuration",           "PII_CONFIG",    "MEDIUM");
         put("/piisystem/",        "PII_SYSTEM",         "memu.systemmgmt",                  "PII_SYSTEM",    "MEDIUM");
         put("/lkpiiscrtype/",     "LK_PII_SCR_TYPE",    "memu.lkpiiscr_mgmt",               "PII_CONFIG",    "MEDIUM");

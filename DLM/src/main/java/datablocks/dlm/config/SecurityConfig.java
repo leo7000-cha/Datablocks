@@ -106,8 +106,6 @@ public class SecurityConfig {
                 .requestMatchers(ant("/index")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/piidashboard/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/piiupload/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
-                .requestMatchers(ant("/piiconfkeymap/*")).hasAnyRole("ADMIN")
-                .requestMatchers(ant("/piiconftable/*")).hasAnyRole("ADMIN")
                 .requestMatchers(ant("/piiapprovaluser/*")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")
                 .requestMatchers(ant("/piijob/register")).hasAnyRole("IT","ADMIN")
                 .requestMatchers(ant("/piijob/list")).hasAnyRole("USER","IT","BIZ","SEC","ADMIN")

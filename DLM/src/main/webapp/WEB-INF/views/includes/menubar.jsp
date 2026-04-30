@@ -74,9 +74,6 @@
             } else if (menuId == "1011") {
                 url = "/piiconfig/list?pagenum=1&amount=100";
                 Menupath = "<i class='fas fa-gear'></i> <spring:message code="memu.config_management" text="시스템 설정"/>";
-            } else if (menuId == "1030") {
-                url = "/piiconftable/list?pagenum=1&amount=100";
-                Menupath = "<i class='fas fa-gear'></i> <spring:message code="memu.env_configuration" text="환경 설정"/>";
             } else if (menuId == "2000") {
                 url = "/piipolicy/list?pagenum=1&amount=100";
                 Menupath = "<i class='fas fa-layer-group'></i> <spring:message code="memu.task_configuration" text="작업 관리"/>";
